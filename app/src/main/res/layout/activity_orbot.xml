@@ -18,15 +18,4 @@
         app:defaultNavHost="true"
         app:navGraph="@navigation/nav_graph" />
 
-    <FrameLayout
-        android:id="@+id/bottomNavContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_weight="0">
-
-        <include
-            android:id="@+id/floating_bottom_nav"
-            layout="@layout/floating_bottom_nav" />
-    </FrameLayout>
 </LinearLayout>

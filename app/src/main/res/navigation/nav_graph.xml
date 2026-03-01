@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/connectFragment"
-        android:name="org.torproject.android.ui.connect.ConnectFragment"
+        android:name="ru.toinet.android.ui.connect.ConnectFragment"
         android:label="fragment_connect"
         tools:layout="@layout/fragment_connect">
 
@@ -22,7 +22,7 @@
     </fragment>
     <fragment
         android:id="@+id/moreFragment"
-        android:name="org.torproject.android.ui.more.MoreFragment"
+        android:name="ru.toinet.android.ui.more.MoreFragment"
         android:label="fragment_more"
         tools:layout="@layout/fragment_more">
         <action
@@ -54,7 +54,7 @@
 
     <fragment
         android:id="@+id/safetyFrag"
-        android:name="org.torproject.android.ui.more.SafetyPreferenceFragment"
+        android:name="ru.toinet.android.ui.more.SafetyPreferenceFragment"
         android:label="fragment_safety">
 
         <action
@@ -65,25 +65,20 @@
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
     </fragment>
-    <fragment
-        android:id="@+id/kindnessFragment"
-        android:name="org.torproject.android.ui.kindness.KindnessFragment"
-        android:label="fragment_kindness"
-        tools:layout="@layout/fragment_kindness" />
 
     <fragment
         android:id="@+id/settinsgFragment"
-        android:name="org.torproject.android.ui.more.SettingsPreferenceFragment"
+        android:name="ru.toinet.android.ui.more.SettingsPreferenceFragment"
         android:label="fragment_settings"/>
 
     <fragment
         android:id="@+id/camoFrag"
-        android:name="org.torproject.android.ui.more.camo.CamoFragment"
+        android:name="ru.toinet.android.ui.more.camo.CamoFragment"
         android:label="fragment camo" />
 
     <fragment
         android:id="@+id/appManager"
-        android:name="org.torproject.android.ui.AppManagerFragment"
+        android:name="ru.toinet.android.ui.AppManagerFragment"
         android:label="fragment apps" />
 
 </navigation>

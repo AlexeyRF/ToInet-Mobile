@@ -1,6 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
 import java.io.FileInputStream
-import java.net.URI
 import java.util.*
 
 plugins {
@@ -10,22 +9,16 @@ plugins {
 
 kotlin { jvmToolchain(21) }
 
-val orbotBaseVersionCode = 1790200300
-fun getVersionName(): String {
-    // Gets the version name from the latest Git tag
-    return providers.exec {
-        commandLine("git", "describe", "--tags", "--always")
-    }.standardOutput.asText.get().trim()
-}
+val ToInetBaseVersionCode = 1
 
 configure<ApplicationExtension> {
-    namespace = "org.torproject.android"
+    namespace = "ru.toinet.android"
     compileSdk = 36
 
     defaultConfig {
         applicationId = namespace
-        versionCode = orbotBaseVersionCode
-        versionName = getVersionName()
+        versionCode = ToInetBaseVersionCode
+        versionName = "ZOV"
         minSdk = 24
         targetSdk = 36
         multiDexEnabled = true
@@ -42,10 +35,6 @@ configure<ApplicationExtension> {
         abi {
             isEnable = true
             reset()
-
-            // https://github.com/guardianproject/orbot-android/issues/1565
-            // include("armeabi-v7a", "arm64-v8a")
-
             include("x86", "armeabi-v7a", "x86_64", "arm64-v8a")
             isUniversalApk = true
         }
@@ -104,7 +93,7 @@ configure<ApplicationExtension> {
         create("nightly") {
             dimension = "free"
             // overwrites defaults from defaultConfig
-            applicationId = "org.torproject.android.nightly"
+            applicationId = "ru.toinet.android.nightly"
             versionCode = (Date().time / 1000).toInt()
         }
     }
@@ -131,13 +120,13 @@ configure<ApplicationExtension> {
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            if (output.versionCode.get() == orbotBaseVersionCode) {
+            if (output.versionCode.get() == ToInetBaseVersionCode) {
                 val incrementMap =
                     mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 4, "x86_64" to 5)
                 val increment =
                     incrementMap[output.filters.find { it.filterType.name == "ABI" }?.identifier]
                         ?: 0
-                output.versionCode = orbotBaseVersionCode + increment
+                output.versionCode = ToInetBaseVersionCode + increment
             }
         }
     }
@@ -207,34 +196,6 @@ val updateBuiltinBridges by tasks.registering {
 
     doLast {
         assetsDir.asFile.mkdirs()
-        val oneDay = 60 * 60 * 24
-        val log: String =
-            providers.exec {
-                commandLine("git", "log", "-n", "1", "--date=unix", "$outputFile")
-            }.standardOutput.asText.get().trim()
-        val dateStr = log.split("\n").filter { it.contains("Date:") }[0]
-        val dateAsSeconds = dateStr.substring("Date:".length).trim().split(" ")[0].toLong()
-        val stale = Date().time / 1000 - dateAsSeconds > oneDay
-        if (!outputFile.exists() || stale) {
-            val bridgeUri = "https://bridges.torproject.org/moat/circumvention/builtin"
-            println("builtin-bridges.json missing or older than 24h, checking $bridgeUri for bridges...")
-            try {
-                URI(bridgeUri)
-                    .toURL()
-                    .openStream()
-                    .use { input ->
-                        outputFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                println("Successfully fetched builtin bridges.")
-            } catch (e: Exception) {
-                throw GradleException("ERROR: Could not fetch builtin bridges: ${e.message}", e)
-            }
-        } else {
-            println("builtin-bridges.json is fresh, skipping download.")
-        }
-
         val statusOutput = try {
             providers.exec {
                 commandLine("git", "status", "--porcelain")
@@ -293,7 +254,7 @@ tasks.register("renameApkFiles") {
             fileTree(layout.buildDirectory.dir("outputs/apk/$flavor/$variantName")).matching {
                 include("*.apk")
             }.forEach { file ->
-                val newName = file.name.replace("app-", "Orbot-${versionName}-")
+                val newName = file.name.replace("app-", "ToInet-${versionName}-")
                 file.renameTo(File(file.parentFile, newName))
             }
         }

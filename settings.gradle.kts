@@ -19,7 +19,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Orbot"
+rootProject.name = "Toinet"
 include(
     ":app"
 )
