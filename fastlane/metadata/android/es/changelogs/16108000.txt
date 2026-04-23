@@ -1,0 +1,4 @@
+* Correcciones importantes para el modo VPN
+* Nuevos puentes predeterminados
+* Actualizado a tor 0.4.0.4
+* Compatibilidad con el modo de 64 bits y Android Q

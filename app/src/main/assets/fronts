@@ -1,0 +1,3 @@
+snowflake-target-direct https://snowflake-broker.torproject.net/
+snowflake-relay-url wss://snowflake.bamsoftware.com
+snowflake-nat-probe https://snowflake-broker.torproject.net:8443/probe

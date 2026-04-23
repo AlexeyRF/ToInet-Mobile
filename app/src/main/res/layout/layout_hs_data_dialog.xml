@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="?dialogPreferredPadding">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/name"
+        android:textAppearance="@style/TextAppearance.AppCompat.Widget.PopupMenu.Small" />
+
+    <ru.toinet.android.ui.core.NoPersonalizedLearningEditText
+        android:id="@+id/hsName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/local_port"
+        android:textAppearance="@style/TextAppearance.AppCompat.Widget.PopupMenu.Small" />
+
+    <ru.toinet.android.ui.core.NoPersonalizedLearningEditText
+        android:id="@+id/hsLocalPort"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:digits="0123456789"
+        android:ems="10"
+        android:inputType="number"
+        android:maxLength="5" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/onion_port"
+        android:textAppearance="@style/TextAppearance.AppCompat.Widget.PopupMenu.Small" />
+
+    <ru.toinet.android.ui.core.NoPersonalizedLearningEditText
+        android:id="@+id/hsOnionPort"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:digits="0123456789"
+        android:ems="10"
+        android:inputType="number"
+        android:maxLength="5" />
+
+</LinearLayout>

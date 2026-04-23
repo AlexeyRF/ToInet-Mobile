@@ -1,0 +1,9 @@
+***RABHADH: BAINEADH GACH GNÉITHE FRÉAMH AS AN LEAGAN NUA SEO DE ORBOT.***
+Úsáid "Apps VPN Mode" Orbot nó brabhsálaí Orfox in ionad seachfhreastalaí trédhearcach le fréimhe.
+
+* Nuashonrú ar Tor 0.3.1.8
+* Baineadh tacaíocht do fheidhmeanna Fréimhe / Tras-shábhála toisc go raibh siad
+neamhiontaofa agus gan tástáil
+* Tacaíocht FEABHSAITHE do sheachfhreastalaí trédhearcach VPN
+* Seoladh ceadúnas Obfs4proxy
+* Nuashonrú ar shuíomhanna droichead Meek tacaíochta Tor is déanaí

@@ -1,0 +1,1 @@
+Corrige el bloqueo relacionado con el inicio de un servicio en segundo plano

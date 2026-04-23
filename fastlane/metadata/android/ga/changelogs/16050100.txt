@@ -1,0 +1,4 @@
+- nuashonraigh Tor go dtí an leagan is déanaí de 0.3.4.9
+- réitigh le haghaidh cobhsaíocht VPN
+- tástáladh ar Android 8 agus 9
+- aistriúcháin fheabhsaithe agus nuashonraithe do go leor teangacha

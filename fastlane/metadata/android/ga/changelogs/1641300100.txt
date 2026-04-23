@@ -1,0 +1,3 @@
+- baineadh an rogha droichid "Scamall" de Meek mar nach bhfuil tacaíocht ann a thuilleadh
+- feabhsuithe breise ar thacaíocht seirbhíse Onion V3
+- le haghaidh #441, socraítear cuardach aipeanna le haghaidh roghnú VPN bunaithe ar aipeanna

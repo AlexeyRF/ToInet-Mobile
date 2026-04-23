@@ -1,0 +1,3 @@
+- nuashonrú ar tor 0.4.8.17
+- feabhsuithe iomadúla ar an gcomhéadan úsáideora
+- an tacaíocht is déanaí do WebTunnel agus Snowflake Proxy

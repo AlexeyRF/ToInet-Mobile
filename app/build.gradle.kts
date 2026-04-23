@@ -1,0 +1,226 @@
+import com.android.build.api.dsl.ApplicationExtension
+import java.io.FileInputStream
+import java.util.*
+
+plugins {
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.android.application)
+}
+
+kotlin { jvmToolchain(21) }
+
+val ToInetBaseVersionCode = 1
+
+configure<ApplicationExtension> {
+    namespace = "ru.toinet.android"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = namespace
+        versionCode = ToInetBaseVersionCode
+        versionName = "RUS"
+        minSdk = 24
+        targetSdk = 36
+        multiDexEnabled = true
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        flavorDimensions += "free"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("x86", "armeabi-v7a", "x86_64", "arm64-v8a")
+            isUniversalApk = true
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+        viewBinding = true
+    }
+
+    testOptions { execution = "ANDROIDX_TEST_ORCHESTRATOR" }
+
+    signingConfigs {
+        create("release") {
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            val keystoreProperties = Properties()
+            if (keystorePropertiesFile.canRead()) {
+                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+            }
+            if (!keystoreProperties.stringPropertyNames().isEmpty()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isShrinkResources = false
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.txt"
+            )
+            signingConfig = signingConfigs.getByName("release")
+        }
+        getByName("debug") {
+            isDebuggable = true
+            applicationIdSuffix = ".debug"
+        }
+    }
+
+    //ndkVersion = "28.2.13676358"
+    //externalNativeBuild {
+    //    ndkBuild {
+    //        path = file("src/main/jni/Android.mk")
+    //    }
+    //}
+
+    productFlavors {
+        create("fullperm") {
+            dimension = "free"
+        }
+        create("nightly") {
+            dimension = "free"
+            // overwrites defaults from defaultConfig
+            applicationId = "ru.toinet.android.nightly"
+            versionCode = (Date().time / 1000).toInt()
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += listOf("META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version")
+        }
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+        disable += "InvalidPackage"
+        htmlReport = true
+        lintConfig = file("../lint.xml")
+        textReport = false
+        xmlReport = false
+    }
+
+}
+
+// Increments versionCode by ABI type
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            if (output.versionCode.get() == ToInetBaseVersionCode) {
+                val incrementMap =
+                    mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 4, "x86_64" to 5)
+                val increment =
+                    incrementMap[output.filters.find { it.filterType.name == "ABI" }?.identifier]
+                        ?: 0
+                output.versionCode = ToInetBaseVersionCode + increment
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation(libs.android.material)
+    implementation(libs.android.volley)
+    implementation(libs.androidx.activity)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.localbroadcast)
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
+    implementation(libs.androidx.preference)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.lifecycle.common)
+    implementation(libs.androidx.lifecycle.process)
+    implementation(libs.retrofit.converter)
+    implementation(libs.retrofit.lib)
+    implementation(libs.rootbeer.lib)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.work.kotlin)
+    implementation(libs.upnp)
+    implementation(libs.iptproxy)
+    implementation(libs.quickie)
+
+    // Tor
+    implementation(files("../libs/geoip.jar"))
+    api(libs.guardian.jtorctl)
+    api(libs.tor.android)
+    // local tor-android:
+    // api(files("../../tor-android/tor-android-binary/build/outputs/aar/tor-android-binary-debug.aar"))
+
+    testImplementation(libs.junit.jupiter)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso)
+    androidTestImplementation(libs.androidx.rules)
+    androidTestImplementation(libs.androidx.runner)
+    androidTestImplementation(libs.screengrab)
+    androidTestImplementation(libs.androidx.espresso.contrib)
+    androidTestUtil(libs.androidx.orchestrator)
+}
+
+afterEvaluate {
+    tasks.matching {
+        it.name == "preFullpermReleaseBuild" ||
+                it.name == "preNightlyReleaseBuild"
+    }.configureEach {
+        dependsOn(
+            copyLicenseToAssets
+        )
+    }
+}
+
+val copyLicenseToAssets by tasks.registering(Copy::class) {
+    from(rootProject.file("LICENSE"))
+    into(layout.projectDirectory.dir("src/main/assets"))
+}
+
+
+tasks.matching {
+    it.name.startsWith("assemble")
+}.configureEach {
+    finalizedBy("renameApkFiles")
+}
+
+tasks.register("getVersionFromGit") {
+    doLast {
+        val gitVersion = providers.exec {
+            commandLine("git", "describe", "--tags", "--always")
+        }.standardOutput.asText.get().trim()
+        project.ext.set("gitVersion", gitVersion)
+    }
+}
+
+tasks.register("renameApkFiles") {
+    dependsOn("getVersionFromGit")
+    doLast {
+        val versionName = project.ext.get("gitVersion")
+        val variantName = project.gradle.startParameter.taskNames
+            .find { it.contains("assemble") }
+            ?.substringAfter("assemble")
+            ?.replaceFirstChar { it.lowercase() }
+            ?: "debug"
+
+        listOf("nightly", "fullperm").forEach { flavor ->
+            fileTree(layout.buildDirectory.dir("outputs/apk/$flavor/$variantName")).matching {
+                include("*.apk")
+            }.forEach { file ->
+                val newName = file.name.replace("app-", "ToInet-${versionName}-")
+                file.renameTo(File(file.parentFile, newName))
+            }
+        }
+    }
+}

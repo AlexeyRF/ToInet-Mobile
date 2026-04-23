@@ -1,0 +1,18 @@
+Is aip VPN agus seachfhreastalaí saor in aisce é Orbot a chumhachtaíonn aipeanna eile an t-idirlíon a úsáid níos sláine. Úsáideann Orbot Tor chun do thrácht Idirlín a chriptiú agus ansin cuireann sé i bhfolach é trí phreabadh trí shraith ríomhairí ar fud an domhain. Is bogearraí saor in aisce agus líonra oscailte é Tor a chabhraíonn leat cosaint a dhéanamh i gcoinne cineál faireachais líonra a bhagraíonn saoirse phearsanta agus príobháideacht, gníomhaíochtaí agus caidrimh ghnó rúnda, agus slándáil stáit ar a dtugtar anailís tráchta.
+
+Is é Orbot an t-aon aip a chruthaíonn nasc idirlín fíor-phríobháideach. Mar a scríobhann an New York Times, "nuair a thagann cumarsáid ó Tor, ní féidir leat a fhios a bheith agat cá háit nó cé as a thagann sí."
+
+Bhuaigh Tor Duais Cheannródaí Fhondúireacht Teorann Leictreonach (EFF) 2012.
+
+★ NÁ GLAC LE HIONADAITHEACHA: Is é Orbot an bealach is sábháilte chun an tIdirlíon a úsáid ar Android. Tréimhse. Preabann Orbot do thrácht criptithe arís agus arís eile trí ríomhairí ar fud an domhain, in ionad tú a nascadh go díreach cosúil le VPNanna agus seachfhreastalaithe eile. Tógann an próiseas seo beagán níos faide, ach is fiú fanacht leis an gcosaint príobháideachta agus aitheantais is láidre atá ar fáil.
+★ PRÍOBHÁIDEACHT DO AIPEANNA: Is féidir aon aip a threorú thar Tor tríd an ngné VPN Orbot
+★ PRÍOBHÁIDEACHT DO GACH DUINE: Cuireann Orbot cosc ar dhuine atá ag faire ar do nasc a fhios a bheith aige cad iad na haipeanna atá á n-úsáid agat nó na suíomhanna gréasáin a dtugann tú cuairt orthu. Ní fheiceann aon duine atá ag monatóireacht tráchta do líonra ach go bhfuil tú ag úsáid Tor.
+
+***Is breá linn Aiseolas***
+★ FOGHLAIM TUILLEADH: Foghlaim tuilleadh faoi Orbot agus bí páirteach ag https://orbot.app
+★ FÚINN: Is grúpa forbróirí é Guardian Project a dhéanann aipeanna soghluaiste slána agus cód foinse oscailte le haghaidh todhchaí níos fearr.
+★ FOINSE OSCAILTE: Is bogearraí saor in aisce é Orbot. Féach ar ár gcód foinse, nó bí páirteach sa phobal chun é a fheabhsú: https://github.com/guardianproject/orbot
+★ SEOL TEACHTAIREACHT CHUGAINN: An bhfuil do ghné is fearr leat in easnamh orainn? An bhfuair tú fabht cráite? Ba bhreá linn cloisteáil uait! Seol ríomhphost chugainn: support@guardianproject.info
+
+***Séanadh***
+Déanann Guardian Project aipeanna atá deartha chun do shlándáil agus d'anaithnideacht a chosaint. Meastar go forleathan gurb iad na prótacail a úsáidimid an teicneolaíocht slándála is fearr. Cé go bhfuilimid i gcónaí ag uasghrádú ár mbogearraí chun dul i ngleic leis na bagairtí is déanaí agus fabhtanna a dhíchur, níl aon teicneolaíocht 100% slán. Chun an tslándáil agus an anaithnideacht is mó a chinntiú, ní mór d’úsáideoirí na cleachtais is fearr a úsáid chun iad féin a choinneáil slán. Is féidir leat treoir mhaith réamhráiteach a fháil ar na topaicí seo ag https://securityinabox.org

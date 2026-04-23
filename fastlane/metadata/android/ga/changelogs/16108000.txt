@@ -1,0 +1,4 @@
+* Príomhshocruithe don mhodh VPN
+* Droichid réamhshocraithe nua
+* Nuashonraithe go tor 0.4.0.4
+* Tacaíocht do mhodh 64-giotán agus Android Q

@@ -1,0 +1,3 @@
+- Actualització a Tor 0.4.8.17
+- Millores múltiples en la interfície d'usuari
+- Compatibilitat amb els últims WebTunnel i Snowflake Proxy

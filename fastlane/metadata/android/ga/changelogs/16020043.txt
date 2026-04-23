@@ -1,0 +1,9 @@
+- Méid suiteála (APK) 30% níos lú, faoi bhun 10MB!
+- nuashonraithe go tor 0.3.3.5 (tacaíocht do Onion Services v3 agus níos mó)
+- go leor socruithe do tor, suiteáil dénártha iompair inphlugáilte
+- Ní bheidh freastalaí HTTP "Polipo" ann a thuilleadh, ach úsáid á baint as cumas nua-ionsuite Tor
+- rogha teanga feabhsaithe san aip
+
+CEAD NUA: Rochtain ar "Stóráil Sheachtrach"
+
+Nótaí scaoilte iomlána ag: https://github.com/n8fr8/orbot/releases/tag/16.0.2-RC-1

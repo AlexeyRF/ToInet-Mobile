@@ -1,0 +1,4 @@
+* tacaíocht do OnionServices v3
+* feabhsuithe ar chumraíocht droichid
+* cinntíonn sé go gcaitear le mód VPN mar "nasc gan mhéadar"
+* mód turgnamhach chun go bhféadfar rith mar sheachfhreastalaí Snowflake

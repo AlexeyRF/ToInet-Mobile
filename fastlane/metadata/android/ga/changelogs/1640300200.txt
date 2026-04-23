@@ -1,0 +1,4 @@
+* tacaíocht do dhroichead Snowflake curtha leis
+* tacaíocht do dhroichead Obfs4 agus Meek nuashonraithe
+* luas feabhsaithe ar an ngné "Iarr droichid nua"
+* Tor nuashonraithe go 0.4.4.6
