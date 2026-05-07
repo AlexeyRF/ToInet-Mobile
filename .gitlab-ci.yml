@@ -1,0 +1,97 @@
+image: registry.gitlab.com/fdroid/fdroidserver:buildserver-bullseye
+
+##image: openjdk:11-jdk
+
+variables:
+  ANDROID_COMPILE_SDK: "31"
+  ANDROID_BUILD_TOOLS: "31.0.0"
+  ANDROID_SDK_TOOLS: "6858069_latest"
+
+
+before_script:
+- apt-get --quiet update --yes
+- apt-get --quiet install --yes wget tar unzip lib32stdc++6 lib32z1
+- wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}.zip
+- unzip -d android-sdk-linux android-sdk.zip
+- echo y | android-sdk-linux/cmdline-tools/bin/sdkmanager --sdk_root=. "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null
+- echo y | android-sdk-linux/cmdline-tools/bin/sdkmanager --sdk_root=. "platform-tools" >/dev/null
+- echo y | android-sdk-linux/cmdline-tools/bin/sdkmanager --sdk_root=. "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null
+- export ANDROID_SDK_ROOT=$PWD
+- export PATH=$PATH:$PWD/platform-tools/
+- chmod +x ./gradlew
+# temporarily disable checking for EPIPE error and use yes to accept all licenses
+- set +o pipefail
+- yes | android-sdk-linux/cmdline-tools/bin/sdkmanager --sdk_root=. --licenses
+- set -o pipefail
+
+stages:
+  - build
+  - deploy
+#  - test
+
+#lintDebug:
+#  stage: build
+#  script:
+#    - ./gradlew -Pci --console=plain :app:lintDebug -PbuildDir=lint
+
+assembleDebug:
+  stage: build
+  script:
+    - ./gradlew assembleDebug lint
+  artifacts:
+    paths:
+    - app/build/outputs/
+
+#debugTests:
+#  stage: test
+#  script:
+#    - ./gradlew -Pci --console=plain :app:testReleaseflavorDebugUnitTest
+
+
+.base:
+  before_script:
+    - test -e /etc/apt/sources.list.d/bullseye-backports.list
+        || echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list
+    - apt update
+    - apt-get -qy install -t bullseye-backports --no-install-recommends git sdkmanager
+
+    - test -n "$ANDROID_HOME" || source /etc/profile.d/bsenv.sh
+
+    - export cmdline_tools_latest="$ANDROID_HOME/cmdline-tools/latest/bin"
+    - test -e $cmdline_tools_latest && export PATH="$cmdline_tools_latest:$PATH"
+
+    - export GRADLE_USER_HOME=$PWD/.gradle
+    - export ANDROID_COMPILE_SDK=`sed -n 's,.*compileSdkVersion\s*\([0-9][0-9]*\).*,\1,p' app/build.gradle`
+    - echo y | sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" > /dev/null
+  after_script:
+    # this file changes every time but should not be cached
+    - rm -f $GRADLE_USER_HOME/caches/modules-2/modules-2.lock
+    - rm -fr $GRADLE_USER_HOME/caches/*/plugin-resolution/
+  cache:
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+
+
+deploy_nightly:
+  extends: .base
+  stage: deploy
+  only:
+    - master
+  script:
+    - test -z "$DEBUG_KEYSTORE" && exit 0
+    - apt-get install -t bullseye-backports fdroidserver
+    - sed -i
+        's,<string name="app_name">.*</string>,<string name="app_name">OrbotNTLY</string>,'
+        app/src/main/res/values*/strings.xml
+    # add this nightly repo as a enabled repo
+    - sed -i -e '/<\/string-array>/d' -e '/<\/resources>/d' app/src/main/res/values/default_repos.xml
+    - echo "<item>${CI_PROJECT_PATH}-nightly</item>" >> app/src/main/res/values/default_repos.xml
+    - echo "<item>${CI_PROJECT_URL}-nightly/raw/master/fdroid/repo</item>" >> app/src/main/res/values/default_repos.xml
+    - cat config/nightly-repo/repo.xml >> app/src/main/res/values/default_repos.xml
+    - export versionCode=`printf '%d%05d' $(date '+%s'| cut -b1-8)`
+    - sed -i "s,^\(\s*versionCode\)  *[0-9].*,\1 $versionCode," app/build.gradle
+    # build the APKs!
+    - ./gradlew assembleDebug
+    - fdroid nightly -v
+

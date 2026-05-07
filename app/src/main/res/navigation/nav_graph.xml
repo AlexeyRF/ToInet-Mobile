@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/connectFragment">
+
+    <fragment
+        android:id="@+id/connectFragment"
+        android:name="ru.toinet.android.ui.connect.ConnectFragment"
+        android:label="fragment_connect"
+        tools:layout="@layout/fragment_connect">
+
+        <action
+            android:id="@+id/connectToApps"
+            app:destination="@id/appManager"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+
+    </fragment>
+    <fragment
+        android:id="@+id/moreFragment"
+        android:name="ru.toinet.android.ui.more.MoreFragment"
+        android:label="fragment_more"
+        tools:layout="@layout/fragment_more">
+        <action
+            android:id="@+id/more_to_settings"
+            app:destination="@id/settinsgFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+
+        <action
+            android:id="@+id/more_to_apps"
+            app:destination="@id/appManager"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+
+        <action
+            android:id="@+id/more_to_safety"
+            app:destination="@id/safetyFrag"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/safetyFrag"
+        android:name="ru.toinet.android.ui.more.SafetyPreferenceFragment"
+        android:label="fragment_safety">
+
+        <action
+            android:id="@+id/open_camo"
+            app:destination="@id/camoFrag"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/settinsgFragment"
+        android:name="ru.toinet.android.ui.more.SettingsPreferenceFragment"
+        android:label="fragment_settings"/>
+
+    <fragment
+        android:id="@+id/camoFrag"
+        android:name="ru.toinet.android.ui.more.camo.CamoFragment"
+        android:label="fragment camo" />
+
+    <fragment
+        android:id="@+id/appManager"
+        android:name="ru.toinet.android.ui.AppManagerFragment"
+        android:label="fragment apps" />
+
+</navigation>

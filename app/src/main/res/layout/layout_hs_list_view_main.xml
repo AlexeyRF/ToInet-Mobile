@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="@drawable/bg_gradient"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingEnd="@dimen/activity_horizontal_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context="ru.toinet.android.ui.v3onionservice.OnionServiceActivity"
+    tools:showIn="@layout/activity_hosted_services">
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp"
+        android:text="@string/service_type" />
+
+    <RadioGroup
+        android:paddingStart="-5dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/activity_vertical_margin"
+        android:orientation="horizontal"
+        tools:ignore="RtlSymmetry">
+
+        <RadioButton
+            android:id="@+id/radioUserServices"
+            android:layout_width="140dp"
+            android:layout_height="wrap_content"
+            android:onClick="onRadioButtonClick"
+            android:text="@string/user_services" />
+
+        <RadioButton
+            android:id="@+id/radioAppServices"
+            android:layout_width="140dp"
+            android:layout_height="wrap_content"
+            android:onClick="onRadioButtonClick"
+            android:text="@string/app_services" />
+    </RadioGroup>
+
+    <ListView
+        android:id="@+id/onion_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>
