@@ -18,7 +18,6 @@ import ru.toinet.android.R
 import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.service.OrbotConstants
 import ru.toinet.android.service.OrbotService
-import ru.toinet.android.service.vpn.VpnServicePrepareWrapper
 import ru.toinet.android.ui.OrbotMenuAction
 import ru.toinet.android.ui.v3onionservice.OnionServiceActivity
 import ru.toinet.android.ui.v3onionservice.clientauth.ClientAuthActivity
@@ -105,9 +104,6 @@ class MoreFragment : Fragment() {
             },
             OrbotMenuAction(R.string.menu_settings, R.drawable.ic_settings_gear) {
                 findNavController().navigate(R.id.more_to_settings)
-            },
-            OrbotMenuAction(R.string.system_vpn_settings, R.drawable.ic_vpn_key) {
-                VpnServicePrepareWrapper.openVpnSystemSettings(this)
             },
             OrbotMenuAction(R.string.menu_log, R.drawable.ic_log) { showLog() },
             OrbotMenuAction(R.string.v3_hosted_services, R.drawable.ic_menu_onion) {

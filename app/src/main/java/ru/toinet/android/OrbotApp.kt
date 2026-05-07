@@ -35,14 +35,6 @@ class OrbotApp : Application() {
 
         })
 
-//      useful for finding unclosed sockets...
-//        StrictMode.setVmPolicy(
-//            VmPolicy.Builder()
-//                .detectLeakedClosableObjects()
-//                .penaltyLog()
-//                .build()
-//        )
-
         Prefs.setContext(applicationContext)
         LocaleHelper.onAttach(applicationContext)
 

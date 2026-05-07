@@ -32,10 +32,7 @@ object DeviceAuthenticationPrompt {
             return
         }
 
-        val appName =
-            if (Prefs.isCamoEnabled) Prefs.camoAppDisplayName ?: "" else activity.getString(
-                R.string.app_name
-            )
+        val appName = activity.getString(R.string.app_name)
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setConfirmationRequired(true)

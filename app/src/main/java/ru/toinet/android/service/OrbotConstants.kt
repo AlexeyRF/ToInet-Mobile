@@ -45,10 +45,7 @@ object OrbotConstants {
     const val LOG_NOTICE_BOOTSTRAPPED = "Bootstrapped"
 
 
-    // needed when Orbot exits and tor is not running, but the notification is still active
     const val ACTION_STOP_FOREGROUND_TASK = "ru.toinet.android.intent.action.STOP_FOREGROUND_TASK"
-
-    const val ACTION_RESTART_VPN_IF_RUNNING = "ru.toinet.android.intent.action.RESTART_VPN"
 
     const val ACTION_LOCAL_LOCALE_SET = "ru.toinet.android.intent.LOCAL_LOCALE_SET"
 
@@ -72,12 +69,6 @@ object OrbotConstants {
     const val EXTRA_DNS_PORT = "ru.toinet.android.intent.extra.DNS_PORT"
     const val EXTRA_TRANS_PORT = "ru.toinet.android.intent.extra.TRANS_PORT"
 
-    /**
-     * When present, indicates with certainty that the system itself did *not* send the Intent.
-     * Effectively, the lack of this extra indicates that the VPN is being started by the system
-     * as a result of the user's always-on preference for the VPN.
-     * See: [Detect always-on | VPN | Android Developers](https://developer.android.com/guide/topics/connectivity/vpn#detect_always-on)
-     */
     const val EXTRA_NOT_SYSTEM = "ru.toinet.android.intent.extra.NOT_SYSTEM"
 
     const val LOCAL_ACTION_LOG = "log"
@@ -94,14 +85,9 @@ object OrbotConstants {
 
 
 
-    /**
-     * The user has disabled the ability for background starts triggered by
-     * apps. Fallback to the old Intent action that brings up Orbot:
-     * [.ACTION_START]
-     */
+
     const val STATUS_STARTS_DISABLED = "STARTS_DISABLED"
 
-    // actions for internal command Intents
     const val CMD_SET_EXIT = "setexit"
     const val CMD_ACTIVE = "ACTIVE"
 
@@ -112,46 +98,9 @@ object OrbotConstants {
 
     const val PREFS_KEY_TORIFIED: String = "PrefTord"
 
-    /**
-     * Include packages here to make the VPNService ignore these apps. This is to
-     * prevent tor over tor scenarios...
-     */
-    @JvmField
-    val BYPASS_VPN_PACKAGES = mutableListOf(
-        "org.torproject.torbrowser_alpha",
-        "org.torproject.torbrowser",
-        "org.onionshare.android",  // issue #618
-        "org.onionshare.android.fdroid",
-        "org.briarproject.briar.android",  // https://github.com/guardianproject/orbot/issues/474
-        "im.cwtch.flwtch",
-    )
-
-    val VPN_SUGGESTED_APPS = mutableListOf(
-        "org.thoughtcrime.securesms",  // Signal
-        // "com.android.vending", // google play store
-        "com.duckduckgo.mobile.android",
-        "com.whatsapp",
-        "com.instagram.android",
-        "im.vector.app",
-        "org.telegram.messenger",
-        "com.twitter.android",
-        "com.facebook.orca",
-        "com.facebook.mlite",
-        "com.brave.browser",
-        "org.mozilla.focus"
-    )
-
     const val ONION_EMOJI: String = "\uD83E\uDDC5"
-
-
-    // Constants for getting bridges in semi-manual ways.
 
     val GET_BRIDES_BRIDGES_URI = "https://bridges.torproject.org/".toUri()
 
-    const val GET_BRIDES_EMAIL_RECIPIENT = "bridges@torproject.org"
-
-    const val GET_BRIDES_EMAIL_SUBJECT_AND_BODY = "get transport"
-
-    val GET_BRIDES_TELEGRAM_BOT = "https://t.me/GetBridgesBot".toUri()
 
 }

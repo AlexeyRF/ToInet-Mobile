@@ -30,7 +30,6 @@ import ru.toinet.android.databinding.FragmentConnectBinding
 import ru.toinet.android.service.OrbotConstants
 import ru.toinet.android.service.OrbotService
 import ru.toinet.android.service.circumvention.Transport
-import ru.toinet.android.service.vpn.VpnServicePrepareWrapper
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.ui.OrbotMenuAction
 import org.torproject.jni.TorService
@@ -46,15 +45,6 @@ class ConnectFragment : Fragment(),
 
     private val lastStatus: String
         get() = (activity as? OrbotActivity)?.previousReceivedTorStatus ?: ""
-
-    private val startTorVpnResultLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == AppCompatActivity.RESULT_OK) {
-                startTorVpn()
-            } else {
-                displayVpnStartError(getString(R.string.unable_to_start_unknown_reason_error_msg))
-            }
-        }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -160,8 +150,6 @@ class ConnectFragment : Fragment(),
     }
 
     fun attemptToStartTorPowerUserMode() {
-        // android 14 awkwardly needs this permission to be explicitly granted to use the
-        // FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED permission without grabbing a VPN Intent
         val alarmManager =
             requireContext().getSystemService(Context.ALARM_SERVICE) as AlarmManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
@@ -172,42 +160,8 @@ class ConnectFragment : Fragment(),
         setState(TorService.ACTION_START)
     }
 
-    fun startTorVpn() {
-        doLayoutStarting(requireContext())
-        setState(TorService.ACTION_START)
-    }
-
     fun attemptToStartTor() {
-        Prefs.putUseVpn(!Prefs.isPowerUserMode)
-        if (Prefs.isPowerUserMode) {
-            attemptToStartTorPowerUserMode()
-        } else {
-            val vpnPrepareState =
-                VpnServicePrepareWrapper.orbotVpnServicePreparedState(requireContext())
-
-            when (vpnPrepareState) {
-
-                is VpnServicePrepareWrapper.Result.Prepared ->
-                    startTorVpn()
-
-                is VpnServicePrepareWrapper.Result.CantPrepare ->
-                    displayVpnStartError(vpnPrepareState.errorMsg)
-
-                is VpnServicePrepareWrapper.Result.ShouldAttempt ->
-                    // prompt VPN permission dialog
-                    startTorVpnResultLauncher.launch(vpnPrepareState.prepareIntent)
-
-            }
-        }
-        refreshMenuList(requireContext())
-    }
-
-    fun displayVpnStartError(msg: String) {
-        binding.switchConnect.isChecked = false
-        VpnAlwaysOnDialog.newInstance(msg).show(
-            requireActivity().supportFragmentManager,
-            VpnAlwaysOnDialog.TAG
-        )
+        attemptToStartTorPowerUserMode()
     }
 
     var lastState: String? = null
@@ -252,11 +206,6 @@ class ConnectFragment : Fragment(),
                     )
                 },
                 OrbotMenuAction(R.string.btn_refresh, R.drawable.ic_refresh) { sendNewnymSignal() })
-        if (!Prefs.isPowerUserMode) listItems.add(
-            0,
-            OrbotMenuAction(R.string.btn_choose_apps, R.drawable.ic_choose_apps) {
-                findNavController().navigate(R.id.connectToApps)
-            })
         binding.lvConnected.adapter = ConnectMenuActionAdapter(context, listItems)
     }
 

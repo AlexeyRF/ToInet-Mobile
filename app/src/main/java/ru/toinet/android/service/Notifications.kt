@@ -16,14 +16,9 @@ object Notifications {
     @RequiresApi(api = Build.VERSION_CODES.O)
     fun createNotificationChannel(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val appName = if (!Prefs.isCamoEnabled)
-            context.getString(R.string.app_name)
-        else
-            Prefs.camoAppDisplayName
-        val channelDescription = if (!Prefs.isCamoEnabled)
-            context.getString(R.string.app_description)
-        else
-            Prefs.camoAppDisplayName
+        val appName = context.getString(R.string.app_name)
+        val channelDescription = context.getString(R.string.app_description)
+
         manager.createNotificationChannel(
             NotificationChannel(
                 ORBOT_SERVICE_NOTIFICATION_CHANNEL,
@@ -56,13 +51,6 @@ object Notifications {
         else if (torStatus == TorService.STATUS_ON)
             return context.getString(R.string.status_activated)
         return context.getString(R.string.status_disabled)
-    }
-
-    @JvmStatic
-    fun getVpnSessionName(context: Context) : String {
-        return if (Prefs.isCamoEnabled) {
-            Prefs.camoAppDisplayName ?: ""
-        } else context.getString(R.string.orbot_vpn)
     }
 
     const val ORBOT_SERVICE_NOTIFICATION_CHANNEL = "orbot_channel_1"

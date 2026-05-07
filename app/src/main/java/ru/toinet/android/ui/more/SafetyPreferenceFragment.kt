@@ -24,7 +24,6 @@ class SafetyPreferenceFragment : AbstractPreferenceFragment() {
             OnPreferenceChangeListener { _: Preference?, newValue: Any? ->
 
                 Prefs.isSecureWindow = newValue as Boolean
-                (activity as BaseActivity).resetSecureFlags()
 
                 true
             }

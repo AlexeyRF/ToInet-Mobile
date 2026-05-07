@@ -1,3 +1,0 @@
-- aggiornato a tor 0.4.8.17
-- diversi miglioramenti all'interfaccia utente
-- supporto più recente per WebTunnel e Snowflake

@@ -215,10 +215,10 @@
     <string name="app_icon_chooser_label_fit_grit">FitGrit</string>
     <string name="app_icon_chooser_label_birdie">Birdie</string>
     <string name="camo_samsung_instructions">На устройствах Samsung Galaxy иконки в строке уведомлений приложения ToInet изменятся только после открытия настроек вашего телефона: Настройки -&gt; Уведомления -&gt; Дополнительные Параметры и выключением опции \"Отображать значки оповещений\". Нажмите сюда, чтобы открыть Настройки Уведомлений.</string>
-    <string name="power_user_mode_permission">Разрешение будильника и напоминателя нужны для режима большой пользователь</string>
-    <string name="power_user_mode_permission_msg">Пожалуйста разрешите приложению ToInet заводить будильники и напоминатели, чтобы использовать режим большого пользователя. Это не создаст никакие будильники на вашем устройстве. Это разрешение нужно, чтобы система держала ToInetService включенным во время, когда ToInet не использован как VPN на всю систему.</string>
+    <string name="power_user_mode_permission">Запрос на разрешение</string>
+    <string name="power_user_mode_permission_msg">Увы, ToInet не способен предоставлять прокси без данного разрешения, приложение НЕ будет устанавливать никакие будильники, пожалуйста, поставьте согласие, его всегда можно отозвать, но приложение не будет работать. Нажмите на ОК для перхода в меню разрешений.</string>
     <string name="request_notification_permission">Пожалуйста включите уведомления для ToInet</string>
-    <string name="request_notification_permission_msg">Без включения уведомлений приложения ToInet, он не может вести себя как Tor VPN или использовать Режим доброты.\n\nКогда они включены, мы только показываем одно уведомление когда ToInet работает.</string>
+    <string name="request_notification_permission_msg">Когда они включены, мы только показываем одно уведомление когда ToInet работает.</string>
     <string name="open_settings">Открыть настройки</string>
     <string name="error_no_password_set">Вы должны завести пароль на вашем устройстве Android, чтобы использовать функцию Блокировки Экрана</string>
     <string name="device_lock_unsupported">ToInet Аутентификация не поддерживается на вашем устройстве</string>

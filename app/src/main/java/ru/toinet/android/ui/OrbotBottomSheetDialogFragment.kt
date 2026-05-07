@@ -17,10 +17,6 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 import ru.toinet.android.R
 
-/**
-Class to setup default bottom sheet behavior for Config Connection, MOAT and any other
-bottom sheets to come
- */
 open class OrbotBottomSheetDialogFragment : BottomSheetDialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = BottomSheetDialog(requireActivity(), theme)

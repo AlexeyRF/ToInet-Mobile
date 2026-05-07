@@ -20,7 +20,6 @@ object Prefs {
     private const val PREF_START_ON_BOOT = "pref_start_boot"
     private const val PREF_ALLOW_BACKGROUND_STARTS = "pref_allow_background_starts"
     private const val PREF_OPEN_PROXY_ON_ALL_INTERFACES = "pref_open_proxy_on_all_interfaces"
-    private const val PREF_USE_VPN = "pref_vpn"
     private const val PREF_EXIT_NODES = "pref_exit_nodes"
     private const val PREF_BE_A_SNOWFLAKE = "pref_be_a_snowflake"
     private const val PREF_SHOW_SNOWFLAKE_MSG = "pref_show_snowflake_proxy_msg"
@@ -29,9 +28,6 @@ object Prefs {
 
     private const val PREF_USE_SMART_CONNECT = "pref_use_smart_connect"
     private const val PREF_SMART_CONNECT_TIMEOUT = "pref_smart_connect_timeout"
-
-    private const val PREF_POWER_USER_MODE = "pref_power_user"
-
 
     private const val PREF_HOST_ONION_SERVICES = "pref_host_onionservices"
 
@@ -158,16 +154,6 @@ object Prefs {
         return cr?.getPrefBoolean(PREF_OPEN_PROXY_ON_ALL_INTERFACES) ?: false
     }
 
-    @JvmStatic
-    fun useVpn(): Boolean {
-        return cr?.getPrefBoolean(PREF_USE_VPN) ?: false
-    }
-
-    @JvmStatic
-    fun putUseVpn(value: Boolean) {
-        cr?.putPref(PREF_USE_VPN, value)
-    }
-
     fun startOnBoot(): Boolean {
         return cr?.getPrefBoolean(PREF_START_ON_BOOT, true) ?: true
     }
@@ -258,9 +244,6 @@ object Prefs {
             return try {
                 Pair(URI(url.toString()), null)
             } catch (_: URISyntaxException) {
-                // can happen when you say put a space in the hostname
-                // https://github.com/guardianproject/orbot-android/issues/1563
-                // https://www.rfc-editor.org/rfc/inline-errata/rfc3986.html
                 Pair(
                     null,
                     url.toString()
@@ -268,28 +251,12 @@ object Prefs {
             }
         }
 
-    val isPowerUserMode: Boolean
-        get() = cr?.getPrefBoolean(PREF_POWER_USER_MODE) ?: false
-
     var isSecureWindow: Boolean
-        get() = cr?.getPrefBoolean(PREF_SECURE_WINDOW_FLAG, true) ?: true
+        get() = cr?.getPrefBoolean(PREF_SECURE_WINDOW_FLAG, false) ?: false
         set(isFlagSecure) = cr?.putPref(PREF_SECURE_WINDOW_FLAG, isFlagSecure) ?: Unit
 
     const val DEFAULT_CAMO_DISABLED_ACTIVITY: String = "ru.toinet.android.OrbotActivity"
 
-    /**
-     * Returns true if a non-Orbot icon is in use (ie Birdie, Paint, etc)
-     * When true, conceal information about Tor in notifications
-     *
-     * Returns false if icon is changed to an alt Orbot icon
-     */
-    @JvmStatic
-    val isCamoEnabled: Boolean
-        get() {
-            val app = cr?.getPrefString(PREF_CAMO_APP_PACKAGE, DEFAULT_CAMO_DISABLED_ACTIVITY) ?: ""
-            if (camoAppAltIconIndex != -1) return false
-            return app != DEFAULT_CAMO_DISABLED_ACTIVITY
-        }
 
     val selectedCamoApp: String
         get() = cr?.getPrefString(PREF_CAMO_APP_PACKAGE, DEFAULT_CAMO_DISABLED_ACTIVITY) ?: ""
@@ -382,8 +349,4 @@ object Prefs {
         get() = cr?.getPrefInt(OrbotConstants.PREFS_DNS_PORT) ?: 0
         set(value) = cr?.putPref(OrbotConstants.PREFS_DNS_PORT, value) ?: Unit
 
-    @JvmStatic
-    fun isAppTorified(appId: String): Boolean {
-        return cr?.getPrefBoolean("$appId${OrbotConstants.APP_TOR_KEY}", true) ?: true
-    }
 }

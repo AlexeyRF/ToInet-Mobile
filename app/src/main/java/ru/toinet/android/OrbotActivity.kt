@@ -28,7 +28,6 @@ import ru.toinet.android.ui.connect.ConnectViewModel
 import ru.toinet.android.ui.connect.RequestPostNotificationPermission
 import ru.toinet.android.ui.core.BaseActivity
 import ru.toinet.android.ui.core.DeviceAuthenticationPrompt
-import ru.toinet.android.ui.kindness.SnowflakeProxyService
 import ru.toinet.android.ui.more.LogBottomSheet
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.sendIntentToService
@@ -193,9 +192,6 @@ class OrbotActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         sendIntentToService(OrbotConstants.CMD_ACTIVE)
-        if (Prefs.beSnowflakeProxy())
-            SnowflakeProxyService.startSnowflakeProxyForegroundService(this)
-
     }
 
     override fun onDestroy() {

@@ -1,3 +1,0 @@
-- update to tor 0.4.8.17
-- multiple user interface improvements
-- latest support for WebTunnel and Snowflake Proxy

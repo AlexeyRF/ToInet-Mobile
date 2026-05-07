@@ -27,11 +27,9 @@ import net.freehaven.tor.control.TorControlConnection;
 import ru.toinet.android.R;
 import ru.toinet.android.service.circumvention.SmartConnect;
 import ru.toinet.android.service.db.OnionServiceColumns;
-import ru.toinet.android.service.db.V3ClientAuthColumns;
 import ru.toinet.android.service.tor.CustomTorResourceInstaller;
 import ru.toinet.android.util.*;
 import ru.toinet.android.service.tor.TorConfig;
-import ru.toinet.android.service.vpn.OrbotVpnManager;
 import org.torproject.jni.TorService;
 
 import java.io.File;
@@ -55,7 +53,6 @@ public class OrbotService extends VpnService {
     public static File appBinHome, appCacheHome;
     protected final ExecutorService mExecutor = Executors.newCachedThreadPool();
     OrbotRawEventListener mOrbotRawEventListener;
-    OrbotVpnManager mVpnManager;
     Handler mHandler;
     ActionBroadcastReceiver mActionBroadcastReceiver;
     protected String mCurrentStatus = STATUS_OFF;
@@ -82,10 +79,8 @@ public class OrbotService extends VpnService {
         mNotifyBuilder.setOngoing(true);
         mNotifyBuilder.clearActions(); // clear out any notification actions, if any
 
-        if (Prefs.isCamoEnabled()) {
-            // ignore all params and set a simple notification
-            Notifications.configureCamoNotification(mNotifyBuilder);
-        } else {
+        if (false) {}
+        else {
             mNotifyBuilder
                     .setSmallIcon(icon)
                     .setContentText(notifyMsg)
@@ -128,25 +123,11 @@ public class OrbotService extends VpnService {
                 return Service.START_REDELIVER_INTENT;
             }
 
-            var shouldStartVpnFromSystemIntent = !intent.getBooleanExtra(EXTRA_NOT_SYSTEM, false);
-
             if (mCurrentStatus.equals(STATUS_OFF))
                 showToolbarNotification(getString(R.string.open_orbot_to_connect_to_tor), NOTIFY_ID, R.drawable.ic_stat_tor);
 
-            if (shouldStartVpnFromSystemIntent) {
-                Log.d(TAG, "Starting VPN from system intent: " + intent);
-                showToolbarNotification(getString(R.string.status_starting_up), NOTIFY_ID, R.drawable.ic_stat_tor);
-                if (VpnService.prepare(this) == null) {
-                    // Power-user mode doesn't matter here. If the system is starting the VPN, i.e.
-                    // via always-on VPN, we need to start it regardless.
-                    Prefs.putUseVpn(true);
-                    mExecutor.execute(new IncomingIntentRouter(new Intent(ACTION_START)));
-                } else {
-                    Log.wtf(TAG, "Could not start VPN from system because it is not prepared, which should be impossible!");
-                }
-            } else {
-                mExecutor.execute(new IncomingIntentRouter(intent));
-            }
+            mExecutor.execute(new IncomingIntentRouter(intent));
+
         } catch (RuntimeException re) {
             //catch this to avoid malicious launches as document Cure53 Audit: ORB-01-009 WP1/2: Orbot DoS via exported activity (High)
             Log.e(TAG, "error with OrbotService", re);
@@ -249,7 +230,6 @@ public class OrbotService extends VpnService {
                 if (!appCacheHome.exists()) appCacheHome.mkdirs();
 
                 mV3OnionBasePath = OnionServiceColumns.createV3OnionDir(this);
-                var mV3AuthBasePath = V3ClientAuthColumns.createV3AuthDir(this);
 
                 if (mNotificationManager == null)
                     mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -267,7 +247,7 @@ public class OrbotService extends VpnService {
                 var hasGeoip = new File(appBinHome, GEOIP_ASSET_KEY).exists();
                 var hasGeoip6 = new File(appBinHome, GEOIP6_ASSET_KEY).exists();
 
-                // only write out geoip files if there's an app update or they don't exist
+
                 if (!hasGeoip || !hasGeoip6 || Prefs.isGeoIpReinstallNeeded()) {
                     try {
                         Log.d(TAG, "Installing geoip files...");
@@ -278,7 +258,6 @@ public class OrbotService extends VpnService {
                     }
                 }
 
-                mVpnManager = new OrbotVpnManager(this);
             } catch (Exception e) {
                 Log.e(TAG, "Error setting up Orbot", e);
                 logNotice(getString(R.string.couldn_t_start_tor_process_) + " " + e.getClass().getSimpleName());
@@ -310,11 +289,7 @@ public class OrbotService extends VpnService {
         return fileTorRcCustom;
     }
 
-    /**
-     * Send Orbot's status in reply to an ACTION_START Intent, targeted only to the app that sent the
-     * initial request. If the user has disabled auto-starts, the reply ACTION_START Intent will
-     * include the Intent extra STATUS_STARTS_DISABLED
-     */
+
     private void replyWithStatus(Intent startRequest) {
         String packageName = startRequest.getStringExtra(EXTRA_PACKAGE_NAME);
         Intent reply = new Intent(ACTION_STATUS)
@@ -403,10 +378,7 @@ public class OrbotService extends VpnService {
 
     private void updateV3OnionNames() {
         OnionServiceColumns.updateV3OnionNames(this, mV3OnionBasePath);
-        // This old status hack is temporary and fixes the issue reported by syphyr at
-        // https://github.com/guardianproject/orbot/pull/556
-        // Down the line a better approach needs to happen for sending back the onion names' updated
-        // status, perhaps just adding it as an extra to the normal Intent callback...
+
         var oldStatus = mCurrentStatus;
 
         sendBroadcast(new Intent(LOCAL_ACTION_V3_NAMES_UPDATED)
@@ -604,7 +576,6 @@ public class OrbotService extends VpnService {
 
         sendBroadcast(intent);
 
-        if (Prefs.useVpn() && mVpnManager != null) mVpnManager.handleIntent(new Builder(), intent);
     }
 
     void showBandwidthNotification(String message, boolean isActiveTransfer) {
@@ -616,21 +587,6 @@ public class OrbotService extends VpnService {
     public void setNotificationSubtext(String message) {
         if (mNotifyBuilder != null)
             mNotifyBuilder.setSubText(message);
-    }
-
-    /*
-    onRevoke() is a VPNService method that gets called when the user, OS, or another
-    VpnService causes Orbot to stop being the active VPN. We need to kill Tor, but also update the UI
-    Since active VPNServics are automatically foreground services on Android, we send a local action stop
-    to kill the UI, since Orbot loses its foregrounded notification on revoke.
-     */
-    @Override
-    public void onRevoke() {
-        // tell UI, if it's open, to update immediately (don't wait for onResume() in Activity...)
-        sendLocalStatusOffBroadcast();
-        mVpnManager.handleIntent(new Builder(), new Intent(ACTION_STOP));
-        Prefs.putUseVpn(false);
-        super.onRevoke(); // invokes stopSelf()
     }
 
     private void setExitNode(String newExits) {
@@ -691,30 +647,15 @@ public class OrbotService extends VpnService {
                     transport.start(OrbotService.this);
                     startTor();
                     replyWithStatus(mIntent);
-                    if (Prefs.useVpn()) {
-                        if (mVpnManager != null && !mVpnManager.isStarted()) { // start VPN here
-                            Intent vpnIntent = VpnService.prepare(OrbotService.this);
-                            if (vpnIntent == null) { //then we can run the VPN
-                                mVpnManager.handleIntent(new Builder(), mIntent);
-                            }
-                        }
-
-                        if (mPortSOCKS != -1 && mPortHTTP != -1)
-                            sendCallbackPorts(mPortSOCKS, mPortHTTP, mPortDns, mPortTrans);
-                    }
                 }
                 case ACTION_STOP -> {
                     var userIsQuittingOrbot = mIntent.getBooleanExtra(ACTION_STOP_FOREGROUND_TASK, false);
                     // When user cancels connecting, make sure, the SmartConnect timer is also cancelled.
                     SmartConnect.cancel();
-                    if (mVpnManager != null) mVpnManager.handleIntent(new Builder(), mIntent);
                     stopTorAsync(!userIsQuittingOrbot);
                 }
                 case ACTION_UPDATE_ONION_NAMES -> updateV3OnionNames();
                 case ACTION_STOP_FOREGROUND_TASK -> stopForeground(true);
-                case ACTION_RESTART_VPN_IF_RUNNING -> {
-                    if (mVpnManager != null) mVpnManager.restartVPN(new Builder());
-                }
                 case ACTION_STATUS -> {
                     if (mCurrentStatus.equals(STATUS_OFF))
                         showToolbarNotification(getString(R.string.open_orbot_to_connect_to_tor), NOTIFY_ID, R.drawable.ic_stat_tor);

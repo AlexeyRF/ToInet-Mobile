@@ -9,7 +9,7 @@ plugins {
 
 kotlin { jvmToolchain(21) }
 
-val ToInetBaseVersionCode = 1
+val ToInetBaseVersionCode = 5
 
 configure<ApplicationExtension> {
     namespace = "ru.toinet.android"
@@ -18,7 +18,7 @@ configure<ApplicationExtension> {
     defaultConfig {
         applicationId = namespace
         versionCode = ToInetBaseVersionCode
-        versionName = "ZOV"
+        versionName = "GOL"
         minSdk = 24
         targetSdk = 36
         multiDexEnabled = true
@@ -79,12 +79,12 @@ configure<ApplicationExtension> {
         }
     }
 
-    ndkVersion = "28.2.13676358"
-    externalNativeBuild {
-        ndkBuild {
-            path = file("src/main/jni/Android.mk")
-        }
-    }
+    //ndkVersion = "28.2.13676358"
+    //externalNativeBuild {
+    //    ndkBuild {
+    //        path = file("src/main/jni/Android.mk")
+    //    }
+    //}
 
     productFlavors {
         create("fullperm") {
@@ -178,8 +178,7 @@ afterEvaluate {
                 it.name == "preNightlyReleaseBuild"
     }.configureEach {
         dependsOn(
-            copyLicenseToAssets,
-            updateBuiltinBridges,
+            copyLicenseToAssets
         )
     }
 }
@@ -189,41 +188,6 @@ val copyLicenseToAssets by tasks.registering(Copy::class) {
     into(layout.projectDirectory.dir("src/main/assets"))
 }
 
-val updateBuiltinBridges by tasks.registering {
-    val assetsDir = layout.projectDirectory.dir("src/main/assets")
-    val outputFile = assetsDir.file("builtin-bridges.json").asFile
-    outputs.file(outputFile)
-
-    doLast {
-        assetsDir.asFile.mkdirs()
-        val statusOutput = try {
-            providers.exec {
-                commandLine("git", "status", "--porcelain")
-            }.standardOutput.asText.get().trim()
-        } catch (_: Exception) {
-            ""
-        }
-
-        if (statusOutput.isNotEmpty()) {
-            throw GradleException(
-                """
-                ERROR: Your working tree contains ${statusOutput.split("\n").size} uncommitted changes:
-                
-                $statusOutput
-
-                Please commit all changes (including builtin-bridges.json if updated)
-                BEFORE running a release build.
-
-                    git add -A
-                    git commit -m "Commit changes"
-
-                Then re-run:
-                    ./gradlew assembleRelease
-                """.trimIndent()
-            )
-        }
-    }
-}
 
 tasks.matching {
     it.name.startsWith("assemble")

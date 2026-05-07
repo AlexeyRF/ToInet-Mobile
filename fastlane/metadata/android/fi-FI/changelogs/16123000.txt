@@ -1,2 +1,0 @@
-* korjauksia Bridge-tukeen
-* päivitetty tor-versioon 0.4.1.5

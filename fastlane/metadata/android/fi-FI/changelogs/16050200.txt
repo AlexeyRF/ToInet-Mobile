@@ -1,1 +1,0 @@
-Korjaa taustapalvelun käynnistämiseen liittyvän kaatumisen

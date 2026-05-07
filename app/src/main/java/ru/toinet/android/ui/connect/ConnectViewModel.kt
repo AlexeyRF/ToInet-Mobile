@@ -19,7 +19,6 @@ class ConnectViewModel : ViewModel() {
     val uiState: StateFlow<ConnectUiState> = _uiState
 
     private val _logState = MutableStateFlow("")
-    val logState: StateFlow<String>  = _logState
 
     private val _eventChannel = Channel<ConnectEvent>(Channel.BUFFERED)
     val events = _eventChannel.receiveAsFlow()
