@@ -1,8 +1,8 @@
-[RUS] Лицензия: Все права права принадлежат тем, кому они принадлежат
-[ENG] License: All rights belong to those to whom they belong
-Orbot перегружен функциями, эта программа является упрощённой версией
+[RUS] Лицензия: Все права права принадлежат тем, кому они принадлежат<br>
+[ENG] License: All rights belong to those to whom they belong<br>
+Orbot перегружен функциями, эта программа является упрощённой версией<br><br>
 
-Порты:
-5242 - Socks
-5267 - http
+Порты:<br>
+5242 - Socks<br>
+5267 - http<br>
 Остальное стандартно
