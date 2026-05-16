@@ -9,7 +9,7 @@ plugins {
 
 kotlin { jvmToolchain(21) }
 
-val ToInetBaseVersionCode = 5
+val ToInetBaseVersionCode = 6
 
 configure<ApplicationExtension> {
     namespace = "ru.toinet.android"
@@ -18,7 +18,7 @@ configure<ApplicationExtension> {
     defaultConfig {
         applicationId = namespace
         versionCode = ToInetBaseVersionCode
-        versionName = "GOL"
+        versionName = "AMR"
         minSdk = 24
         targetSdk = 36
         multiDexEnabled = true
