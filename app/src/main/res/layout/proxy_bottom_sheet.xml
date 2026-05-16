@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bottom_sheet_rounded">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="20dp">
+
+        <View
+            android:id="@+id/handle"
+            android:layout_width="30dp"
+            android:layout_height="5dp"
+            android:background="@android:color/darker_gray"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvProxyHeader"
+            style="@style/BottomSheetHeader"
+            android:layout_marginTop="20dp"
+            android:text="@string/socks_proxy_dialog_title"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/handle" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swProxyEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/socks_proxy_enable"
+            app:layout_constraintTop_toBottomOf="@id/tvProxyHeader"
+            style="@style/BottomSheetTextView" />
+
+        <TextView
+            android:id="@+id/tvProxyTypeLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:text="@string/socks_proxy_type"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/swProxyEnabled"
+            style="@style/BottomSheetTextView" />
+
+        <Spinner
+            android:id="@+id/spProxyType"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:backgroundTint="@android:color/white"
+            app:layout_constraintBottom_toBottomOf="@id/tvProxyTypeLabel"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/tvProxyTypeLabel"
+            app:layout_constraintTop_toTopOf="@id/tvProxyTypeLabel" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilProxyHost"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:hint="@string/socks_proxy_host"
+            app:hintTextColor="@android:color/white"
+            android:textColorHint="@android:color/darker_gray"
+            app:boxStrokeColor="@android:color/white"
+            app:layout_constraintTop_toBottomOf="@id/spProxyType">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etProxyHost"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri"
+                android:textColor="@android:color/white"
+                android:backgroundTint="@android:color/white" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilProxyPort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="@string/socks_proxy_port"
+            app:hintTextColor="@android:color/white"
+            android:textColorHint="@android:color/darker_gray"
+            app:boxStrokeColor="@android:color/white"
+            app:layout_constraintTop_toBottomOf="@id/tilProxyHost">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etProxyPort"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:textColor="@android:color/white"
+                android:backgroundTint="@android:color/white" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilProxyUser"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="@string/socks_proxy_username"
+            app:hintTextColor="@android:color/white"
+            android:textColorHint="@android:color/darker_gray"
+            app:boxStrokeColor="@android:color/white"
+            app:layout_constraintTop_toBottomOf="@id/tilProxyPort">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etProxyUser"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:textColor="@android:color/white"
+                android:backgroundTint="@android:color/white" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilProxyPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="@string/socks_proxy_password"
+            app:hintTextColor="@android:color/white"
+            android:textColorHint="@android:color/darker_gray"
+            app:boxStrokeColor="@android:color/white"
+            app:endIconMode="password_toggle"
+            app:endIconTint="@android:color/white"
+            app:layout_constraintTop_toBottomOf="@id/tilProxyUser">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etProxyPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textColor="@android:color/white"
+                android:backgroundTint="@android:color/white" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/btn_shape_round"
+            android:text="@string/save"
+            android:textColor="@android:color/white"
+            app:backgroundTint="@color/orbot_btn_enabled_purple"
+            app:layout_constraintTop_toBottomOf="@id/tilProxyPassword" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.core.widget.NestedScrollView>

@@ -294,6 +294,15 @@
     <string name="socks_port">Порт SOCKS</string>
     <string name="invalid_outbound_proxy_config">Неверная конфигурация Исходящего Прокси</string>
 
+    <string name="btn_proxy">Прокси</string>
+    <string name="socks_proxy_enable">Использовать прокси</string>
+    <string name="socks_proxy_host">Адрес (Хост)</string>
+    <string name="socks_proxy_port">Порт</string>
+    <string name="socks_proxy_username">Логин (опционально)</string>
+    <string name="socks_proxy_password">Пароль (опционально)</string>
+    <string name="socks_proxy_dialog_title">Настройка Прокси</string>
+    <string name="socks_proxy_type">Тип прокси</string>
+
     <string name="bridge_dnstt">Туннель DNS</string>
     <string name="my_country_optional">Моя Страна (опционально)</string>
     <string name="limit_dns_tunnel_use">Ограничить использование Туннеля DNS</string>

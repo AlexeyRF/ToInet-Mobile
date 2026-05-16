@@ -199,6 +199,12 @@ class ConnectFragment : Fragment(),
                     R.drawable.ic_settings_gear,
                     statusString = connectStrLabel
                 ) { openConfigureTorConnection() },
+                OrbotMenuAction(R.string.btn_proxy, R.drawable.ic_settings_gear) {
+                    ProxyBottomSheet().show(
+                        requireActivity().supportFragmentManager,
+                        ProxyBottomSheet.TAG
+                    )
+                },
                 OrbotMenuAction(R.string.btn_change_exit, 0) {
                     ExitNodeBottomSheet().show(
                         requireActivity().supportFragmentManager,

@@ -225,6 +225,12 @@
         android:title="@string/pref_proxy_title"
         app:iconSpaceReserved="false">
 
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="pref_proxy_enabled"
+            android:title="@string/socks_proxy_enable"
+            app:iconSpaceReserved="false" />
+
         <Preference
             android:persistent="false"
             android:selectable="false"

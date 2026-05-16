@@ -198,9 +198,16 @@ object Prefs {
         get() = cr?.getPrefInt(PREF_SMART_CONNECT_TIMEOUT) ?: 30
         set(value) = cr?.putPref(PREF_SMART_CONNECT_TIMEOUT, value) ?: Unit
 
+    @JvmStatic
+    var proxyEnabled: Boolean
+        get() = cr?.getPrefBoolean("pref_proxy_enabled") ?: false
+        set(value) = cr?.putPref("pref_proxy_enabled", value) ?: Unit
+
     // URI, if config present + valid, malformed URL string if config present + invalid
     val outboundProxy: Pair<URI?, String?>
         get() {
+            if (!proxyEnabled) return Pair(null, null)
+
             val scheme = cr?.getPrefString("pref_proxy_type")?.lowercase()?.trim()
             if (scheme.isNullOrEmpty()) return Pair(null, null)
 

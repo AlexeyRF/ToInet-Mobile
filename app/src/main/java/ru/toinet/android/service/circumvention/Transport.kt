@@ -145,6 +145,44 @@ enum class Transport(val id: String) {
         val result = mutableListOf<String>()
         result.add("UseBridges ${if (this == NONE) "0" else "1"}")
 
+        val proxy = Prefs.outboundProxy.first
+        if (proxy != null) {
+            var hostPort = proxy.host
+            if (proxy.port in 1..<65536) hostPort += ":${proxy.port}"
+
+            // Modern tor only supports https, socks4 and socks5. *No* http!
+            when (proxy.scheme) {
+                "https" -> {
+                    result.add("HTTPSProxy $hostPort")
+
+                    if (!proxy.userInfo.isNullOrBlank()) {
+                        result.add("HTTPSProxyAuthenticator ${proxy.userInfo}")
+                    }
+                }
+
+                "socks4" -> {
+                    result.add("Socks4Proxy $hostPort")
+                }
+
+                "socks5" -> {
+                    result.add("Socks5Proxy $hostPort")
+
+                    val userInfo = proxy.userInfo?.split(":")
+
+                    if (!userInfo?.getOrNull(0).isNullOrEmpty()) {
+                        result.add("Socks5ProxyUsername ${userInfo[0]}")
+
+                        var password = userInfo.getOrNull(1) ?: " "
+                        if (password.isEmpty()) password = " "
+
+                        result.add("Socks5ProxyPassword $password")
+                    }
+                }
+            }
+            // Ensure local PT connections bypass the proxy
+            result.add("NoProxy 127.0.0.1")
+        }
+
         for (transport in transportNames) {
 
             //sometimes there is a 0 for the port, which is invalid
@@ -160,41 +198,7 @@ enum class Transport(val id: String) {
 
         when (this) {
             NONE -> {
-                val proxy = Prefs.outboundProxy.first
-                if (proxy != null) {
-                    var hostPort = proxy.host
-                    if (proxy.port in 1..<65536) hostPort += ":${proxy.port}"
-
-                    // Modern tor only supports https, socks4 and socks5. *No* http!
-                    when (proxy.scheme) {
-                        "https" -> {
-                            result.add("HTTPSProxy $hostPort")
-
-                            if (!proxy.userInfo.isNullOrBlank()) {
-                                result.add("HTTPSProxyAuthenticator ${proxy.userInfo}")
-                            }
-                        }
-
-                        "socks4" -> {
-                            result.add("Socks4Proxy $hostPort")
-                        }
-
-                        "socks5" -> {
-                            result.add("Socks5Proxy $hostPort")
-
-                            val userInfo = proxy.userInfo?.split(":")
-
-                            if (!userInfo?.getOrNull(0).isNullOrEmpty()) {
-                                result.add("Socks5ProxyUsername ${userInfo[0]}")
-
-                                var password = userInfo.getOrNull(1) ?: " "
-                                if (password.isEmpty()) password = " "
-
-                                result.add("Socks5ProxyPassword $password")
-                            }
-                        }
-                    }
-                }
+                // Outbound proxy is now handled above for all transport modes
             }
 
             MEEK -> {
