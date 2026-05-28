@@ -39,6 +39,11 @@ enum class Transport(val id: String) {
     DNSTT("dnstt"),
 
     /**
+     * Use ByeDPI to bypass DPI.
+     */
+    BYEDPI("byedpi"),
+
+    /**
      * Start lyrebird with obfs4 bridges stored in @{link {@link #getBridgesList()}}
      * This can be set in manually via the CustomBridgeBottomSheet.
      */
@@ -63,6 +68,7 @@ enum class Transport(val id: String) {
                 SNOWFLAKE_SQS.id -> SNOWFLAKE_SQS
                 WEBTUNNEL.id -> WEBTUNNEL
                 DNSTT.id -> DNSTT
+                BYEDPI.id -> BYEDPI
                 CUSTOM.id -> CUSTOM
                 else -> NONE
             }
@@ -123,6 +129,7 @@ enum class Transport(val id: String) {
                 OBFS4 -> setOf(IPtProxy.Obfs4)
                 WEBTUNNEL -> setOf(IPtProxy.Webtunnel)
                 DNSTT -> setOf(IPtProxy.Dnstt)
+                BYEDPI -> emptySet()
                 CUSTOM -> {
                     Prefs.bridgesList
                         .mapNotNull { Bridge(it).transport }
@@ -180,6 +187,11 @@ enum class Transport(val id: String) {
                 }
             }
             // Ensure local PT connections bypass the proxy
+            result.add("NoProxy 127.0.0.1")
+        }
+
+        if (Prefs.byedpiEnabled && Prefs.byedpiUseAsUpstream) {
+            result.add("Socks5Proxy 127.0.0.1:1080")
             result.add("NoProxy 127.0.0.1")
         }
 
@@ -262,6 +274,10 @@ enum class Transport(val id: String) {
                     result.add("Bridge $it")
                 }
             }
+
+            BYEDPI -> {
+                // ByeDPI doesn't use Tor bridges
+            }
         }
 
         return result
@@ -313,6 +329,10 @@ enum class Transport(val id: String) {
                 controller.snowflakeAmpCacheUrl = ""
                 controller.snowflakeSqsUrl = SQS_QUEUE
                 controller.snowflakeSqsCreds = SQS_CREDENTIALS
+            }
+
+            BYEDPI -> {
+                // ByeDPI handles its own start logic via service routing
             }
 
             else -> Unit

@@ -14,7 +14,14 @@ object TorConfig {
     fun build(context: ContextWrapper, geoIpFile: File, geoIp6File: File): String {
         val conf = mutableListOf(
             "RunAsDaemon 1",
-            "AvoidDiskWrites 1")
+            "AvoidDiskWrites 1",
+            "HardwareAccel 1",
+            "ClientOnly 1",
+            "SafeLogging 1",
+            "FastFirstHopPK 1",
+            "OptimisticData 1",
+            "LongLivedPorts 21,22,706,1863,5050,5190,5222,5223,6667,6697,8300,443,80,8443,5228"
+        )
 
         val socksPortPref = getPort(Prefs.proxySocksPort ?: OrbotConstants.SOCKS_PROXY_PORT_DEFAULT)
         val httpPortPref = getPort(Prefs.proxyHttpPort ?: OrbotConstants.HTTP_PROXY_PORT_DEFAULT)
@@ -23,10 +30,10 @@ object TorConfig {
         val ipv6Pref = getIpv6()
 
         if (Prefs.openProxyOnAllInterfaces()) {
-            conf.add("SOCKSPort 0.0.0.0:$socksPortPref $ipv6Pref $isolate")
+            conf.add("SOCKSPort 0.0.0.0:$socksPortPref $ipv6Pref $isolate OptimisticData")
             conf.add("SocksPolicy accept *:*")
         } else {
-            conf.add("SOCKSPort $socksPortPref $ipv6Pref $isolate")
+            conf.add("SOCKSPort $socksPortPref $ipv6Pref $isolate OptimisticData")
         }
 
         conf.add("SafeSocks 0")

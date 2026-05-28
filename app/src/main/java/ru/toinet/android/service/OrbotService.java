@@ -123,8 +123,16 @@ public class OrbotService extends VpnService {
                 return Service.START_REDELIVER_INTENT;
             }
 
-            if (mCurrentStatus.equals(STATUS_OFF))
+            String action = intent.getAction();
+            boolean isStartAction = ACTION_START.equals(action);
+            boolean isActuallyRunning = !mCurrentStatus.equals(STATUS_OFF);
+
+            if (isStartAction || isActuallyRunning) {
                 showToolbarNotification(getString(R.string.open_orbot_to_connect_to_tor), NOTIFY_ID, R.drawable.ic_stat_tor);
+            } else {
+                // Do not show notification or start foreground for pings or other actions when Tor is OFF
+                Log.d(TAG, "Skipping foreground for action: " + action + " while Tor is OFF");
+            }
 
             mExecutor.execute(new IncomingIntentRouter(intent));
 
@@ -152,8 +160,8 @@ public class OrbotService extends VpnService {
         Prefs.getTransport().stop();
         stopTor();
 
-        //stop the foreground priority and make sure to remove the persistent notification
-        stopForeground(!showNotification);
+        //stop the foreground priority and remove the persistent notification
+        stopForeground(true);
         if (showNotification) sendCallbackLogMessage(getString(R.string.status_disabled));
 
         mPortDns = -1;
@@ -657,8 +665,6 @@ public class OrbotService extends VpnService {
                 case ACTION_UPDATE_ONION_NAMES -> updateV3OnionNames();
                 case ACTION_STOP_FOREGROUND_TASK -> stopForeground(true);
                 case ACTION_STATUS -> {
-                    if (mCurrentStatus.equals(STATUS_OFF))
-                        showToolbarNotification(getString(R.string.open_orbot_to_connect_to_tor), NOTIFY_ID, R.drawable.ic_stat_tor);
                     replyWithStatus(mIntent);
                 }
                 case TorControlCommands.SIGNAL_RELOAD -> requestTorRereadConfig();
@@ -694,9 +700,6 @@ public class OrbotService extends VpnService {
                     if (STATUS_OFF.equals(mCurrentStatus) && STATUS_STOPPING.equals(newStatus))
                         break;
                     mCurrentStatus = newStatus;
-                    if (STATUS_OFF.equals(mCurrentStatus)) {
-                        showToolbarNotification(getString(R.string.open_orbot_to_connect_to_tor), NOTIFY_ID, R.drawable.ic_stat_tor);
-                    }
 
                     // Make sure, Smart Connect finishes successfully, even when, for some reason,
                     // progress isn't received up to 100.

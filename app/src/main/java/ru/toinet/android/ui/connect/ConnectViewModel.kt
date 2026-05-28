@@ -50,6 +50,12 @@ class ConnectViewModel : ViewModel() {
             _eventChannel.send(ConnectEvent.StartTorAndVpn)
         }
     }
+
+    fun triggerRefreshMenuList() {
+        viewModelScope.launch {
+            _eventChannel.send(ConnectEvent.RefreshMenuList)
+        }
+    }
 }
 
 sealed class ConnectEvent {

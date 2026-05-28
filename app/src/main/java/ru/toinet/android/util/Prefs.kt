@@ -356,4 +356,53 @@ object Prefs {
         get() = cr?.getPrefInt(OrbotConstants.PREFS_DNS_PORT) ?: 0
         set(value) = cr?.putPref(OrbotConstants.PREFS_DNS_PORT, value) ?: Unit
 
+    @JvmStatic
+    var byedpiEnabled: Boolean
+        get() = cr?.getPrefBoolean("byedpi_enabled", false) ?: false
+        set(value) = cr?.putPref("byedpi_enabled", value) ?: Unit
+
+    @JvmStatic
+    var byedpiUseAsUpstream: Boolean
+        get() = cr?.getPrefBoolean("byedpi_use_as_upstream", false) ?: false
+        set(value) = cr?.putPref("byedpi_use_as_upstream", value) ?: Unit
+
+    @JvmStatic
+    var byedpiMode: String
+        get() = cr?.getPrefString("byedpi_mode") ?: "VPN"
+        set(value) = cr?.putPref("byedpi_mode", value) ?: Unit
+
+    @JvmStatic
+    var byedpiArgs: String
+        get() = cr?.getPrefString("byedpi_cmd_args") ?: ""
+        set(value) = cr?.putPref("byedpi_cmd_args", value) ?: Unit
+
+    @JvmStatic
+    var tgwsEnabled: Boolean
+        get() = cr?.getPrefBoolean("tgws_enabled", false) ?: false
+        set(value) = cr?.putPref("tgws_enabled", value) ?: Unit
+
+    @JvmStatic
+    var tgwsHost: String
+        get() = cr?.getPrefString("tgws_host") ?: "127.0.0.1"
+        set(value) = cr?.putPref("tgws_host", value) ?: Unit
+
+    @JvmStatic
+    var tgwsPort: Int
+        get() = cr?.getPrefInt("tgws_port") ?: 1480
+        set(value) = cr?.putPref("tgws_port", value) ?: Unit
+
+    @JvmStatic
+    var tgwsDcMappings: Map<Int, String>
+        get() {
+            val s = cr?.getPrefString("tgws_dc_mappings") ?: "1:95.161.218.107\n2:95.161.218.107\n3:95.161.218.107\n4:95.161.218.107\n5:95.161.218.107\n203:95.161.218.107"
+            return s.split("\n").filter { it.contains(":") }.associate {
+                val parts = it.split(":")
+                parts[0].trim().toInt() to parts[1].trim()
+            }
+        }
+        set(value) {
+            val s = value.map { "${it.key}:${it.value}" }.joinToString("\n")
+            cr?.putPref("tgws_dc_mappings", s)
+        }
+
 }

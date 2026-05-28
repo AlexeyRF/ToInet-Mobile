@@ -25,7 +25,6 @@ open class OrbotBottomSheetDialogFragment : BottomSheetDialogFragment() {
                 dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) as? FrameLayout
             bottomSheetView?.let {
                 it.setBackgroundResource(R.drawable.bottom_sheet_rounded)
-                it.setBackgroundColor(Color.TRANSPARENT)
                 setHeightIfAttached(activity, it)
                 val behavior = BottomSheetBehavior.from(it)
                 behavior.state = BottomSheetBehavior.STATE_EXPANDED

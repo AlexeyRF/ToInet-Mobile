@@ -2,15 +2,11 @@
 
 <resources>
 
-    <style name="DefaultTheme" parent="Theme.AppCompat.NoActionBar">
-        <item name="colorPrimary">@color/new_background</item>
-        <item name="android:windowBackground">@color/new_background</item>
-        <item name="android:windowIsFloating">false</item>
-        <item name="colorPrimaryDark">@color/new_background</item>
+    <style name="DefaultTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="preferenceTheme">@style/PrefsTheme</item>
     </style>
 
-    <style name="OrbotDialogTheme" parent="Theme.AppCompat.Light.Dialog.Alert">
+    <style name="OrbotDialogTheme" parent="Theme.Material3.DayNight.Dialog.Alert">
         <item name="android:background">@color/dark_purple</item>
         <item name="android:textColor">@android:color/white</item>
         <item name="android:textStyle">bold</item>

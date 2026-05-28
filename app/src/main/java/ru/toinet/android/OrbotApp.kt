@@ -11,6 +11,7 @@ import ru.toinet.android.localization.LocaleHelper
 import ru.toinet.android.service.circumvention.Transport.Companion.stateLocation
 import ru.toinet.android.util.Prefs
 
+import com.google.android.material.color.DynamicColors
 import java.util.Locale
 
 class OrbotApp : Application() {
@@ -18,6 +19,7 @@ class OrbotApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        DynamicColors.applyToActivitiesIfAvailable(this)
 
         // set state dir for IPtProxy
         try {

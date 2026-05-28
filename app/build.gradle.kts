@@ -9,7 +9,27 @@ plugins {
 
 kotlin { jvmToolchain(21) }
 
-val ToInetBaseVersionCode = 6
+val ToInetBaseVersionCode = 7
+
+// Provider for git version, configuration-cache safe
+val gitVersionProvider = providers.exec {
+    commandLine("git", "describe", "--tags", "--always")
+}.standardOutput.asText.map { it.trim() }
+
+val runNdkBuild = tasks.register<Exec>("runNdkBuild") {
+    group = "build"
+    
+    args(
+        "NDK_PROJECT_PATH=build/intermediates/ndkBuild",
+        "NDK_LIBS_OUT=src/main/jniLibs",
+        "APP_BUILD_SCRIPT=src/main/jni/Android.mk",
+        "NDK_APPLICATION_MK=src/main/jni/Application.mk"
+    )
+}
+
+tasks.named("preBuild") {
+    dependsOn(runNdkBuild)
+}
 
 configure<ApplicationExtension> {
     namespace = "ru.toinet.android"
@@ -18,7 +38,7 @@ configure<ApplicationExtension> {
     defaultConfig {
         applicationId = namespace
         versionCode = ToInetBaseVersionCode
-        versionName = "AMR"
+        versionName = "MAX"
         minSdk = 24
         targetSdk = 36
         multiDexEnabled = true
@@ -52,9 +72,9 @@ configure<ApplicationExtension> {
             val keystorePropertiesFile = rootProject.file("keystore.properties")
             val keystoreProperties = Properties()
             if (keystorePropertiesFile.canRead()) {
-                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+                keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
             }
-            if (!keystoreProperties.stringPropertyNames().isEmpty()) {
+            if (keystoreProperties.isNotEmpty()) {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
                 storeFile = file(keystoreProperties["storeFile"] as String)
@@ -79,12 +99,13 @@ configure<ApplicationExtension> {
         }
     }
 
-    //ndkVersion = "28.2.13676358"
-    //externalNativeBuild {
-    //    ndkBuild {
-    //        path = file("src/main/jni/Android.mk")
-    //    }
-    //}
+    ndkVersion = "28.2.13676358"
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
 
     productFlavors {
         create("fullperm") {
@@ -114,22 +135,75 @@ configure<ApplicationExtension> {
         xmlReport = false
     }
 
-}
+    sourceSets {
+        getByName("main") {
+            jniLibs.setSrcDirs(listOf("src/main/jniLibs"))
+        }
+    }
 
-// Increments versionCode by ABI type
-androidComponents {
-    onVariants { variant ->
-        variant.outputs.forEach { output ->
-            if (output.versionCode.get() == ToInetBaseVersionCode) {
-                val incrementMap =
-                    mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 4, "x86_64" to 5)
-                val increment =
-                    incrementMap[output.filters.find { it.filterType.name == "ABI" }?.identifier]
-                        ?: 0
-                output.versionCode = ToInetBaseVersionCode + increment
+    // Configure runNdkBuild using captured NDK info
+    val currentNdkPath = ndkPath
+    val currentNdkVersion = ndkVersion
+
+    runNdkBuild.configure {
+        doFirst {
+            var resolvedNdkDir = currentNdkPath
+            if (resolvedNdkDir == null) {
+                val localProperties = File(project.rootDir, "local.properties")
+                val sdkDir = if (localProperties.exists()) {
+                    val properties = Properties()
+                    localProperties.inputStream().use { properties.load(it) }
+                    properties.getProperty("sdk.dir")
+                } else {
+                    System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+                }
+                if (sdkDir != null) {
+                    resolvedNdkDir = "$sdkDir/ndk/$currentNdkVersion"
+                }
+            }
+
+            if (resolvedNdkDir != null) {
+                executable = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
+                    "$resolvedNdkDir\\ndk-build.cmd"
+                } else {
+                    "$resolvedNdkDir/ndk-build"
+                }
             }
         }
     }
+}
+
+val copyLicenseToAssets by tasks.registering(Copy::class) {
+    from(rootProject.file("LICENSE"))
+    into(layout.projectDirectory.dir("src/main/assets"))
+}
+
+// Increments versionCode by ABI type and handles tasks/outputs
+androidComponents {
+    onVariants { variant ->
+        // Handle versionCode and output file naming
+        variant.outputs.forEach { output ->
+            // Update versionCode lazily
+            if (output.versionCode.get() == ToInetBaseVersionCode) {
+                val incrementMap = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 4, "x86_64" to 5)
+                val abi = output.filters.find { it.filterType.name == "ABI" }?.identifier
+                val increment = incrementMap[abi] ?: 0
+                output.versionCode.set(ToInetBaseVersionCode + increment)
+            }
+            
+            // Modern APK renaming using outputFileName property
+            val abi = output.filters.find { it.filterType.name == "ABI" }?.identifier
+            val namePart = if (abi != null) "-$abi" else ""
+            output.outputFileName.set(gitVersionProvider.map { "ToInet-$it$namePart.apk" })
+        }
+    }
+}
+
+// Safer way to depend on variant-specific tasks that are created lazily by AGP
+tasks.matching { 
+    it.name == "preFullpermReleaseBuild" || it.name == "preNightlyReleaseBuild" 
+}.configureEach {
+    dependsOn(copyLicenseToAssets)
 }
 
 dependencies {
@@ -145,6 +219,7 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.lifecycle.common)
     implementation(libs.androidx.lifecycle.process)
+    implementation("androidx.lifecycle:lifecycle-service:2.8.4")
     implementation(libs.retrofit.converter)
     implementation(libs.retrofit.lib)
     implementation(libs.rootbeer.lib)
@@ -159,8 +234,6 @@ dependencies {
     implementation(files("../libs/geoip.jar"))
     api(libs.guardian.jtorctl)
     api(libs.tor.android)
-    // local tor-android:
-    // api(files("../../tor-android/tor-android-binary/build/outputs/aar/tor-android-binary-debug.aar"))
 
     testImplementation(libs.junit.jupiter)
     androidTestImplementation(libs.androidx.junit)
@@ -170,57 +243,4 @@ dependencies {
     androidTestImplementation(libs.screengrab)
     androidTestImplementation(libs.androidx.espresso.contrib)
     androidTestUtil(libs.androidx.orchestrator)
-}
-
-afterEvaluate {
-    tasks.matching {
-        it.name == "preFullpermReleaseBuild" ||
-                it.name == "preNightlyReleaseBuild"
-    }.configureEach {
-        dependsOn(
-            copyLicenseToAssets
-        )
-    }
-}
-
-val copyLicenseToAssets by tasks.registering(Copy::class) {
-    from(rootProject.file("LICENSE"))
-    into(layout.projectDirectory.dir("src/main/assets"))
-}
-
-
-tasks.matching {
-    it.name.startsWith("assemble")
-}.configureEach {
-    finalizedBy("renameApkFiles")
-}
-
-tasks.register("getVersionFromGit") {
-    doLast {
-        val gitVersion = providers.exec {
-            commandLine("git", "describe", "--tags", "--always")
-        }.standardOutput.asText.get().trim()
-        project.ext.set("gitVersion", gitVersion)
-    }
-}
-
-tasks.register("renameApkFiles") {
-    dependsOn("getVersionFromGit")
-    doLast {
-        val versionName = project.ext.get("gitVersion")
-        val variantName = project.gradle.startParameter.taskNames
-            .find { it.contains("assemble") }
-            ?.substringAfter("assemble")
-            ?.replaceFirstChar { it.lowercase() }
-            ?: "debug"
-
-        listOf("nightly", "fullperm").forEach { flavor ->
-            fileTree(layout.buildDirectory.dir("outputs/apk/$flavor/$variantName")).matching {
-                include("*.apk")
-            }.forEach { file ->
-                val newName = file.name.replace("app-", "ToInet-${versionName}-")
-                file.renameTo(File(file.parentFile, newName))
-            }
-        }
-    }
 }

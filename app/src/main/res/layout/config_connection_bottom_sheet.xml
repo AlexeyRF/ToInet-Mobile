@@ -3,20 +3,22 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bottom_sheet_rounded">
+    android:background="@drawable/bottom_sheet_rounded"
+    android:fillViewport="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="24dp">
 
         <View
             android:id="@+id/handle"
-            android:layout_width="30dp"
-            android:layout_height="5dp"
-            android:layout_marginTop="16dp"
-            android:background="@android:color/darker_gray"
+            android:layout_width="32dp"
+            android:layout_height="4dp"
+            android:layout_marginTop="12dp"
+            android:background="?attr/colorOutlineVariant"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -24,53 +26,91 @@
         <TextView
             android:id="@+id/tvConfigHeader"
             style="@style/BottomSheetHeader"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="24dp"
             android:text="@string/btn_configure"
+            android:textColor="?attr/colorOnSurface"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <!-- Удален tvConfigSubHeader -->
+            app:layout_constraintTop_toBottomOf="@id/handle" />
 
         <RadioGroup
             android:id="@+id/connectionOptions"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/mainGuideline"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvConfigHeader"> <!-- Изменено: теперь привязан к tvConfigHeader -->
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:layout_constraintTop_toBottomOf="@id/tvConfigHeader">
 
             <LinearLayout
                 android:id="@+id/customContainer"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
+                android:layout_marginBottom="8dp"
                 android:background="?android:attr/selectableItemBackground"
-                android:orientation="horizontal">
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="8dp">
 
                 <RadioButton
                     android:id="@+id/rbCustom"
                     style="@style/BottomSheetRadio"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    />
+                    android:layout_height="wrap_content" />
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
                     android:orientation="vertical">
 
                     <TextView
                         style="@style/BottomSheetRadioHeader"
-                        android:text="@string/custom_bridges" />
+                        android:text="@string/custom_bridges"
+                        android:textColor="?attr/colorOnSurface" />
 
                     <TextView
                         android:id="@+id/tvCustomSubtitle"
                         style="@style/BottomSheetTextView"
                         android:text="@string/custom_bridges_subtitle"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/byedpiContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:background="?android:attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <RadioButton
+                    android:id="@+id/rbByeDpi"
+                    style="@style/BottomSheetRadio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/BottomSheetRadioHeader"
+                        android:text="ByeDPI"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:id="@+id/tvByeDpiSubtitle"
+                        style="@style/BottomSheetTextView"
+                        android:text="Обход DPI без Tor"
+                        android:textColor="?attr/colorOnSurfaceVariant"
                         android:visibility="gone" />
                 </LinearLayout>
 
@@ -78,47 +118,77 @@
 
         </RadioGroup>
 
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/mainGuideline"
-            android:layout_width="wrap_content"
+        <View
+            android:id="@+id/divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:background="?attr/colorOutlineVariant"
+            app:layout_constraintTop_toBottomOf="@id/connectionOptions" />
+
+        <LinearLayout
+            android:id="@+id/byedpiSettingsContainer"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/button_horizontal_large_margin"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            app:layout_constraintTop_toBottomOf="@id/divider">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/swByeDpi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Использовать ByeDPI параллельно с Tor"
+                android:textColor="?attr/colorOnSurface" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilByeDpiArgs"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="Аргументы ByeDPI (например: --disorder 1)">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etByeDpiArgs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:textColor="?attr/colorOnSurface" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/buttonsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
             android:orientation="horizontal"
-            app:layout_constraintGuide_percent=".85" />
-
-        <TextView
-            android:id="@+id/tvCancel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingStart="40dp"
-            android:paddingEnd="40dp"
-            android:text="@android:string/cancel"
-            android:textColor="@android:color/white"
-            android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btnAction"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/mainGuideline"
-            app:layout_constraintWidth_default="percent"
-            app:layout_constraintWidth_percent="50" />
+            app:layout_constraintTop_toBottomOf="@id/byedpiSettingsContainer"
+            app:layout_constraintVertical_bias="1.0">
 
-        <Button
-            android:id="@+id/btnAction"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/btn_shape_round"
-            android:paddingStart="40dp"
-            android:paddingEnd="40dp"
-            android:text="@string/connect"
-            android:textColor="@android:color/white"
-            android:textStyle="bold"
-            app:backgroundTint="@color/orbot_btn_enabled_purple"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="@id/tvCancel"
-            app:layout_constraintStart_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/mainGuideline"
-            app:layout_constraintWidth_default="percent"
-            app:layout_constraintWidth_percent="50" />
+            <TextView
+                android:id="@+id/tvCancel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="@android:string/cancel"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnAction"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/connect" />
+
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>

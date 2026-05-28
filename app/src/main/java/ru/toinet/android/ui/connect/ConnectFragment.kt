@@ -3,6 +3,7 @@ package ru.toinet.android.ui.connect
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
+import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -91,6 +92,7 @@ class ConnectFragment : Fragment(),
                 }
             }
         }
+
         binding.switchConnect.setOnClickListener {
             it.isEnabled = false
             it.alpha = 0.38f
@@ -161,6 +163,13 @@ class ConnectFragment : Fragment(),
     }
 
     fun attemptToStartTor() {
+        if (Prefs.transport == Transport.BYEDPI) {
+            val intent = VpnService.prepare(requireContext())
+            if (intent != null) {
+                startActivityForResult(intent, OrbotActivity.REQUEST_CODE_VPN)
+                return
+            }
+        }
         attemptToStartTorPowerUserMode()
     }
 
@@ -175,43 +184,45 @@ class ConnectFragment : Fragment(),
     }
 
     fun refreshMenuList(context: Context) {
-
-        val connectStr =
-            if (Prefs.smartConnect) R.string.smart_connect else when (Prefs.transport) {
-                Transport.NONE -> R.string.direct_connect
-                Transport.MEEK -> R.string.bridge_meek_azure
-                Transport.OBFS4 -> R.string.built_in_bridges_obfs4
-                Transport.SNOWFLAKE -> R.string.snowflake
-                Transport.SNOWFLAKE_AMP -> R.string.snowflake_amp
-                Transport.SNOWFLAKE_SQS -> R.string.snowflake_sqs
-                Transport.WEBTUNNEL -> TODO()
-                Transport.DNSTT -> R.string.bridge_dnstt
-                Transport.CUSTOM -> R.string.custom_bridges
-            }
-
-        val connectStrLabel =
-            getString(R.string.set_transport) + ": ${context.getString(connectStr)}"
-
-        val listItems =
-            arrayListOf(
-                OrbotMenuAction(
-                    R.string.btn_configure,
-                    R.drawable.ic_settings_gear,
-                    statusString = connectStrLabel
-                ) { openConfigureTorConnection() },
-                OrbotMenuAction(R.string.btn_proxy, R.drawable.ic_settings_gear) {
-                    ProxyBottomSheet().show(
-                        requireActivity().supportFragmentManager,
-                        ProxyBottomSheet.TAG
-                    )
-                },
-                OrbotMenuAction(R.string.btn_change_exit, 0) {
-                    ExitNodeBottomSheet().show(
-                        requireActivity().supportFragmentManager,
-                        "ExitNodeBottomSheet"
-                    )
-                },
-                OrbotMenuAction(R.string.btn_refresh, R.drawable.ic_refresh) { sendNewnymSignal() })
+        val listItems = arrayListOf(
+            OrbotMenuAction(
+                0, // No specific string resource, we'll use statusString
+                R.drawable.ic_settings_gear,
+                statusString = "Конфигурация Tor (мосты и прокси)"
+            ) {
+                TorConfigBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    TorConfigBottomSheet.TAG
+                )
+            },
+            OrbotMenuAction(
+                0,
+                R.drawable.ic_settings_gear,
+                statusString = "ByeDPI: ${if (Prefs.byedpiEnabled) "ВКЛ" else "ВЫКЛ"}\n(режим, аргументы)"
+            ) {
+                ByeDpiBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    ByeDpiBottomSheet.TAG
+                )
+            },
+            OrbotMenuAction(
+                0,
+                R.drawable.ic_settings_gear,
+                statusString = "TGWS: ${if (Prefs.tgwsEnabled) "ВКЛ" else "ВЫКЛ"}\n(порт, маппинги)"
+            ) {
+                TgwsBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    TgwsBottomSheet.TAG
+                )
+            },
+            OrbotMenuAction(R.string.btn_change_exit, 0) {
+                ExitNodeBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    "ExitNodeBottomSheet"
+                )
+            },
+            OrbotMenuAction(R.string.btn_refresh, R.drawable.ic_refresh) { sendNewnymSignal() }
+        )
         binding.lvConnected.adapter = ConnectMenuActionAdapter(context, listItems)
     }
 

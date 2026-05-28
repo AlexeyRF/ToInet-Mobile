@@ -313,4 +313,31 @@
     <string name="unable_to_start_other_vpn_app_error_msg">Приложение %1$s настроено как "Постоянно включённый" VPN. Пожалуйста, отключите его перед запуском ToInet.</string>
     <string name="unable_to_start_unknown_reason_error_msg">В разрешении VPN было отказано, или другое VPN-приложение имеет включённую функцию "Постоянно включённый VPN". Вы можете закрыть это сообщение и переподключиться, если вы случайно вышли из предыдущего диалога запроса VPN. Технические пользователи могут использовать другое VPN-приложение и использовать Tor как SOCKS-прокси, включив в ToInet "Режим опытного пользователя".</string>
     <string name="open_vpn_settings">Открыть настройки Android VPN</string>
+
+    <!-- ByeDPI -->
+    <string name="vpn_channel_name">VPN</string>
+    <string name="proxy_channel_name">Proxy</string>
+    <string name="byedpi_notification_title">ByeDPI</string>
+    <string name="vpn_notification_content">VPN запущен</string>
+    <string name="proxy_notification_content">Прокси запущен</string>
+
+    <string name="byedpi_app_name">ByeDPI</string>
+    <string name="failed_to_start">Ошибка запуска</string>
+
+    <string name="pref_byedpi_enabled_title">Включить ByeDPI</string>
+    <string name="pref_byedpi_enabled_summary">Запускать ByeDPI параллельно с Tor</string>
+    <string name="pref_byedpi_use_as_upstream_title">Использовать как прокси для Tor</string>
+    <string name="pref_byedpi_use_as_upstream_summary">Tor будет подключаться через ByeDPI</string>
+    <string name="pref_byedpi_use_args_title">Использовать аргументы</string>
+    <string name="pref_byedpi_use_args_summary">Вручную указать параметры командной строки</string>
+    <string name="pref_byedpi_args_title">Аргументы командной строки</string>
+    <string name="pref_byedpi_args_summary">Например: --disorder 1 --split 1</string>
+    <string name="tgws_proxy_running">TGWS Proxy Running</string>
+    <string name="tgws_listening_on">Listening on %1$s:%2$d</string>
+    <string name="tgws_proxy_channel_name">TGWS Proxy Service Channel</string>
+    <string name="tgws_enabled">Enable TGWS Proxy (Telegram WebSocket)</string>
+    <string name="tgws_settings">TGWS Settings</string>
+    <string name="tgws_host">TGWS Host</string>
+    <string name="tgws_port">TGWS Port</string>
+    <string name="tgws_dc_mappings">DC -> IP Mappings</string>
 </resources>

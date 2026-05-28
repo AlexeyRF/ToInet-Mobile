@@ -339,4 +339,77 @@
 
     </PreferenceScreen>
 
+    <PreferenceScreen
+        android:key="category_byedpi"
+        android:title="ByeDPI"
+        app:iconSpaceReserved="false">
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="byedpi_enabled"
+            android:title="@string/pref_byedpi_enabled_title"
+            android:summary="@string/pref_byedpi_enabled_summary"
+            app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="byedpi_use_as_upstream"
+            android:title="@string/pref_byedpi_use_as_upstream_title"
+            android:summary="@string/pref_byedpi_use_as_upstream_summary"
+            app:iconSpaceReserved="false"
+            android:dependency="byedpi_enabled" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="byedpi_enable_cmd_settings"
+            android:title="@string/pref_byedpi_use_args_title"
+            android:summary="@string/pref_byedpi_use_args_summary"
+            app:iconSpaceReserved="false"
+            android:dependency="byedpi_enabled" />
+
+        <EditTextPreference
+            android:key="byedpi_cmd_args"
+            android:title="@string/pref_byedpi_args_title"
+            android:summary="@string/pref_byedpi_args_summary"
+            app:iconSpaceReserved="false"
+            android:dependency="byedpi_enable_cmd_settings" />
+
+    </PreferenceScreen>
+
+    <PreferenceCategory
+        android:key="category_tgws"
+        android:title="TGWS Proxy (Telegram WebSocket)"
+        app:iconSpaceReserved="false">
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="tgws_enabled"
+            android:title="@string/tgws_enabled"
+            app:iconSpaceReserved="false" />
+
+        <EditTextPreference
+            android:defaultValue="127.0.0.1"
+            android:key="tgws_host"
+            android:title="@string/tgws_host"
+            app:iconSpaceReserved="false"
+            android:dependency="tgws_enabled"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:defaultValue="1480"
+            android:key="tgws_port"
+            android:title="@string/tgws_port"
+            app:iconSpaceReserved="false"
+            android:dependency="tgws_enabled"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:defaultValue="1:95.161.218.107\n2:95.161.218.107\n3:95.161.218.107\n4:95.161.218.107\n5:95.161.218.107"
+            android:key="tgws_dc_mappings"
+            android:title="@string/tgws_dc_mappings"
+            app:iconSpaceReserved="false"
+            android:dependency="tgws_enabled" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

@@ -15,6 +15,7 @@ import androidx.activity.result.ActivityResultLauncher
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanCustomCode
 import io.github.g00fy2.quickie.config.ScannerConfig
+import androidx.fragment.app.activityViewModels
 import ru.toinet.android.R
 import ru.toinet.android.databinding.CustomBridgeBottomSheetBinding
 import ru.toinet.android.service.OrbotConstants
@@ -25,6 +26,8 @@ import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
 
 class CustomBridgeBottomSheet() :
     OrbotBottomSheetDialogFragment() {
+
+    private val viewModel: ConnectViewModel by activityViewModels()
 
     companion object {
         const val TAG = "CustomBridgeBottomSheet"
@@ -108,11 +111,8 @@ class CustomBridgeBottomSheet() :
             Prefs.transport = Transport.CUSTOM
             Prefs.smartConnect = false
             Prefs.bridgesList = binding.etBridges.text?.split("\n") ?: emptyList()
+            viewModel.triggerRefreshMenuList()
             dismiss()
-            val parent = requireActivity().supportFragmentManager.findFragmentByTag(
-                "ConfigConnectionBttmSheet" // Используем строковое значение вместо TAG
-            ) as ConfigConnectionBottomSheet
-            parent.closeAndConnect()
         }
 
         configureMultilineEditTextScrollEvent(binding.etBridges)

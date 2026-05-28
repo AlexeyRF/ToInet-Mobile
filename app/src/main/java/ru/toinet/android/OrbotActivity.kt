@@ -51,16 +51,6 @@ class OrbotActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.apply {
-                setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility =
-                window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
-        }
-
         previousReceivedTorStatus = savedInstanceState?.getString(KEY_TOR_STATUS)
 
         // programmatically set title to "Orbot" since camo mode will overwrite it here from manifest
@@ -114,6 +104,15 @@ class OrbotActivity : BaseActivity() {
         requestNotificationPermission()
 
         Prefs.initWeeklyWorker(this)
+
+        if (Prefs.tgwsEnabled) {
+            ru.toinet.android.tgws.TgwsService.start(
+                this,
+                Prefs.tgwsHost,
+                Prefs.tgwsPort,
+                Prefs.tgwsDcMappings
+            )
+        }
 
         if (!rootDetectionShown && Prefs.detectRoot() && RootBeer(this).isRooted) {
             //we found indication of root
