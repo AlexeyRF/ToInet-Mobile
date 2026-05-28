@@ -41,6 +41,7 @@ fun Context.canStartForegroundServices(): Boolean {
 
 fun Context.sendIntentToService(action: String) {
     val transport = Prefs.transport
+    val torEnabled = Prefs.torEnabled
     val byedpiEnabled = Prefs.byedpiEnabled
     val byedpiMode = Prefs.byedpiMode
     val tgwsEnabled = Prefs.tgwsEnabled
@@ -60,6 +61,14 @@ fun Context.sendIntentToService(action: String) {
             },
             isForeground = !isPing && !isStop
         )
+        if (torEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+            sendIntentToService(
+                Intent(this, OrbotService::class.java).apply {
+                    this.action = action
+                },
+                isForeground = !isPing && !isStop
+            )
+        }
     } else {
         if ((byedpiEnabled && byedpiMode == "Proxy") || action == org.torproject.jni.TorService.ACTION_STOP) {
             val byedpiAction = when (action) {
@@ -74,12 +83,14 @@ fun Context.sendIntentToService(action: String) {
                 isForeground = !isPing && !isStop
             )
         }
-        sendIntentToService(
-            Intent(this, OrbotService::class.java).apply {
-                this.action = action
-            },
-            isForeground = !isPing && !isStop
-        )
+        if (torEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+            sendIntentToService(
+                Intent(this, OrbotService::class.java).apply {
+                    this.action = action
+                },
+                isForeground = !isPing && !isStop
+            )
+        }
     }
 
     if (tgwsEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
@@ -92,6 +103,29 @@ fun Context.sendIntentToService(action: String) {
             )
         } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
             ru.toinet.android.tgws.TgwsService.stop(this)
+        }
+    }
+
+    if (!torEnabled && !isPing) {
+        if (action == org.torproject.jni.TorService.ACTION_START) {
+            if (!byedpiEnabled && tgwsEnabled) {
+                val intent = Intent(OrbotConstants.LOCAL_ACTION_STATUS)
+                intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_ON)
+                intent.setPackage(packageName)
+                sendBroadcast(intent)
+            } else if (!byedpiEnabled && !tgwsEnabled) {
+                val intent = Intent(OrbotConstants.LOCAL_ACTION_STATUS)
+                intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_OFF)
+                intent.setPackage(packageName)
+                sendBroadcast(intent)
+            }
+        } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
+            if (!byedpiEnabled) {
+                val intent = Intent(OrbotConstants.LOCAL_ACTION_STATUS)
+                intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_OFF)
+                intent.setPackage(packageName)
+                sendBroadcast(intent)
+            }
         }
     }
 }

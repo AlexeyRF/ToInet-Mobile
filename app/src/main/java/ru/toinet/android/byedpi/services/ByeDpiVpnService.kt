@@ -175,7 +175,7 @@ class ByeDpiVpnService : LifecycleVpnService() {
         }
 
         byeDpiProxy.stopProxy()
-        proxyJob?.join() ?: throw IllegalStateException("ProxyJob field null")
+        proxyJob?.join()
         proxyJob = null
 
         Log.i(TAG, "Proxy stopped")
@@ -189,7 +189,7 @@ class ByeDpiVpnService : LifecycleVpnService() {
         }
 
         val sharedPreferences = getPreferences()
-        val port = sharedPreferences.getString("byedpi_proxy_port", null)?.toInt() ?: 1080
+        val port = getByeDpiPreferences().port
         val dns = sharedPreferences.getStringNotNull("dns_ip", "1.1.1.1")
         val ipv6 = sharedPreferences.getBoolean("ipv6_enable", false)
 
@@ -259,6 +259,17 @@ class ByeDpiVpnService : LifecycleVpnService() {
             },
             Mode.VPN
         )
+
+        if (!ru.toinet.android.util.Prefs.torEnabled) {
+            val orbotStatus = when (newStatus) {
+                ServiceStatus.Connected -> org.torproject.jni.TorService.STATUS_ON
+                ServiceStatus.Disconnected, ServiceStatus.Failed -> org.torproject.jni.TorService.STATUS_OFF
+            }
+            val statusIntent = Intent(ru.toinet.android.service.OrbotConstants.LOCAL_ACTION_STATUS)
+            statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, orbotStatus)
+            statusIntent.setPackage(packageName)
+            sendBroadcast(statusIntent)
+        }
 
         val intent = Intent(
             when (newStatus) {

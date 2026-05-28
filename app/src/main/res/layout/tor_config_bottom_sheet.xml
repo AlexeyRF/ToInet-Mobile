@@ -41,6 +41,13 @@
             android:orientation="vertical"
             app:layout_constraintTop_toBottomOf="@id/tvHeader">
 
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/swTorEnabled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Включить Tor"
+                android:layout_marginBottom="16dp" />
+
             <Button
                 android:id="@+id/btnBridges"
                 style="@style/Widget.Material3.Button.TonalButton"

@@ -6,9 +6,11 @@ import ru.toinet.android.byedpi.utility.getStringNotNull
 import ru.toinet.android.byedpi.utility.shellSplit
 
 sealed interface ByeDpiProxyPreferences {
+    val port: Int
+
     companion object {
         fun fromSharedPreferences(preferences: SharedPreferences): ByeDpiProxyPreferences =
-            when (preferences.getBoolean("byedpi_enable_cmd_settings", false)) {
+            when (preferences.getBoolean("byedpi_enable_cmd_settings", true)) {
                 true -> ByeDpiProxyCmdPreferences(preferences)
                 false -> ByeDpiProxyUIPreferences(preferences)
             }
@@ -16,6 +18,28 @@ sealed interface ByeDpiProxyPreferences {
 }
 
 class ByeDpiProxyCmdPreferences(val args: Array<String>) : ByeDpiProxyPreferences {
+    override val port: Int
+        get() {
+            var nextIsPort = false
+            for (arg in args) {
+                if (nextIsPort) {
+                    val p = arg.toIntOrNull()
+                    if (p != null) return p
+                    nextIsPort = false
+                }
+                if (arg == "-p" || arg == "--port") {
+                    nextIsPort = true
+                } else if (arg.startsWith("-p")) {
+                    val p = arg.substring(2).toIntOrNull()
+                    if (p != null) return p
+                } else if (arg.startsWith("--port=")) {
+                    val p = arg.substring(9).toIntOrNull()
+                    if (p != null) return p
+                }
+            }
+            return 1080
+        }
+
     constructor(cmd: String) : this(cmdToArgs(cmd))
 
     constructor(preferences: SharedPreferences) : this(
@@ -64,7 +88,7 @@ class ByeDpiProxyUIPreferences(
     byedpiFakeOffset: Int? = null,
 ) : ByeDpiProxyPreferences {
     val ip: String = ip ?: "127.0.0.1"
-    val port: Int = port ?: 1080
+    override val port: Int = port ?: 1080
     val maxConnections: Int = maxConnections ?: 512
     val bufferSize: Int = bufferSize ?: 16384
     val defaultTtl: Int = defaultTtl ?: 0

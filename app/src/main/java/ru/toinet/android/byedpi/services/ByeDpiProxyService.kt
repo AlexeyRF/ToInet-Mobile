@@ -178,6 +178,17 @@ class ByeDpiProxyService : LifecycleService() {
             Mode.Proxy
         )
 
+        if (!ru.toinet.android.util.Prefs.torEnabled) {
+            val orbotStatus = when (newStatus) {
+                ServiceStatus.Connected -> org.torproject.jni.TorService.STATUS_ON
+                ServiceStatus.Disconnected, ServiceStatus.Failed -> org.torproject.jni.TorService.STATUS_OFF
+            }
+            val statusIntent = Intent(ru.toinet.android.service.OrbotConstants.LOCAL_ACTION_STATUS)
+            statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, orbotStatus)
+            statusIntent.setPackage(packageName)
+            sendBroadcast(statusIntent)
+        }
+
         val intent = Intent(
             when (newStatus) {
                 ServiceStatus.Connected -> STARTED_BROADCAST

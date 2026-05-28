@@ -357,6 +357,11 @@ object Prefs {
         set(value) = cr?.putPref(OrbotConstants.PREFS_DNS_PORT, value) ?: Unit
 
     @JvmStatic
+    var torEnabled: Boolean
+        get() = cr?.getPrefBoolean("tor_enabled", true) ?: true
+        set(value) = cr?.putPref("tor_enabled", value) ?: Unit
+
+    @JvmStatic
     var byedpiEnabled: Boolean
         get() = cr?.getPrefBoolean("byedpi_enabled", false) ?: false
         set(value) = cr?.putPref("byedpi_enabled", value) ?: Unit
@@ -377,6 +382,11 @@ object Prefs {
         set(value) = cr?.putPref("byedpi_cmd_args", value) ?: Unit
 
     @JvmStatic
+    var byedpiEnableCmdSettings: Boolean
+        get() = cr?.getPrefBoolean("byedpi_enable_cmd_settings", true) ?: true
+        set(value) = cr?.putPref("byedpi_enable_cmd_settings", value) ?: Unit
+
+    @JvmStatic
     var tgwsEnabled: Boolean
         get() = cr?.getPrefBoolean("tgws_enabled", false) ?: false
         set(value) = cr?.putPref("tgws_enabled", value) ?: Unit
@@ -394,7 +404,7 @@ object Prefs {
     @JvmStatic
     var tgwsDcMappings: Map<Int, String>
         get() {
-            val s = cr?.getPrefString("tgws_dc_mappings") ?: "1:95.161.218.107\n2:95.161.218.107\n3:95.161.218.107\n4:95.161.218.107\n5:95.161.218.107\n203:95.161.218.107"
+            val s = cr?.getPrefString("tgws_dc_mappings") ?: "2:149.154.167.220\n4:149.154.167.220"
             return s.split("\n").filter { it.contains(":") }.associate {
                 val parts = it.split(":")
                 parts[0].trim().toInt() to parts[1].trim()

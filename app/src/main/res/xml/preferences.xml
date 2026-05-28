@@ -404,7 +404,7 @@
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
-            android:defaultValue="1:95.161.218.107\n2:95.161.218.107\n3:95.161.218.107\n4:95.161.218.107\n5:95.161.218.107"
+            android:defaultValue="2:149.154.167.220\n4:149.154.167.220"
             android:key="tgws_dc_mappings"
             android:title="@string/tgws_dc_mappings"
             app:iconSpaceReserved="false"

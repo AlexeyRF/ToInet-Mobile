@@ -20,6 +20,7 @@ import ru.toinet.android.R
 open class OrbotBottomSheetDialogFragment : BottomSheetDialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = BottomSheetDialog(requireActivity(), theme)
+        dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         dialog.setOnShowListener {
             val bottomSheetView =
                 dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) as? FrameLayout

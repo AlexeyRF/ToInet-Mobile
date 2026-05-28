@@ -27,6 +27,7 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
         
         val mappingStr = Prefs.tgwsDcMappings.map { "${it.key}:${it.value}" }.joinToString("\n")
         binding.etMappings.setText(mappingStr)
+        configureMultilineEditTextScrollEvent(binding.etMappings)
 
         binding.btnSave.setOnClickListener {
             Prefs.tgwsEnabled = binding.swEnabled.isChecked

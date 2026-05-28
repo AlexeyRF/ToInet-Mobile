@@ -163,7 +163,7 @@ class ConnectFragment : Fragment(),
     }
 
     fun attemptToStartTor() {
-        if (Prefs.transport == Transport.BYEDPI) {
+        if (Prefs.transport == Transport.BYEDPI || (Prefs.byedpiEnabled && Prefs.byedpiMode == "VPN")) {
             val intent = VpnService.prepare(requireContext())
             if (intent != null) {
                 startActivityForResult(intent, OrbotActivity.REQUEST_CODE_VPN)
@@ -188,7 +188,7 @@ class ConnectFragment : Fragment(),
             OrbotMenuAction(
                 0, // No specific string resource, we'll use statusString
                 R.drawable.ic_settings_gear,
-                statusString = "Конфигурация Tor (мосты и прокси)"
+                statusString = if (Prefs.torEnabled) "Конфигурация Tor (мосты и прокси)" else "Конфигурация Tor: ВЫКЛ"
             ) {
                 TorConfigBottomSheet().show(
                     requireActivity().supportFragmentManager,

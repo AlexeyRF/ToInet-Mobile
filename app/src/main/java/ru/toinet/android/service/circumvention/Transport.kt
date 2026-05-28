@@ -191,7 +191,10 @@ enum class Transport(val id: String) {
         }
 
         if (Prefs.byedpiEnabled && Prefs.byedpiUseAsUpstream) {
-            result.add("Socks5Proxy 127.0.0.1:1080")
+            val byedpiPort = ru.toinet.android.byedpi.core.ByeDpiProxyPreferences.fromSharedPreferences(
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+            ).port
+            result.add("Socks5Proxy 127.0.0.1:$byedpiPort")
             result.add("NoProxy 127.0.0.1")
         }
 
