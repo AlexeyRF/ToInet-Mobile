@@ -24,8 +24,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class ByeDpiVpnService : LifecycleVpnService() {
-    private val byeDpiProxy = ByeDpiProxy()
-    private var proxyJob: Job? = null
     private var tunFd: ParcelFileDescriptor? = null
     private val mutex = Mutex()
     private var stopping: Boolean = false
@@ -94,7 +92,6 @@ class ByeDpiVpnService : LifecycleVpnService() {
         try {
             startForeground()
             mutex.withLock {
-                startProxy()
                 startTun2Socks()
             }
             updateStatus(ServiceStatus.Connected)
@@ -125,7 +122,6 @@ class ByeDpiVpnService : LifecycleVpnService() {
             stopping = true
             try {
                 stopTun2Socks()
-                stopProxy()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to stop VPN", e)
             } finally {
@@ -134,52 +130,15 @@ class ByeDpiVpnService : LifecycleVpnService() {
         }
 
         updateStatus(ServiceStatus.Disconnected)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            stopForeground(true)
+        }
         stopSelf()
     }
 
-    private suspend fun startProxy() {
-        Log.i(TAG, "Starting proxy")
 
-        if (proxyJob != null) {
-            Log.w(TAG, "Proxy fields not null")
-            throw IllegalStateException("Proxy fields not null")
-        }
-
-        val preferences = getByeDpiPreferences()
-
-        proxyJob = lifecycleScope.launch(Dispatchers.IO) {
-            val code = byeDpiProxy.startProxy(preferences)
-
-            withContext(Dispatchers.Main) {
-                if (code != 0) {
-                    Log.e(TAG, "Proxy stopped with code $code")
-                    updateStatus(ServiceStatus.Failed)
-                } else {
-                    if (!stopping) {
-                        stop()
-                        updateStatus(ServiceStatus.Disconnected)
-                    }
-                }
-            }
-        }
-
-        Log.i(TAG, "Proxy started")
-    }
-
-    private suspend fun stopProxy() {
-        Log.i(TAG, "Stopping proxy")
-
-        if (status == ServiceStatus.Disconnected) {
-            Log.w(TAG, "Proxy already disconnected")
-            return
-        }
-
-        byeDpiProxy.stopProxy()
-        proxyJob?.join()
-        proxyJob = null
-
-        Log.i(TAG, "Proxy stopped")
-    }
 
     private fun startTun2Socks() {
         Log.i(TAG, "Starting tun2socks")
@@ -189,7 +148,15 @@ class ByeDpiVpnService : LifecycleVpnService() {
         }
 
         val sharedPreferences = getPreferences()
-        val port = getByeDpiPreferences().port
+        val provider = ru.toinet.android.util.Prefs.vpnProvider
+        val port = when (provider) {
+            "byedpi" -> getByeDpiPreferences().port
+            "tor" -> 5242
+            "tgws" -> ru.toinet.android.util.Prefs.tgwsPort
+            "rehab" -> 1788
+            "turnproxy" -> ru.toinet.android.util.Prefs.turnProxyLocalPort
+            else -> getByeDpiPreferences().port
+        }
         val dns = sharedPreferences.getStringNotNull("dns_ip", "1.1.1.1")
         val ipv6 = sharedPreferences.getBoolean("ipv6_enable", false)
 
@@ -253,7 +220,6 @@ class ByeDpiVpnService : LifecycleVpnService() {
 
                 ServiceStatus.Disconnected,
                 ServiceStatus.Failed -> {
-                    proxyJob = null
                     AppStatus.Halted
                 }
             },
@@ -317,6 +283,39 @@ class ByeDpiVpnService : LifecycleVpnService() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             builder.setMetered(false)
+        }
+
+        try {
+            val pm = packageManager
+            val packages = pm.getInstalledPackages(0)
+            val excludedByUser = ru.toinet.android.util.Prefs.vpnExcludedApps.toMutableSet()
+            var needsSave = false
+            
+            for (pkg in packages) {
+                val pkgName = pkg.packageName
+                if (!ru.toinet.android.util.Prefs.vpnAppsInitialized) {
+                    if (pkgName.contains("ru.", ignoreCase = true) || 
+                        pkgName.contains(".ru", ignoreCase = true) || 
+                        pkgName.contains("toinet", ignoreCase = true)) {
+                        excludedByUser.add(pkgName)
+                        needsSave = true
+                    }
+                }
+                
+                if (excludedByUser.contains(pkgName)) {
+                    try {
+                        builder.addDisallowedApplication(pkgName)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to disallow app: $pkgName", e)
+                    }
+                }
+            }
+            if (needsSave) {
+                ru.toinet.android.util.Prefs.vpnExcludedApps = excludedByUser
+                ru.toinet.android.util.Prefs.vpnAppsInitialized = true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to configure split tunneling", e)
         }
 
         builder.addDisallowedApplication(applicationContext.packageName)

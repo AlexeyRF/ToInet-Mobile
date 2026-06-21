@@ -31,7 +31,7 @@ fun Context.canStartForegroundServices(): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
         return true
 
-    if (VpnService.prepare(this) == null)
+    if (Prefs.isGlobalVpnEnabled && VpnService.prepare(this) == null)
         return true
 
     val alarmManager = ContextCompat.getSystemService(this, AlarmManager::class.java)
@@ -45,52 +45,50 @@ fun Context.sendIntentToService(action: String) {
     val byedpiEnabled = Prefs.byedpiEnabled
     val byedpiMode = Prefs.byedpiMode
     val tgwsEnabled = Prefs.tgwsEnabled
+    val rehabilitatorEnabled = Prefs.rehabilitatorEnabled
+
+    val turnProxyEnabled = Prefs.turnProxyEnabled
 
     val isPing = action == "ACTIVE" || action == OrbotConstants.CMD_ACTIVE
     val isStop = action == org.torproject.jni.TorService.ACTION_STOP
 
-    if (byedpiEnabled && byedpiMode == "VPN") {
+    val isGlobalVpnEnabled = Prefs.isGlobalVpnEnabled
+
+    if (byedpiEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
         val byedpiAction = when (action) {
             org.torproject.jni.TorService.ACTION_START -> ru.toinet.android.byedpi.data.START_ACTION
             org.torproject.jni.TorService.ACTION_STOP -> ru.toinet.android.byedpi.data.STOP_ACTION
             else -> action
         }
         sendIntentToService(
-            Intent(this, ru.toinet.android.byedpi.services.ByeDpiVpnService::class.java).apply {
+            Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 this.action = byedpiAction
             },
             isForeground = !isPing && !isStop
         )
-        if (torEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
-            sendIntentToService(
-                Intent(this, OrbotService::class.java).apply {
-                    this.action = action
-                },
-                isForeground = !isPing && !isStop
-            )
+    }
+
+    if (isGlobalVpnEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+        val vpnAction = when (action) {
+            org.torproject.jni.TorService.ACTION_START -> ru.toinet.android.byedpi.data.START_ACTION
+            org.torproject.jni.TorService.ACTION_STOP -> ru.toinet.android.byedpi.data.STOP_ACTION
+            else -> action
         }
-    } else {
-        if ((byedpiEnabled && byedpiMode == "Proxy") || action == org.torproject.jni.TorService.ACTION_STOP) {
-            val byedpiAction = when (action) {
-                org.torproject.jni.TorService.ACTION_START -> ru.toinet.android.byedpi.data.START_ACTION
-                org.torproject.jni.TorService.ACTION_STOP -> ru.toinet.android.byedpi.data.STOP_ACTION
-                else -> action
-            }
-            sendIntentToService(
-                Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
-                    this.action = byedpiAction
-                },
-                isForeground = !isPing && !isStop
-            )
-        }
-        if (torEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
-            sendIntentToService(
-                Intent(this, OrbotService::class.java).apply {
-                    this.action = action
-                },
-                isForeground = !isPing && !isStop
-            )
-        }
+        sendIntentToService(
+            Intent(this, ru.toinet.android.byedpi.services.ByeDpiVpnService::class.java).apply {
+                this.action = vpnAction
+            },
+            isForeground = !isPing && !isStop
+        )
+    }
+
+    if (torEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+        sendIntentToService(
+            Intent(this, OrbotService::class.java).apply {
+                this.action = action
+            },
+            isForeground = !isPing && !isStop
+        )
     }
 
     if (tgwsEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
@@ -106,14 +104,30 @@ fun Context.sendIntentToService(action: String) {
         }
     }
 
+    if (rehabilitatorEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+        if (action == org.torproject.jni.TorService.ACTION_START) {
+            ru.toinet.android.rehabilitator.RehabilitatorService.start(this)
+        } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
+            ru.toinet.android.rehabilitator.RehabilitatorService.stop(this)
+        }
+    }
+
+    if (turnProxyEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+        if (action == org.torproject.jni.TorService.ACTION_START) {
+            ru.toinet.android.turnproxy.TurnProxyService.start(this)
+        } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
+            ru.toinet.android.turnproxy.TurnProxyService.stop(this)
+        }
+    }
+
     if (!torEnabled && !isPing) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
-            if (!byedpiEnabled && tgwsEnabled) {
+            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled || turnProxyEnabled)) {
                 val intent = Intent(OrbotConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_ON)
                 intent.setPackage(packageName)
                 sendBroadcast(intent)
-            } else if (!byedpiEnabled && !tgwsEnabled) {
+            } else if (!byedpiEnabled && !tgwsEnabled && !rehabilitatorEnabled && !turnProxyEnabled) {
                 val intent = Intent(OrbotConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_OFF)
                 intent.setPackage(packageName)

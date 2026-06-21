@@ -52,7 +52,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
-            android:backgroundTint="@android:color/white"
+
             app:layout_constraintBottom_toBottomOf="@id/tvProxyTypeLabel"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/tvProxyTypeLabel"
@@ -73,9 +73,9 @@
                 android:id="@+id/etProxyHost"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:textColor="@android:color/white"
-                android:backgroundTint="@android:color/white" />
+                android:inputType="textUri" />
+
+
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -93,9 +93,9 @@
                 android:id="@+id/etProxyPort"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number"
-                android:textColor="@android:color/white"
-                android:backgroundTint="@android:color/white" />
+                android:inputType="number" />
+
+
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -113,9 +113,9 @@
                 android:id="@+id/etProxyUser"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="text"
-                android:textColor="@android:color/white"
-                android:backgroundTint="@android:color/white" />
+                android:inputType="text" />
+
+
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -135,9 +135,9 @@
                 android:id="@+id/etProxyPassword"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textPassword"
-                android:textColor="@android:color/white"
-                android:backgroundTint="@android:color/white" />
+                android:inputType="textPassword" />
+
+
         </com.google.android.material.textfield.TextInputLayout>
 
         <Button
@@ -145,10 +145,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:background="@drawable/btn_shape_round"
+
             android:text="@string/save"
-            android:textColor="@android:color/white"
-            app:backgroundTint="@color/orbot_btn_enabled_purple"
+
+
             app:layout_constraintTop_toBottomOf="@id/tilProxyPassword" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

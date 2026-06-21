@@ -36,10 +36,13 @@ open class OrbotBottomSheetDialogFragment : BottomSheetDialogFragment() {
     }
 
     private fun setHeightIfAttached(activity: Activity?, bottomSheet: View) {
+        val ratio = getHeightRatio()
+        if (ratio <= 0f) return
+
         activity?.let {
             val displayMetrics = DisplayMetrics()
             requireActivity().windowManager.defaultDisplay.getMetrics(displayMetrics)
-            val height = (displayMetrics.heightPixels * getHeightRatio()).toInt()
+            val height = (displayMetrics.heightPixels * ratio).toInt()
             val layoutParams = bottomSheet.layoutParams
             layoutParams.height = height
             bottomSheet.layoutParams = layoutParams

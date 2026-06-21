@@ -33,9 +33,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:tint="@color/panel_background_main"
-            android:backgroundTint="@color/orbot_btn_enabled_purple"
+
             android:contentDescription="@string/btn_copy_log"
-            android:textColor="@android:color/white"
+
             android:src="@drawable/ic_copy_log"
             app:borderWidth="0dp"
             app:rippleColor="@color/dark_purple"

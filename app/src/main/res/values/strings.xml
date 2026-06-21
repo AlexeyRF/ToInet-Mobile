@@ -129,14 +129,14 @@
     <string name="menu_new_identity">Новый идентификатор</string>
     <string name="user_services">Службы пользователя</string>
     <string name="app_services">Службы приложения</string>
-    <!-- CustomBridgesFragment -->
+    
     <string name="custom_bridges">Конфигурация</string>
 
     <string name="bridge_snowflake_amp">Использовать Snowflake (AMP)</string>
     <string name="bridge_snowflake_sqs">Подключаться через других пользователей ToInet используя Snowflake (Метод 3 - SQS)</string>
     <string name="snowflake_proxy_msg_title">Показывать уведомление о подключении</string>
     <string name="snowflake_proxy_msg_description">Показывать уведомление, когда вы помогаете кому-то обходить цензуру</string>
-    <!-- new UX -->
+    
     <string name="volunteer_mode">Режим доброты</string>
     <string name="secure_your_connection_title">Готово к подключению</string>
     <string name="secure_your_connection_subtitle">Скрывайте приложения от отслеживания в сети и получайте доступ, когда он заблокирован.</string>
@@ -216,7 +216,7 @@
 
     <string name="app_icon_dialog_title" formatted="true">Сменить на %1$s</string>
     <string name="app_icon_dialog_msg" formatted="true">Смена на %1$s перезапустит приложение</string>
-    <string name="camo_samsung_instructions">На устройствах Samsung Galaxy иконки в строке уведомлений приложения ToInet изменятся только после открытия настроек вашего телефона: Настройки -> Уведомления -> Дополнительные Параметры и выключением опции "Отображать значки оповещений". Нажмите сюда, чтобы открыть Настройки Уведомлений.</string>
+    <string name="camo_samsung_instructions">На устройствах Samsung Galaxy иконки в строке уведомлений приложения ToInet изменятся только после открытия настроек вашего телефона: Настройки -&gt; Уведомления -&gt; Дополнительные Параметры и выключением опции "Отображать значки оповещений". Нажмите сюда, чтобы открыть Настройки Уведомлений.</string>
 
     <string name="power_user_mode_permission">Запрос на разрешение</string>
     <string name="power_user_mode_permission_msg">Увы, ToInet не способен предоставлять прокси без данного разрешения, приложение НЕ будет устанавливать никакие будильники, пожалуйста, поставьте согласие, его всегда можно отозвать, но приложение не будет работать. Нажмите на ОК для перхода в меню разрешений.</string>
@@ -240,7 +240,7 @@
     <string name="invalid_bridge_qr_code">Неверный QR-код моста</string>
     <string name="you_already_have_these_bridges">Вы уже добавили мосты из этого QR-кода</string>
 
-    <!-- strings from the old ToInetservice module -->
+    
     <string name="orbot_vpn">ToInet VPN</string>
     <string name="status_starting_up">Запуск ToInet…</string>
     <string name="status_activated">Подключён к сети ToInet</string>
@@ -314,7 +314,7 @@
     <string name="unable_to_start_unknown_reason_error_msg">В разрешении VPN было отказано, или другое VPN-приложение имеет включённую функцию "Постоянно включённый VPN". Вы можете закрыть это сообщение и переподключиться, если вы случайно вышли из предыдущего диалога запроса VPN. Технические пользователи могут использовать другое VPN-приложение и использовать Tor как SOCKS-прокси, включив в ToInet "Режим опытного пользователя".</string>
     <string name="open_vpn_settings">Открыть настройки Android VPN</string>
 
-    <!-- ByeDPI -->
+    
     <string name="vpn_channel_name">VPN</string>
     <string name="proxy_channel_name">Proxy</string>
     <string name="byedpi_notification_title">ByeDPI</string>
@@ -339,5 +339,89 @@
     <string name="tgws_settings">TGWS Settings</string>
     <string name="tgws_host">TGWS Host</string>
     <string name="tgws_port">TGWS Port</string>
-    <string name="tgws_dc_mappings">DC -> IP Mappings</string>
-</resources>
+    <string name="tgws_dc_mappings">DC -&gt; IP Mappings</string>
+    
+    <string name="title_settings">Настройки</string>
+    <string name="cmd_args_clear">Очистить</string>
+    <string name="cmd_args_paste">Вставить</string>
+    <string name="cmd_history_menu">Выберите действие</string>
+    <string name="cmd_history_apply">Применить</string>
+    <string name="cmd_history_copy">Копировать</string>
+    <string name="proxytest_delay_desc">Задержка перед каждым новым подключением</string>
+    <string name="proxytest_requests_desc">Количество одновременно работающих потоков</string>
+    <string name="proxytest_limit_desc">Количество сайтов для тестирования</string>
+    <string name="proxytest_timeout_desc">Время ожидания ответа от сервера</string>
+    <string name="domain_lists_summary">Управление списками доменов</string>
+<string name="cmd_documentation">Документация ByeDPI</string>
+    <string name="service_restart">Сервис перезапущен с новыми параметрами</string>
+    <string name="settings_unavailable">Сначала отключитесь, чтобы зайти в настройки</string>
+    <string name="cmd_history_title">Список стратегий</string>
+    <string name="cmd_history_title_summary">Нажмите для управления историей</string>
+    <string name="cmd_history_delete_all">Очистить историю</string>
+    <string name="cmd_history_delete_unpinned">Удалить незакрепленные</string>
+    <string name="cmd_history_rename">Переименовать</string>
+    <string name="cmd_history_edit">Редактировать</string>
+    <string name="cmd_history_pin">Закрепить</string>
+    <string name="cmd_history_unpin">Открепить</string>
+    <string name="cmd_history_pinned">Закреплено</string>
+    <string name="cmd_history_applied">Применена</string>
+    <string name="cmd_history_delete">Удалить</string>
+    <string name="title_test">Подбор стратегий</string>
+    <string name="summary_test">Тестирование работы подготовленных аргументов командной строки</string>
+    <string name="test_start">Начать проверку</string>
+    <string name="test_stop">Остановить проверку</string>
+    <string name="test_disclaimer">
+        Данный раздел предоставляет возможность протестировать работу приложения с помощью набора заранее подготовленных команд.
+        \nВ процессе тестирования система проверяет доступность различных сайтов через прокси, и вы можете наблюдать за ходом выполнения в режиме реального времени.
+        \n
+        \nОбратите внимание, что функционал данного тестирования находится на этапе разработки, и набор команд пока что ограничен.
+        \nРезультаты тестов могут быть полезны для предварительной оценки работы прокси, однако их успешное прохождение не гарантирует безупречную работу в реальных условиях.
+    </string>
+    <string name="test_crash">
+        Приложение вылетело во время тестирования?
+        \n\nПерейдите в настройки теста и увеличивайте время ожидания между проверками шагом в 2 секунды (2, 4, 6..).
+    </string>
+    <string name="test_process">Проверка %1$d/%2$d</string>
+    <string name="test_proxy_error">Ошибка прокси. Тест остановлен</string>
+    <string name="test_good_cmds">Стратегии с наилучшим результатом, применяйте от большего к меньшему</string>
+    <string name="test_complete">Проверка завершена</string>
+    <string name="test_complete_info">Нажмите на стратегию, чтобы скопировать ее или применить</string>
+    <string name="test_cmd_connect">Применить и запустить</string>
+    <string name="test_cmd_apply">Применить без запуска</string>
+    <string name="test_cmd_connected">Подключено</string>
+    <string name="test_log_copy">Скопировать лог</string>
+    <string name="test_settings_sni">SNI фейк пакетов</string>
+    <string name="test_settings_fulllog">Вывод ответа хостов</string>
+    <string name="test_settings_logclickable">Все стратегии кликабельны</string>
+    <string name="test_settings_domain_lists">Списки доменов для проверки</string>
+    <string name="test_settings_domain_empty">Нет доменов для проверки</string>
+    <string name="test_settings_domains">Свой список доменов</string>
+    <string name="test_settings_usercommands">Свой список стратегий</string>
+    <string name="test_settings_commands">Список стратегий</string>
+    <string name="test_delay">Ожидание между проверками</string>
+    <string name="test_requests">Количество запросов к домену</string>
+    <string name="test_requests_limit">Максимум парралельных запросов</string>
+    <string name="test_timeout">Таймаут ответа домена</string>
+    <string name="test_show_details">Показать детали</string>
+    <string name="test_hide_details">Скрыть детали</string>
+    <string name="test_expand">Развернуть</string>
+    <string name="domain_lists">Списки доменов</string>
+    <string name="domain_list_add_new">Добавить список</string>
+    <string name="domain_list_add_new_summary">Создать пользовательский список доменов для тестирования</string>
+    <string name="domain_list_edit">Редактировать</string>
+    <string name="domain_list_delete">Удалить</string>
+    <string name="domain_list_name_hint">Название списка</string>
+    <string name="domain_list_domains_hint">Домены, каждый с новой строки</string>
+    <string name="domain_list_summary">%d доменов</string>
+    <string name="domain_list_name_empty">Название списка не может быть пустым</string>
+    <string name="domain_list_domains_empty">Список доменов не может быть пустым</string>
+    <string name="domain_list_already_exists">Список с таким названием уже существует</string>
+    <string name="domain_list_added">Список доменов добавлен</string>
+    <string name="domain_list_updated">Список доменов обновлен</string>
+    <string name="domain_list_update_failed">Не удалось обновить список доменов</string>
+    <string name="domain_list_deleted">Список доменов удален</string>
+    <string name="domain_list_delete_failed">Не удалось удалить список доменов</string>
+    <string name="domain_list_reset">Сбросить списки</string>
+    <string name="domain_list_reset_done">Списки сброшены</string>
+    <string name="toast_copied">Скопировано</string>
+    </resources>

@@ -163,7 +163,7 @@ class ConnectFragment : Fragment(),
     }
 
     fun attemptToStartTor() {
-        if (Prefs.transport == Transport.BYEDPI || (Prefs.byedpiEnabled && Prefs.byedpiMode == "VPN")) {
+        if (Prefs.isGlobalVpnEnabled) {
             val intent = VpnService.prepare(requireContext())
             if (intent != null) {
                 startActivityForResult(intent, OrbotActivity.REQUEST_CODE_VPN)
@@ -197,8 +197,18 @@ class ConnectFragment : Fragment(),
             },
             OrbotMenuAction(
                 0,
-                R.drawable.ic_settings_gear,
-                statusString = "ByeDPI: ${if (Prefs.byedpiEnabled) "ВКЛ" else "ВЫКЛ"}\n(режим, аргументы)"
+                R.drawable.ic_vpn_key,
+                statusString = "VPN: ${if (Prefs.isGlobalVpnEnabled) "Вкл" else "Выкл"}\n(${Prefs.vpnProvider})"
+            ) {
+                VpnBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    VpnBottomSheet.TAG
+                )
+            },
+            OrbotMenuAction(
+                0,
+                R.drawable.ic_server,
+                statusString = "ByeDPI: ${if (Prefs.byedpiEnabled) "ВКЛ" else "ВЫКЛ"}\n(прокси)"
             ) {
                 ByeDpiBottomSheet().show(
                     requireActivity().supportFragmentManager,
@@ -207,7 +217,7 @@ class ConnectFragment : Fragment(),
             },
             OrbotMenuAction(
                 0,
-                R.drawable.ic_settings_gear,
+                R.drawable.ic_send_airplane,
                 statusString = "TGWS: ${if (Prefs.tgwsEnabled) "ВКЛ" else "ВЫКЛ"}\n(порт, маппинги)"
             ) {
                 TgwsBottomSheet().show(
@@ -215,13 +225,32 @@ class ConnectFragment : Fragment(),
                     TgwsBottomSheet.TAG
                 )
             },
+            OrbotMenuAction(
+                0,
+                R.drawable.ic_add_plus,
+                statusString = "SocksRehabilitator: ${if (Prefs.rehabilitatorEnabled) "Вкл" else "Выкл"}\n(SOCKS5 через ByeDPI)"
+            ) {
+                RehabilitatorBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    RehabilitatorBottomSheet.TAG
+                )
+            },
+            OrbotMenuAction(
+                0,
+                R.drawable.ic_flight_off,
+                statusString = "TurnProxy: ${if (Prefs.turnProxyEnabled) "Вкл" else "Выкл"}\n(Обход по TURN)"
+            ) {
+                TurnProxyBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    TurnProxyBottomSheet.TAG
+                )
+            },
             OrbotMenuAction(R.string.btn_change_exit, 0) {
                 ExitNodeBottomSheet().show(
                     requireActivity().supportFragmentManager,
                     "ExitNodeBottomSheet"
                 )
-            },
-            OrbotMenuAction(R.string.btn_refresh, R.drawable.ic_refresh) { sendNewnymSignal() }
+            }
         )
         binding.lvConnected.adapter = ConnectMenuActionAdapter(context, listItems)
     }

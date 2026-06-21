@@ -2,11 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="internalOnly">
-
-    <!--
-        Some Chromebooks don't support touch. Although not essential,
-        it's a good idea to explicitly include this declaration.
-    -->
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
@@ -37,11 +32,6 @@
         </intent>
     </queries>
 
-    <!--
-    usesCleartextTraffic is needed for SSDP multicast local router discovery (which is an unencrypted
-    HTTP-style protocol) and for UPnP IGD requests to map ports for Snowflake Proxy, (which are also
-    unencrypted HTTP-style requests).
-     -->
     <application
         android:name=".OrbotApp"
         android:allowBackup="false"
@@ -112,11 +102,7 @@
             </intent-filter>
         </receiver>
 
-        <service
-            android:name=".ui.kindness.SnowflakeProxyService"
-            android:enabled="true"
-            android:foregroundServiceType="remoteMessaging"
-            android:stopWithTask="false" />
+        
 
 
         <service
@@ -173,6 +159,13 @@
             android:process=":tor"
             tools:node="merge"
             tools:replace="android:process" />
+
+
+            
+        <activity
+            android:name=".ui.vpnapps.VpnAppsActivity"
+            android:exported="true"
+            android:label="Приложения для VPN" />
 
         <service
             android:name=".ui.OrbotTileService"
@@ -321,5 +314,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+            <activity
+            android:name=".byedpi.ui.TestActivity"
+            android:label="@string/title_test" />
+        <activity
+            android:name=".byedpi.ui.TestSettingsActivity"
+            android:label="@string/title_settings" />
+
+        <service
+            android:name=".rehabilitator.RehabilitatorService"
+            android:exported="false" />
+
+        <service
+            android:name=".turnproxy.TurnProxyService"
+            android:exported="false" />
+
     </application>
 </manifest>
+
+

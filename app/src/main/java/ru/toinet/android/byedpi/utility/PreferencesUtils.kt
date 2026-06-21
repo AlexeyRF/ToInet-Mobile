@@ -21,3 +21,9 @@ fun SharedPreferences.mode(): Mode =
 
 fun <T : Preference> PreferenceFragmentCompat.findPreferenceNotNull(key: CharSequence): T =
     findPreference(key) ?: throw IllegalStateException("Preference $key not found")
+
+fun SharedPreferences.getIntStringNotNull(key: String, defValue: Int): Int =
+    getString(key, defValue.toString())?.toIntOrNull() ?: defValue
+
+fun SharedPreferences.getLongStringNotNull(key: String, defValue: Long): Long =
+    getString(key, defValue.toString())?.toLongOrNull() ?: defValue

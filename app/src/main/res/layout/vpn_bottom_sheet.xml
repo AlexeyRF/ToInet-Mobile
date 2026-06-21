@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bottom_sheet_rounded"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Настройки VPN"
+            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+            android:layout_marginBottom="16dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swVpnEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Включить VPN туннелирование"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="VPN Провайдер:"
+            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+            android:layout_marginBottom="8dp" />
+
+        <RadioGroup
+            android:id="@+id/rgVpnProvider"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <RadioButton
+                android:id="@+id/rbByedpi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ByeDPI (порт 1080)" />
+
+            <RadioButton
+                android:id="@+id/rbTor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="TOR (порт 5242)" />
+
+            <RadioButton
+                android:id="@+id/rbTgws"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="TGWS (порт 1480)" />
+
+            <RadioButton
+                android:id="@+id/rbRehab"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Socks Rehab (порт 1788)" />
+
+            <RadioButton
+                android:id="@+id/rbTurnProxy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="vk-turn" />
+        </RadioGroup>
+
+        <Button
+            android:id="@+id/btnApps"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Приложения для VPN" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Сохранить" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

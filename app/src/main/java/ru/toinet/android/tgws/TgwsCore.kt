@@ -19,6 +19,7 @@ class TgwsCore(
     private val host: String,
     private val port: Int,
     private val dcMappings: Map<Int, String>,
+    private val useByeDpi: Boolean = false,
     private val onLog: (String) -> Unit
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -237,9 +238,20 @@ class TgwsCore(
         else listOf("kws$dc.$base", "kws$dc-1.$base")
     }
 
+    private fun createSocket(host: String, port: Int): Socket {
+        return if (useByeDpi) {
+            val proxy = java.net.Proxy(java.net.Proxy.Type.SOCKS, java.net.InetSocketAddress("127.0.0.1", 1080))
+            val socket = Socket(proxy)
+            socket.connect(java.net.InetSocketAddress(host, port), 10000)
+            socket
+        } else {
+            Socket(host, port)
+        }
+    }
+
     private suspend fun handlePassthrough(client: Socket, host: String, port: Int) = withContext(Dispatchers.IO) {
         try {
-            val remote = Socket(host, port)
+            val remote = createSocket(host, port)
             client.getOutputStream().write(socks5Reply(0x00))
             bridgeTcp(client, remote)
         } catch (e: Exception) {
@@ -250,7 +262,7 @@ class TgwsCore(
 
     private suspend fun handleTcpFallback(client: Socket, host: String, port: Int, init: ByteArray) = withContext(Dispatchers.IO) {
         try {
-            val remote = Socket(host, port)
+            val remote = createSocket(host, port)
             remote.getOutputStream().write(init)
             bridgeTcp(client, remote)
         } catch (e: Exception) {
@@ -286,7 +298,7 @@ class TgwsCore(
             override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
         }), SecureRandom())
 
-        val socket = Socket(ip, 443)
+        val socket = createSocket(ip, 443)
         val sslSocket = sslContext.socketFactory.createSocket(socket, domain, 443, true) as javax.net.ssl.SSLSocket
         sslSocket.startHandshake()
 

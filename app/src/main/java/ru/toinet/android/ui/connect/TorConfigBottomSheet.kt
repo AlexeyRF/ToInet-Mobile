@@ -54,7 +54,7 @@ class TorConfigBottomSheet : OrbotBottomSheetDialogFragment() {
         return binding.root
     }
 
-    override fun getHeightRatio(): Float = 0.5f
+    override fun getHeightRatio(): Float = -1f
 
     companion object {
         const val TAG = "TorConfigBottomSheet"

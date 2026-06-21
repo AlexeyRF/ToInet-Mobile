@@ -23,12 +23,13 @@ class TgwsService : Service() {
         var isRunning = false
             private set
 
-        fun start(context: Context, host: String, port: Int, dcMappings: Map<Int, String>) {
+        fun start(context: Context, host: String, port: Int, dcMappings: Map<Int, String>, useByeDpi: Boolean = false) {
             val intent = Intent(context, TgwsService::class.java).apply {
                 putExtra("host", host)
                 putExtra("port", port)
                 val mappingList = dcMappings.map { "${it.key}:${it.value}" }.toTypedArray()
                 putExtra("dcMappings", mappingList)
+                putExtra("useByeDpi", useByeDpi)
             }
             context.startService(intent)
         }
@@ -46,6 +47,7 @@ class TgwsService : Service() {
 
         val host = intent?.getStringExtra("host") ?: "127.0.0.1"
         val port = intent?.getIntExtra("port", 1480) ?: 1480
+        val useByeDpi = intent?.getBooleanExtra("useByeDpi", false) ?: false
         val mappingArray = intent?.getStringArrayExtra("dcMappings") ?: emptyArray()
         val dcMappings = mappingArray.associate {
             val parts = it.split(":")
@@ -53,7 +55,7 @@ class TgwsService : Service() {
         }
 
         tgwsCore?.stop()
-        tgwsCore = TgwsCore(host, port, dcMappings) { msg ->
+        tgwsCore = TgwsCore(host, port, dcMappings, useByeDpi) { msg ->
             _logs.tryEmit(msg)
         }
         tgwsCore?.start()

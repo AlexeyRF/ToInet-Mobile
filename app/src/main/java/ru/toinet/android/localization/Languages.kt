@@ -58,25 +58,6 @@ class Languages private constructor(activity: Activity) {
         private val tmpMap: MutableMap<String, String> = TreeMap()
         private lateinit var nameMap: Map<String, String>
 
-        /**
-         * Get the instance of [Languages] to work with, providing the
-         * [Activity] that is will be working as part of, as well as the
-         * `resId` that has the exact string "Use System Default",
-         * i.e. `R.string.use_system_default`.
-         *
-         *
-         * That string resource `resId` is also used to find the supported
-         * translations: if an included translation has a translated string that
-         * matches that `resId`, then that language will be included as a
-         * supported language.
-         *
-         * @param clazz the [Class] of the default `Activity`,
-         * usually the main `Activity` from where the
-         * Settings is launched from.
-         * @param resId the string resource ID to for the string "Use System Default",
-         * e.g. `R.string.use_system_default`
-         * @return
-         */
         fun setup(clazz: Class<*>?, resId: Int) {
             defaultLocale = Locale.getDefault()
             if (Companion.clazz == null) {
@@ -87,12 +68,6 @@ class Languages private constructor(activity: Activity) {
             }
         }
 
-        /**
-         * Get the singleton to work with.
-         *
-         * @param activity the [Activity] this is working as part of
-         * @return
-         */
         operator fun get(activity: Activity): Languages? {
             if (singleton == null) {
                 singleton = Languages(activity)

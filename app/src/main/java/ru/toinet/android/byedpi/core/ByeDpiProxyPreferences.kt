@@ -159,6 +159,84 @@ class ByeDpiProxyUIPreferences(
         byedpiFakeOffset = preferences.getString("byedpi_fake_offset", null)?.toIntOrNull(),
     )
 
+    fun toCmdArgs(): Array<String> {
+        val args = mutableListOf("ciadpi")
+        args.add("-i"); args.add(ip)
+        args.add("-p"); args.add(port.toString())
+        args.add("-c"); args.add(maxConnections.toString())
+        args.add("-b"); args.add(bufferSize.toString())
+        if (customTtl) { args.add("-g"); args.add(defaultTtl.toString()) }
+        if (noDomain) args.add("-N")
+        if (tcpFastOpen) args.add("-F")
+        if (dropSack) args.add("-Y")
+
+        var proto = ""
+        if (desyncHttp) proto += "h"
+        if (desyncHttps) proto += "t"
+        if (desyncUdp) proto += "u"
+        if (proto.isNotEmpty()) {
+            args.add("-K")
+            args.add(proto)
+        }
+
+        var modHttp = ""
+        if (hostMixedCase) modHttp += "h"
+        if (domainMixedCase) modHttp += "d"
+        if (hostRemoveSpaces) modHttp += "r"
+        if (modHttp.isNotEmpty()) {
+            args.add("-M")
+            args.add(modHttp)
+        }
+
+        if (hostsMode != HostsMode.Disable && !hosts.isNullOrBlank()) {
+            args.add(if (hostsMode == HostsMode.Whitelist) "-V" else "-H")
+            args.add(":")
+        }
+
+        val methodArg = when (desyncMethod) {
+            DesyncMethod.None -> ""
+            DesyncMethod.Split -> "-s"
+            DesyncMethod.Disorder -> "-d"
+            DesyncMethod.Fake -> "-f"
+            DesyncMethod.OOB -> "-o"
+            DesyncMethod.DISOOB -> "-q"
+        }
+
+        if (methodArg.isNotEmpty()) {
+            args.add(methodArg)
+            var sarg = ""
+            if (splitAtHost) sarg += "+s"
+            sarg += splitPosition.toString()
+            args.add(sarg)
+        }
+
+        if (tlsRecordSplit) {
+            args.add("-r")
+            var rarg = ""
+            if (tlsRecordSplitAtSni) rarg += "+s"
+            rarg += tlsRecordSplitPosition.toString()
+            args.add(rarg)
+        }
+
+        if (desyncMethod == DesyncMethod.Fake) {
+            args.add("-t"); args.add(fakeTtl.toString())
+            args.add("-n"); args.add(fakeSni)
+            if (fakeOffset > 0) {
+                args.add("-O"); args.add(fakeOffset.toString())
+            }
+        }
+
+        if (desyncMethod == DesyncMethod.OOB || desyncMethod == DesyncMethod.DISOOB) {
+            args.add("-e"); args.add(oobChar.toInt().toChar().toString())
+        }
+
+        if (udpFakeCount > 0) {
+            args.add("-a"); args.add(udpFakeCount.toString())
+        }
+
+        return args.toTypedArray()
+    }
+
     enum class DesyncMethod {
         None,
         Split,
@@ -199,3 +277,4 @@ class ByeDpiProxyUIPreferences(
         }
     }
 }
+

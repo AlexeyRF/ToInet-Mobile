@@ -66,7 +66,7 @@ class ProxyBottomSheet : OrbotBottomSheetDialogFragment() {
         dismiss()
     }
 
-    override fun getHeightRatio(): Float = 0.7f
+    override fun getHeightRatio(): Float = -1f
 
     companion object {
         const val TAG = "ProxyBottomSheet"

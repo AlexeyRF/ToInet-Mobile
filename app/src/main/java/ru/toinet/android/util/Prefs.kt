@@ -198,6 +198,95 @@ object Prefs {
         get() = cr?.getPrefInt(PREF_SMART_CONNECT_TIMEOUT) ?: 30
         set(value) = cr?.putPref(PREF_SMART_CONNECT_TIMEOUT, value) ?: Unit
 
+    var turnProxyEnabled: Boolean
+        get() = cr?.getPrefBoolean("pref_turn_proxy_enabled") ?: false
+        set(value) = cr?.putPref("pref_turn_proxy_enabled", value) ?: Unit
+
+    var turnProxyProvider: String
+        get() = cr?.getPrefString("pref_turn_proxy_provider") ?: "vk"
+        set(value) = cr?.putPref("pref_turn_proxy_provider", value) ?: Unit
+
+    var turnProxyVkLink: String
+        get() = cr?.getPrefString("pref_turn_proxy_vk_link") ?: ""
+        set(value) = cr?.putPref("pref_turn_proxy_vk_link", value) ?: Unit
+
+    var turnProxyServerAddr: String
+        get() = cr?.getPrefString("pref_turn_proxy_server_addr") ?: ""
+        set(value) = cr?.putPref("pref_turn_proxy_server_addr", value) ?: Unit
+
+    var turnProxyLocalPort: Int
+        get() = cr?.getPrefInt("pref_turn_proxy_local_port") ?: 9000
+        set(value) = cr?.putPref("pref_turn_proxy_local_port", value) ?: Unit
+
+    var turnProxyUseUdp: Boolean
+        get() = cr?.getPrefBoolean("pref_turn_proxy_use_udp") ?: true
+        set(value) = cr?.putPref("pref_turn_proxy_use_udp", value) ?: Unit
+
+    var turnProxyObfKey: String
+        get() = cr?.getPrefString("pref_turn_proxy_obf_key") ?: ""
+        set(value) = cr?.putPref("pref_turn_proxy_obf_key", value) ?: Unit
+
+    var turnProxyUseByeDpi: Boolean
+        get() = cr?.getPrefBoolean("pref_turn_proxy_use_byedpi") ?: false
+        set(value) = cr?.putPref("pref_turn_proxy_use_byedpi", value) ?: Unit
+
+    var turnProxyThreads: Int
+        get() = cr?.getPrefInt("pref_turn_proxy_threads") ?: 12
+        set(value) = cr?.putPref("pref_turn_proxy_threads", value) ?: Unit
+
+    var turnProxyStreamsPerCred: Int
+        get() = cr?.getPrefInt("pref_turn_proxy_streams_per_cred") ?: 6
+        set(value) = cr?.putPref("pref_turn_proxy_streams_per_cred", value) ?: Unit
+
+    var turnProxyBond: Boolean
+        get() = cr?.getPrefBoolean("pref_turn_proxy_bond") ?: false
+        set(value) = cr?.putPref("pref_turn_proxy_bond", value) ?: Unit
+
+    var turnProxyManualCaptcha: Boolean
+        get() = cr?.getPrefBoolean("pref_turn_proxy_manual_captcha") ?: false
+        set(value) = cr?.putPref("pref_turn_proxy_manual_captcha", value) ?: Unit
+
+    var turnProxyBrowser: String
+        get() = cr?.getPrefString("pref_turn_proxy_browser") ?: "firefox"
+        set(value) = cr?.putPref("pref_turn_proxy_browser", value) ?: Unit
+
+    var turnProxyDnsServers: String
+        get() = cr?.getPrefString("pref_turn_proxy_dns_servers") ?: ""
+        set(value) = cr?.putPref("pref_turn_proxy_dns_servers", value) ?: Unit
+
+    var turnProxyDnsMode: String
+        get() = cr?.getPrefString("pref_turn_proxy_dns_mode") ?: "auto"
+        set(value) = cr?.putPref("pref_turn_proxy_dns_mode", value) ?: Unit
+
+    var turnProxyMagicTurn: String
+        get() = cr?.getPrefString("pref_turn_proxy_magic_turn") ?: ""
+        set(value) = cr?.putPref("pref_turn_proxy_magic_turn", value) ?: Unit
+
+    var turnProxyClientId: String
+        get() = cr?.getPrefString("pref_turn_proxy_client_id") ?: ""
+        set(value) = cr?.putPref("pref_turn_proxy_client_id", value) ?: Unit
+
+    var turnProxyRawMode: Boolean
+        get() = cr?.getPrefBoolean("pref_turn_proxy_raw_mode") ?: false
+        set(value) = cr?.putPref("pref_turn_proxy_raw_mode", value) ?: Unit
+
+    var turnProxyRawCommand: String
+        get() = cr?.getPrefString("pref_turn_proxy_raw_command") ?: ""
+        set(value) = cr?.putPref("pref_turn_proxy_raw_command", value) ?: Unit
+
+    var turnProxyTcpForward: Boolean
+        get() = cr?.getPrefBoolean("pref_turn_proxy_tcp_forward") ?: false
+        set(value) = cr?.putPref("pref_turn_proxy_tcp_forward", value) ?: Unit
+
+    var turnProxyObfProfile: String
+        get() = cr?.getPrefString("pref_turn_proxy_obf_profile") ?: "rtpopus"
+        set(value) = cr?.putPref("pref_turn_proxy_obf_profile", value) ?: Unit
+
+
+    var tgwsUseByeDpi: Boolean
+        get() = cr?.getPrefBoolean("pref_tgws_use_byedpi") ?: false
+        set(value) = cr?.putPref("pref_tgws_use_byedpi", value) ?: Unit
+
     @JvmStatic
     var proxyEnabled: Boolean
         get() = cr?.getPrefBoolean("pref_proxy_enabled") ?: false
@@ -362,6 +451,22 @@ object Prefs {
         set(value) = cr?.putPref("tor_enabled", value) ?: Unit
 
     @JvmStatic
+    var isGlobalVpnEnabled: Boolean
+        get() = cr?.getPrefBoolean("pref_global_vpn_enabled", false) ?: false
+        set(value) = cr?.putPref("pref_global_vpn_enabled", value) ?: Unit
+
+    var vpnAppsInitialized: Boolean
+        get() = cr?.getPrefBoolean("pref_vpn_apps_initialized", false) ?: false
+        set(value) = cr?.putPref("pref_vpn_apps_initialized", value) ?: Unit
+
+    var vpnExcludedApps: Set<String>
+        get() = cr?.getPrefString("pref_vpn_excluded_apps")?.split(",")?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
+        set(value) = cr?.putPref("pref_vpn_excluded_apps", value.joinToString(",")) ?: Unit
+
+    var vpnProvider: String
+        get() = cr?.getPrefString("pref_vpn_provider") ?: "byedpi"
+        set(value) = cr?.putPref("pref_vpn_provider", value) ?: Unit
+
     var byedpiEnabled: Boolean
         get() = cr?.getPrefBoolean("byedpi_enabled", false) ?: false
         set(value) = cr?.putPref("byedpi_enabled", value) ?: Unit
@@ -414,5 +519,45 @@ object Prefs {
             val s = value.map { "${it.key}:${it.value}" }.joinToString("\n")
             cr?.putPref("tgws_dc_mappings", s)
         }
+
+    @JvmStatic
+    var rehabilitatorEnabled: Boolean
+        get() = cr?.getPrefBoolean("rehabilitator_enabled", false) ?: false
+        set(value) = cr?.putPref("rehabilitator_enabled", value) ?: Unit
+
+    @JvmStatic
+    var rehabilitatorHost: String
+        get() = cr?.getPrefString("rehabilitator_host") ?: "127.0.0.1"
+        set(value) = cr?.putPref("rehabilitator_host", value) ?: Unit
+
+    @JvmStatic
+    var rehabilitatorPort: Int
+        get() = cr?.getPrefInt("rehabilitator_port") ?: 1080
+        set(value) = cr?.putPref("rehabilitator_port", value) ?: Unit
+
+    @JvmStatic
+    var rehabilitatorUpstreamHost: String
+        get() = cr?.getPrefString("rehabilitator_upstream_host") ?: ""
+        set(value) = cr?.putPref("rehabilitator_upstream_host", value) ?: Unit
+
+    @JvmStatic
+    var rehabilitatorUpstreamPort: Int
+        get() = cr?.getPrefInt("rehabilitator_upstream_port") ?: 1080
+        set(value) = cr?.putPref("rehabilitator_upstream_port", value) ?: Unit
+
+    @JvmStatic
+    var rehabilitatorUsername: String
+        get() = cr?.getPrefString("rehabilitator_username") ?: ""
+        set(value) = cr?.putPref("rehabilitator_username", value) ?: Unit
+
+    @JvmStatic
+    var rehabilitatorPassword: String
+        get() = cr?.getPrefString("rehabilitator_password") ?: ""
+        set(value) = cr?.putPref("rehabilitator_password", value) ?: Unit
+
+    @JvmStatic
+    var rehabilitatorArgs: String
+        get() = cr?.getPrefString("rehabilitator_args") ?: "--disorder 1"
+        set(value) = cr?.putPref("rehabilitator_args", value) ?: Unit
 
 }
