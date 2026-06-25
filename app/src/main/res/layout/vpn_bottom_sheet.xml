@@ -67,6 +67,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="vk-turn" />
+                
+            <RadioButton
+                android:id="@+id/rbFakeVpn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="FakeVPN (Напрямую)" />
         </RadioGroup>
 
         <Button

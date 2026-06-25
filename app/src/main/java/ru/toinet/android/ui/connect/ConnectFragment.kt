@@ -163,10 +163,24 @@ class ConnectFragment : Fragment(),
     }
 
     fun attemptToStartTor() {
+        val provider = Prefs.vpnProvider
+        val isProviderActive = when(provider) {
+            "byedpi" -> Prefs.byedpiEnabled
+            "tor" -> Prefs.torEnabled
+            "tgws" -> Prefs.tgwsEnabled
+            "rehab" -> Prefs.rehabilitatorEnabled
+            "turnproxy" -> Prefs.turnProxyEnabled
+            "fakevpn" -> true
+            else -> false
+        }
+        if (Prefs.isGlobalVpnEnabled && !isProviderActive) {
+            Toast.makeText(context, "Внимание: выбранный провайдер VPN ($provider) не активен!", Toast.LENGTH_LONG).show()
+        }
+
         if (Prefs.isGlobalVpnEnabled) {
             val intent = VpnService.prepare(requireContext())
             if (intent != null) {
-                startActivityForResult(intent, OrbotActivity.REQUEST_CODE_VPN)
+                requireActivity().startActivityForResult(intent, OrbotActivity.REQUEST_CODE_VPN)
                 return
             }
         }

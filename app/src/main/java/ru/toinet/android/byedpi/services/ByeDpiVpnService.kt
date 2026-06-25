@@ -12,7 +12,7 @@ import ru.toinet.android.R
 import ru.toinet.android.OrbotActivity
 import ru.toinet.android.byedpi.core.ByeDpiProxy
 import ru.toinet.android.byedpi.core.ByeDpiProxyPreferences
-import ru.toinet.android.byedpi.core.TProxyService
+
 import ru.toinet.android.byedpi.data.*
 import ru.toinet.android.byedpi.utility.*
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +25,7 @@ import java.io.File
 
 class ByeDpiVpnService : LifecycleVpnService() {
     private var tunFd: ParcelFileDescriptor? = null
+    private var fakeVpnServer: ru.toinet.android.fakevpn.DirectSocks5Server? = null
     private val mutex = Mutex()
     private var stopping: Boolean = false
 
@@ -155,36 +156,74 @@ class ByeDpiVpnService : LifecycleVpnService() {
             "tgws" -> ru.toinet.android.util.Prefs.tgwsPort
             "rehab" -> 1788
             "turnproxy" -> ru.toinet.android.util.Prefs.turnProxyLocalPort
+            "fakevpn" -> 1790
             else -> getByeDpiPreferences().port
         }
-        val dns = sharedPreferences.getStringNotNull("dns_ip", "1.1.1.1")
+        
+        if (provider == "fakevpn") {
+            fakeVpnServer = ru.toinet.android.fakevpn.DirectSocks5Server(
+                java.net.InetSocketAddress("127.0.0.1", 1790)
+            )
+            fakeVpnServer?.start(lifecycleScope)
+        }
+        
+        val dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
         val ipv6 = sharedPreferences.getBoolean("ipv6_enable", false)
 
-        val tun2socksConfig = """
-        | misc:
-        |   task-stack-size: 81920
-        | socks5:
-        |   mtu: 8500
-        |   address: 127.0.0.1
-        |   port: $port
-        |   udp: udp
-        """.trimMargin("| ")
-
-        val configPath = try {
-            File.createTempFile("config", "tmp", cacheDir).apply {
-                writeText(tun2socksConfig)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create config file", e)
-            throw e
-        }
-
-        val fd = createBuilder(dns, ipv6).establish()
+        val fd = createBuilder("8.8.8.8", ipv6).establish()
             ?: throw IllegalStateException("VPN connection failed")
 
         this.tunFd = fd
 
-        TProxyService.TProxyStartService(configPath.absolutePath, fd.fd)
+        ru.toinet.android.byedpi.utility.VpnUtility.makePdnsdConf(this, dns, 53)
+
+        val libDir = applicationInfo.nativeLibraryDir
+        val dir = filesDir.absolutePath
+
+        ru.toinet.android.byedpi.utility.VpnUtility.exec(arrayOf(
+            "$libDir/libpdnsd.so",
+            "-c",
+            "$dir/pdnsd.conf"
+        ))
+
+        val command = mutableListOf(
+            "$libDir/libtun2socks.so",
+            "--netif-ipaddr", "26.26.26.2",
+            "--netif-netmask", "255.255.255.0",
+            "--socks-server-addr", "127.0.0.1:$port",
+            "--tunfd", fd.fd.toString(),
+            "--tunmtu", "1500",
+            "--loglevel", "3",
+            "--pid", "$dir/tun2socks.pid",
+            "--dnsgw", "26.26.26.1:8091"
+        )
+        
+        if (ipv6) {
+            command.add("--netif-ip6addr")
+            command.add("fdfe:dcba:9876::2")
+        }
+
+        if (ru.toinet.android.byedpi.utility.VpnUtility.exec(command.toTypedArray()) != 0) {
+            stopTun2Socks()
+            throw IllegalStateException("Failed to start tun2socks")
+        }
+
+        var i = 0
+        var success = false
+        while (i < 5) {
+            if (ru.toinet.android.byedpi.utility.VpnSystem.sendfd(fd.fd) != -1) {
+                success = true
+                break
+            }
+            i++
+            try {
+                Thread.sleep(1000L * i)
+            } catch (e: Exception) {}
+        }
+        if (!success) {
+            stopTun2Socks()
+            throw IllegalStateException("Failed to send fd")
+        }
 
         Log.i(TAG, "Tun2Socks started")
     }
@@ -192,16 +231,15 @@ class ByeDpiVpnService : LifecycleVpnService() {
     private fun stopTun2Socks() {
         Log.i(TAG, "Stopping tun2socks")
 
-        TProxyService.TProxyStopService()
-
-        try {
-            File(cacheDir, "config.tmp").delete()
-        } catch (e: SecurityException) {
-            Log.e(TAG, "Failed to delete config file", e)
-        }
+        val dir = filesDir.absolutePath
+        ru.toinet.android.byedpi.utility.VpnUtility.killPidFile("$dir/tun2socks.pid")
+        ru.toinet.android.byedpi.utility.VpnUtility.killPidFile("$dir/pdnsd.pid")
 
         tunFd?.close() ?: Log.w(TAG, "VPN not running")
         tunFd = null
+
+        fakeVpnServer?.stop()
+        fakeVpnServer = null
 
         Log.i(TAG, "Tun2socks stopped")
     }
@@ -270,11 +308,11 @@ class ByeDpiVpnService : LifecycleVpnService() {
             )
         )
 
-        builder.addAddress("10.10.10.10", 32)
+        builder.addAddress("26.26.26.1", 24)
             .addRoute("0.0.0.0", 0)
 
         if (ipv6) {
-            builder.addAddress("fd00::1", 128)
+            builder.addAddress("fdfe:dcba:9876::1", 126)
                 .addRoute("::", 0)
         }
 

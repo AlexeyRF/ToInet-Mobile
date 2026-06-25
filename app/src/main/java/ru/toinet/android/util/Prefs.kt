@@ -397,6 +397,10 @@ object Prefs {
     val torTransPort: String?
         get() = cr?.getPrefString(OrbotConstants.PREF_TRANSPORT)
 
+    var torIgnoreEmptyUrl: Boolean
+        get() = cr?.getPrefBoolean("pref_tor_ignore_empty_url", false) ?: false
+        set(value) = cr?.putPref("pref_tor_ignore_empty_url", value) ?: Unit
+
     val torDnsPort: String?
         get() = cr?.getPrefString(OrbotConstants.PREF_DNSPORT)
 

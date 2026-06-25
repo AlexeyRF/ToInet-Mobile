@@ -36,7 +36,7 @@
                     android:paddingStart="0dp"
                     android:paddingEnd="16dp"
                     android:text="@string/menu_exit"
-                    android:textColor="@android:color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:textStyle="bold" />
             </androidx.appcompat.widget.Toolbar>
 

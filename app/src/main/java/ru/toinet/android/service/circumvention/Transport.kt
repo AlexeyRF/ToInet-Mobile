@@ -119,6 +119,19 @@ enum class Transport(val id: String) {
             "dnstt 192.0.2.6:80 A998F319ADB60EE344540EC4B21524CC484F96BE doh=https://dns.google/dns-query pubkey=241169008830694749fe96bb070c4855c5bb5b9c47b3833ed7d88521ba30a43f domain=t.ruhnama.net",
             "dnstt 192.0.3.7:80 80EEFA4F4875ED2B7B5A86DF2D7588AD32E29F15 doh=https://dns.google/dns-query pubkey=a2fb71077eeaa54a02cda7a90be306af5d299ab21822a8b277d4eacbc9168631 domain=t2.bypasscensorship.org",
         )
+
+        private val HARDCODED_OBFS4 = listOf(
+            "obfs4 84.22.108.82:9202 38D749F6FA80488329EDB1233B8FF8D229A1C57A cert=HX55aw36yJCnQu+1hSAg4pc7VhzE/6pgv9XlMf1AuCRPg8UlanGvfQiILqiGpLoXW4RiVA iat-mode=0",
+            "obfs4 109.235.37.47:8443 CC3D4004181ACADE02AA19229777153F8C685684 cert=hbfGbCsbMFuZbTllS4H3JkOaXBpNNlA2Z32+hgy7JZum9DRAPAdZFZxIikof5qhu6SdyYw iat-mode=0",
+            "obfs4 57.128.45.196:18384 E30D5552BEE79C5E8C61A943E9B3D2949F227C41 cert=boaTbcdp+rFHgUvweiAg60UUUpLZWecGl0uXRU358L/a7ZMrAnS/BodUKM3eyfWC+UVXTg iat-mode=0",
+            "obfs4 51.89.228.250:21668 BA8BD67D8898CF378D4F73821DEB5657F4BB98DF cert=bEpLLgOwJ9fOJbeHb5r+ronUF2ck5nRd0Jl3zuy7rLoUp732QK2p/CUHjTAfBPCGfcVtSA iat-mode=0"
+        )
+
+        private val HARDCODED_WEBTUNNEL = listOf(
+            "webtunnel [2001:db8:b1d5:4998:8150:f75b:988f:1f48]:443 216C8BB1C44FC2BFF7AF823B55AC38F113079B93 url=https://cdn-38.triplebit.dev/Bai8aXeiPhar5gai ver=0.0.2",
+            "webtunnel [2001:db8:12ff:2d55:9130:36a7:c49b:d1f4]:443 933C998EC827D1C17CC93D1292BBC41735867CF8 url=https://x7t2qctb.xoomlia.com/qzxrtfmu/ ver=0.0.3",
+            "webtunnel [2001:db8:9830:b7ec:bb37:f12:ec5f:aace]:443 67DFB4E30EF8CC5EFD87CC066D919D12DEDB5170 url= ver=0.0.4"
+        )
     }
 
     val transportNames: Set<String>
@@ -223,8 +236,8 @@ enum class Transport(val id: String) {
             }
 
             OBFS4 -> {
-                BuiltInBridges.getInstance(context)?.obfs4?.forEach {
-                    result.add("Bridge ${it.raw}")
+                HARDCODED_OBFS4.forEach {
+                    result.add("Bridge $it")
                 }
             }
 
@@ -257,8 +270,11 @@ enum class Transport(val id: String) {
             }
 
             WEBTUNNEL -> {
-                BuiltInBridges.getInstance(context)?.webtunnel?.forEach {
-                    result.add("Bridge ${it.raw}")
+                HARDCODED_WEBTUNNEL.forEach {
+                    val hasEmptyUrl = it.contains("url= ") || it.endsWith("url=")
+                    if (!Prefs.torIgnoreEmptyUrl || !hasEmptyUrl) {
+                        result.add("Bridge $it")
+                    }
                 }
             }
 

@@ -123,6 +123,9 @@ configure<ApplicationExtension> {
         resources {
             excludes += listOf("META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version")
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     lint {
@@ -167,6 +170,18 @@ configure<ApplicationExtension> {
                     "$resolvedNdkDir\\ndk-build.cmd"
                 } else {
                     "$resolvedNdkDir/ndk-build"
+                }
+            }
+        }
+        doLast {
+            val jniLibsDir = file("src/main/jniLibs")
+            listOf("x86", "armeabi-v7a", "x86_64", "arm64-v8a").forEach { abi ->
+                val abiDir = File(jniLibsDir, abi)
+                listOf("pdnsd", "tun2socks").forEach { binName ->
+                    val binFile = File(abiDir, binName)
+                    if (binFile.exists()) {
+                        binFile.renameTo(File(abiDir, "lib${binName}.so"))
+                    }
                 }
             }
         }

@@ -48,13 +48,51 @@
                 android:text="Включить Tor"
                 android:layout_marginBottom="16dp" />
 
+            <RadioGroup
+                android:id="@+id/rgTorMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <RadioButton
+                    android:id="@+id/rbDirect"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Прямое подключение (Без мостов)" />
+
+                <RadioButton
+                    android:id="@+id/rbObfs4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Встроенные мосты (obfs4)" />
+
+                <RadioButton
+                    android:id="@+id/rbWebtunnel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Встроенные мосты (webtunnel)" />
+
+                <RadioButton
+                    android:id="@+id/rbCustom"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Свои мосты" />
+            </RadioGroup>
+
+            <CheckBox
+                android:id="@+id/cbIgnoreEmptyUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Игнорировать мосты с пустым URL"
+                android:layout_marginBottom="12dp" />
+
             <Button
                 android:id="@+id/btnBridges"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:text="Ввод мостов"
+                android:text="Ввод своих мостов"
                 android:textAlignment="viewStart" />
 
             <Button

@@ -31,6 +31,7 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
             "tgws" -> binding.rbTgws.isChecked = true
             "rehab" -> binding.rbRehab.isChecked = true
             "turnproxy" -> binding.rbTurnProxy.isChecked = true
+            "fakevpn" -> binding.rbFakeVpn.isChecked = true
             else -> binding.rbByedpi.isChecked = true
         }
 
@@ -63,6 +64,7 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
                 binding.rbTgws.id -> "tgws"
                 binding.rbRehab.id -> "rehab"
                 binding.rbTurnProxy.id -> "turnproxy"
+                binding.rbFakeVpn.id -> "fakevpn"
                 else -> "byedpi"
             }
             

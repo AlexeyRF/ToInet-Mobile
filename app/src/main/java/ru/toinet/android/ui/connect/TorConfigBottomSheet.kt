@@ -23,14 +23,52 @@ class TorConfigBottomSheet : OrbotBottomSheetDialogFragment() {
         binding = TorConfigBottomSheetBinding.inflate(inflater, container, false)
 
         binding.swTorEnabled.isChecked = Prefs.torEnabled
-        binding.btnBridges.isEnabled = Prefs.torEnabled
+        val isCustom = Prefs.transport == ru.toinet.android.service.circumvention.Transport.CUSTOM
+        binding.btnBridges.isEnabled = Prefs.torEnabled && isCustom
         binding.btnProxy.isEnabled = Prefs.torEnabled
 
         binding.swTorEnabled.setOnCheckedChangeListener { _, isChecked ->
             Prefs.torEnabled = isChecked
-            binding.btnBridges.isEnabled = isChecked
+            val isCustomChecked = binding.rbCustom.isChecked
+            binding.btnBridges.isEnabled = isChecked && isCustomChecked
             binding.btnProxy.isEnabled = isChecked
+            for (i in 0 until binding.rgTorMode.childCount) {
+                binding.rgTorMode.getChildAt(i).isEnabled = isChecked
+            }
+            binding.cbIgnoreEmptyUrl.isEnabled = isChecked
             viewModel.triggerRefreshMenuList()
+        }
+
+        val transport = Prefs.transport
+        when (transport) {
+            ru.toinet.android.service.circumvention.Transport.NONE -> binding.rbDirect.isChecked = true
+            ru.toinet.android.service.circumvention.Transport.OBFS4 -> binding.rbObfs4.isChecked = true
+            ru.toinet.android.service.circumvention.Transport.WEBTUNNEL -> binding.rbWebtunnel.isChecked = true
+            ru.toinet.android.service.circumvention.Transport.CUSTOM -> binding.rbCustom.isChecked = true
+            else -> binding.rbDirect.isChecked = true
+        }
+
+        binding.cbIgnoreEmptyUrl.isChecked = Prefs.torIgnoreEmptyUrl
+
+        for (i in 0 until binding.rgTorMode.childCount) {
+            binding.rgTorMode.getChildAt(i).isEnabled = Prefs.torEnabled
+        }
+        binding.cbIgnoreEmptyUrl.isEnabled = Prefs.torEnabled
+
+        binding.rgTorMode.setOnCheckedChangeListener { _, checkedId ->
+            Prefs.transport = when (checkedId) {
+                binding.rbDirect.id -> ru.toinet.android.service.circumvention.Transport.NONE
+                binding.rbObfs4.id -> ru.toinet.android.service.circumvention.Transport.OBFS4
+                binding.rbWebtunnel.id -> ru.toinet.android.service.circumvention.Transport.WEBTUNNEL
+                binding.rbCustom.id -> ru.toinet.android.service.circumvention.Transport.CUSTOM
+                else -> ru.toinet.android.service.circumvention.Transport.NONE
+            }
+            val isCustomMode = checkedId == binding.rbCustom.id
+            binding.btnBridges.isEnabled = Prefs.torEnabled && isCustomMode
+        }
+
+        binding.cbIgnoreEmptyUrl.setOnCheckedChangeListener { _, isChecked ->
+            Prefs.torIgnoreEmptyUrl = isChecked
         }
 
         binding.btnBridges.setOnClickListener {

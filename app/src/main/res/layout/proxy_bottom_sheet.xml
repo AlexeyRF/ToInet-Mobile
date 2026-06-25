@@ -37,6 +37,15 @@
             app:layout_constraintTop_toBottomOf="@id/tvProxyHeader"
             style="@style/BottomSheetTextView" />
 
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swUseByeDpiAsUpstream"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/pref_byedpi_use_as_upstream_title"
+            app:layout_constraintTop_toBottomOf="@id/swProxyEnabled"
+            style="@style/BottomSheetTextView" />
+
         <TextView
             android:id="@+id/tvProxyTypeLabel"
             android:layout_width="wrap_content"
@@ -44,7 +53,7 @@
             android:layout_marginTop="15dp"
             android:text="@string/socks_proxy_type"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/swProxyEnabled"
+            app:layout_constraintTop_toBottomOf="@id/swUseByeDpiAsUpstream"
             style="@style/BottomSheetTextView" />
 
         <Spinner
@@ -64,9 +73,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="15dp"
             android:hint="@string/socks_proxy_host"
-            app:hintTextColor="@android:color/white"
+            app:hintTextColor="?attr/colorOnSurface"
             android:textColorHint="@android:color/darker_gray"
-            app:boxStrokeColor="@android:color/white"
+            app:boxStrokeColor="?attr/colorOnSurface"
             app:layout_constraintTop_toBottomOf="@id/spProxyType">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -84,9 +93,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:hint="@string/socks_proxy_port"
-            app:hintTextColor="@android:color/white"
+            app:hintTextColor="?attr/colorOnSurface"
             android:textColorHint="@android:color/darker_gray"
-            app:boxStrokeColor="@android:color/white"
+            app:boxStrokeColor="?attr/colorOnSurface"
             app:layout_constraintTop_toBottomOf="@id/tilProxyHost">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -104,9 +113,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:hint="@string/socks_proxy_username"
-            app:hintTextColor="@android:color/white"
+            app:hintTextColor="?attr/colorOnSurface"
             android:textColorHint="@android:color/darker_gray"
-            app:boxStrokeColor="@android:color/white"
+            app:boxStrokeColor="?attr/colorOnSurface"
             app:layout_constraintTop_toBottomOf="@id/tilProxyPort">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -124,11 +133,11 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:hint="@string/socks_proxy_password"
-            app:hintTextColor="@android:color/white"
+            app:hintTextColor="?attr/colorOnSurface"
             android:textColorHint="@android:color/darker_gray"
-            app:boxStrokeColor="@android:color/white"
+            app:boxStrokeColor="?attr/colorOnSurface"
             app:endIconMode="password_toggle"
-            app:endIconTint="@android:color/white"
+            app:endIconTint="?attr/colorOnSurface"
             app:layout_constraintTop_toBottomOf="@id/tilProxyUser">
 
             <com.google.android.material.textfield.TextInputEditText

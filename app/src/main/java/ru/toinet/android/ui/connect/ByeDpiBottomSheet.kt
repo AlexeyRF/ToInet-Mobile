@@ -22,13 +22,11 @@ class ByeDpiBottomSheet : OrbotBottomSheetDialogFragment() {
         binding = ByedpiBottomSheetBinding.inflate(inflater, container, false)
 
         binding.swEnabled.isChecked = Prefs.byedpiEnabled
-        binding.swUseAsUpstream.isChecked = Prefs.byedpiUseAsUpstream
         binding.etArgs.setText(Prefs.byedpiArgs)
         configureMultilineEditTextScrollEvent(binding.etArgs)
 
         binding.btnSave.setOnClickListener {
             Prefs.byedpiEnabled = binding.swEnabled.isChecked
-            Prefs.byedpiUseAsUpstream = binding.swUseAsUpstream.isChecked
             Prefs.byedpiArgs = binding.etArgs.text.toString().trim()
             Prefs.byedpiEnableCmdSettings = true
             viewModel.triggerRefreshMenuList()

@@ -18,7 +18,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:textAppearance="?attr/textAppearanceBody1"
-        android:textColor="@android:color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="16sp" />
 
     <ImageView
@@ -28,5 +28,5 @@
         android:src="@drawable/ic_green_check"
         android:visibility="gone"
         android:contentDescription="@null"
-        app:tint="@android:color/white" />
+        app:tint="?attr/colorOnSurface" />
 </LinearLayout>

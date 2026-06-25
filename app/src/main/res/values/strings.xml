@@ -326,7 +326,7 @@
 
     <string name="pref_byedpi_enabled_title">Включить ByeDPI</string>
     <string name="pref_byedpi_enabled_summary">Запускать ByeDPI параллельно с Tor</string>
-    <string name="pref_byedpi_use_as_upstream_title">Использовать как прокси для Tor</string>
+    <string name="pref_byedpi_use_as_upstream_title">Использовать Byedpi как прокси для Tor</string>
     <string name="pref_byedpi_use_as_upstream_summary">Tor будет подключаться через ByeDPI</string>
     <string name="pref_byedpi_use_args_title">Использовать аргументы</string>
     <string name="pref_byedpi_use_args_summary">Вручную указать параметры командной строки</string>
