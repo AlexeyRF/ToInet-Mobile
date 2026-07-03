@@ -73,7 +73,53 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="FakeVPN (Напрямую)" />
+                
+            <RadioButton
+                android:id="@+id/rbOperaProxy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Opera Proxy" />
+                
+            <RadioButton
+                android:id="@+id/rbCustom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Свой SOCKS5 провайдер" />
         </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/llCustomSocks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+            
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="SOCKS IP"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etCustomIp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri" />
+            </com.google.android.material.textfield.TextInputLayout>
+            
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="SOCKS Port"
+                android:layout_marginTop="8dp"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etCustomPort"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
 
         <Button
             android:id="@+id/btnApps"

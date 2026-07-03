@@ -51,7 +51,11 @@ class ByeDpiVpnService : LifecycleVpnService() {
         val action = intent?.action
 
         if (action == START_ACTION || (action == "ACTIVE" && status == ServiceStatus.Connected)) {
-            startForeground()
+            try {
+                startForeground()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start foreground in onStartCommand", e)
+            }
         }
 
         return when (action) {
@@ -150,14 +154,16 @@ class ByeDpiVpnService : LifecycleVpnService() {
 
         val sharedPreferences = getPreferences()
         val provider = ru.toinet.android.util.Prefs.vpnProvider
-        val port = when (provider) {
-            "byedpi" -> getByeDpiPreferences().port
-            "tor" -> 5242
-            "tgws" -> ru.toinet.android.util.Prefs.tgwsPort
-            "rehab" -> 1788
-            "turnproxy" -> ru.toinet.android.util.Prefs.turnProxyLocalPort
-            "fakevpn" -> 1790
-            else -> getByeDpiPreferences().port
+        val socksAddr = when (provider) {
+            "byedpi" -> "127.0.0.1:${getByeDpiPreferences().port}"
+            "tor" -> "127.0.0.1:5242"
+            "tgws" -> "127.0.0.1:${ru.toinet.android.util.Prefs.tgwsPort}"
+            "rehab" -> "127.0.0.1:1788"
+            "turnproxy" -> "127.0.0.1:${ru.toinet.android.util.Prefs.turnProxyLocalPort}"
+            "fakevpn" -> "127.0.0.1:1790"
+            "operaproxy" -> ru.toinet.android.util.Prefs.operaProxyBindAddress
+            "custom" -> "${ru.toinet.android.util.Prefs.customSocksIp}:${ru.toinet.android.util.Prefs.customSocksPort}"
+            else -> "127.0.0.1:${getByeDpiPreferences().port}"
         }
         
         if (provider == "fakevpn") {
@@ -190,7 +196,7 @@ class ByeDpiVpnService : LifecycleVpnService() {
             "$libDir/libtun2socks.so",
             "--netif-ipaddr", "26.26.26.2",
             "--netif-netmask", "255.255.255.0",
-            "--socks-server-addr", "127.0.0.1:$port",
+            "--socks-server-addr", socksAddr,
             "--tunfd", fd.fd.toString(),
             "--tunmtu", "1500",
             "--loglevel", "3",

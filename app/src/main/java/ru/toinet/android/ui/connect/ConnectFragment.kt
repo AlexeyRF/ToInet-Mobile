@@ -54,21 +54,22 @@ class ConnectFragment : Fragment(),
             viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     if (state == ConnectUiState.NoInternet)
-                        binding.switchConnect.visibility = View.GONE
-                    else binding.switchConnect.visibility = View.VISIBLE
+                        binding.btnConnectCard.visibility = View.GONE
+                    else binding.btnConnectCard.visibility = View.VISIBLE
                     when (state) {
                         is ConnectUiState.NoInternet -> doLayoutNoInternet()
                         is ConnectUiState.Off -> doLayoutOff()
                         is ConnectUiState.Starting -> {
-                            binding.switchConnect.isChecked = true
                             doLayoutStarting(requireContext())
-                            state.bootstrapPercent?.let {
-                                binding.progressBar.progress = it
+                            if (state.bootstrapPercent != null) {
+                                binding.progressBar.isIndeterminate = false
+                                binding.progressBar.progress = state.bootstrapPercent
+                            } else {
+                                binding.progressBar.isIndeterminate = true
                             }
                         }
 
                         is ConnectUiState.On -> {
-                            binding.switchConnect.isChecked = true
                             lastState = TorService.ACTION_START
                             doLayoutOn(requireContext())
                         }
@@ -93,19 +94,16 @@ class ConnectFragment : Fragment(),
             }
         }
 
-        binding.switchConnect.setOnClickListener {
+        binding.btnConnectCard.setOnClickListener {
             it.isEnabled = false
-            it.alpha = 0.38f
-            binding.switchConnect.text = context?.getString(R.string.loading)
+            it.alpha = 0.5f
             it.postDelayed({
                 it.isEnabled = true
                 it.alpha = 1f
-                binding.switchConnect.text = context?.getString(R.string.connect)
             }, DEFAULT_THROTTLE_INTERVAL)
-        }
-        binding.switchConnect.setOnCheckedChangeListener { _, value ->
-            if (value) {
-                // display msg if optional outbound proxy config is invalid
+            
+            val isChecked = lastState == TorService.ACTION_START
+            if (!isChecked) {
                 if (Prefs.outboundProxy.second != null) {
                     Toast.makeText(
                         activity,
@@ -118,6 +116,15 @@ class ConnectFragment : Fragment(),
                 stopTorAndVpn()
             }
         }
+        
+        binding.btnProvider.setOnClickListener {
+            VpnBottomSheet().show(requireActivity().supportFragmentManager, VpnBottomSheet.TAG)
+        }
+        
+        binding.btnSettings.setOnClickListener {
+            SettingsBottomSheet().show(childFragmentManager, SettingsBottomSheet.TAG)
+        }
+        
         refreshMenuList(requireContext())
     }
 
@@ -171,6 +178,8 @@ class ConnectFragment : Fragment(),
             "rehab" -> Prefs.rehabilitatorEnabled
             "turnproxy" -> Prefs.turnProxyEnabled
             "fakevpn" -> true
+            "operaproxy" -> Prefs.operaProxyEnabled
+            "custom" -> true
             else -> false
         }
         if (Prefs.isGlobalVpnEnabled && !isProviderActive) {
@@ -198,113 +207,43 @@ class ConnectFragment : Fragment(),
     }
 
     fun refreshMenuList(context: Context) {
-        val listItems = arrayListOf(
-            OrbotMenuAction(
-                0, // No specific string resource, we'll use statusString
-                R.drawable.ic_settings_gear,
-                statusString = if (Prefs.torEnabled) "Конфигурация Tor (мосты и прокси)" else "Конфигурация Tor: ВЫКЛ"
-            ) {
-                TorConfigBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    TorConfigBottomSheet.TAG
-                )
-            },
-            OrbotMenuAction(
-                0,
-                R.drawable.ic_vpn_key,
-                statusString = "VPN: ${if (Prefs.isGlobalVpnEnabled) "Вкл" else "Выкл"}\n(${Prefs.vpnProvider})"
-            ) {
-                VpnBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    VpnBottomSheet.TAG
-                )
-            },
-            OrbotMenuAction(
-                0,
-                R.drawable.ic_server,
-                statusString = "ByeDPI: ${if (Prefs.byedpiEnabled) "ВКЛ" else "ВЫКЛ"}\n(прокси)"
-            ) {
-                ByeDpiBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    ByeDpiBottomSheet.TAG
-                )
-            },
-            OrbotMenuAction(
-                0,
-                R.drawable.ic_send_airplane,
-                statusString = "TGWS: ${if (Prefs.tgwsEnabled) "ВКЛ" else "ВЫКЛ"}\n(порт, маппинги)"
-            ) {
-                TgwsBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    TgwsBottomSheet.TAG
-                )
-            },
-            OrbotMenuAction(
-                0,
-                R.drawable.ic_add_plus,
-                statusString = "SocksRehabilitator: ${if (Prefs.rehabilitatorEnabled) "Вкл" else "Выкл"}\n(SOCKS5 через ByeDPI)"
-            ) {
-                RehabilitatorBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    RehabilitatorBottomSheet.TAG
-                )
-            },
-            OrbotMenuAction(
-                0,
-                R.drawable.ic_flight_off,
-                statusString = "TurnProxy: ${if (Prefs.turnProxyEnabled) "Вкл" else "Выкл"}\n(Обход по TURN)"
-            ) {
-                TurnProxyBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    TurnProxyBottomSheet.TAG
-                )
-            },
-            OrbotMenuAction(R.string.btn_change_exit, 0) {
-                ExitNodeBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    "ExitNodeBottomSheet"
-                )
-            }
-        )
-        binding.lvConnected.adapter = ConnectMenuActionAdapter(context, listItems)
+        // Menu list moved to SettingsBottomSheet
     }
 
 
     private fun doLayoutNoInternet() {
-
         stopAnimations()
-
         binding.progressBar.visibility = View.INVISIBLE
         binding.tvTitle.text = getString(R.string.no_internet_title)
-
-        binding.lvConnected.visibility = View.VISIBLE
+        
+        binding.btnConnectCard.setCardBackgroundColor(android.graphics.Color.LTGRAY)
+        binding.ivPowerIcon.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.DKGRAY)
     }
 
     fun doLayoutOn(context: Context) {
         if (Prefs.smartConnect) {
             Prefs.smartConnect = false
-            refreshMenuList(context)
         }
         binding.progressBar.visibility = View.INVISIBLE
         binding.tvTitle.text = context.getString(R.string.connected_title)
-        binding.lvConnected.visibility = View.VISIBLE
-
-        refreshMenuList(context)
-
+        
+        binding.btnConnectCard.setCardBackgroundColor(android.graphics.Color.parseColor("#4CAF50"))
+        binding.ivPowerIcon.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
     }
 
     fun doLayoutOff() {
-        refreshMenuList(requireContext())
         stopAnimations()
         binding.progressBar.visibility = View.INVISIBLE
-        binding.lvConnected.visibility = View.VISIBLE
         binding.tvTitle.text = getString(R.string.secure_your_connection_title)
+        
+        binding.btnConnectCard.setCardBackgroundColor(android.graphics.Color.parseColor("#424242"))
+        binding.ivPowerIcon.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
     }
 
     fun doLayoutStarting(context: Context) {
         with(binding.progressBar) {
-            progress = 0
             visibility = View.VISIBLE
+            // LinearProgressIndicator doesn't need progress reset if it's indeterminate
         }
 
         val animHover = AnimationUtils.loadAnimation(context, R.anim.hover)

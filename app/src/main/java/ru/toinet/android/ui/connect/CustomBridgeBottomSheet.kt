@@ -11,10 +11,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
-import io.github.g00fy2.quickie.QRResult
-import io.github.g00fy2.quickie.ScanCustomCode
-import io.github.g00fy2.quickie.config.ScannerConfig
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.R
 import ru.toinet.android.databinding.CustomBridgeBottomSheetBinding
@@ -51,48 +47,9 @@ class CustomBridgeBottomSheet() :
     }
 
     private lateinit var binding: CustomBridgeBottomSheetBinding
-    private lateinit var qrScanResultLauncher: ActivityResultLauncher<ScannerConfig>
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        qrScanResultLauncher = registerForActivityResult(ScanCustomCode()) { result ->
-            if (result is QRResult.QRSuccess) {
-                val text = result.content.rawBytes?.let { String(it) }.orEmpty()
-                var bridges = try {
-                    MoatApi.json.decodeFromString(text)
-                } catch (_: Throwable) {
-                    emptyList<String>()
-                }
-                if (bridges.isNotEmpty()) {
-                    val current =
-                        binding.etBridges.text?.split("\n")?.toMutableList() ?: mutableListOf()
-
-                    bridges = bridges.filter { !current.contains(it) }
-                    if (bridges.isEmpty()) {
-                        Toast.makeText(
-                            requireContext(),
-                            R.string.you_already_have_these_bridges,
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@registerForActivityResult
-                    }
-
-                    current.addAll(bridges)
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.added_bridges_from_qr, bridges.size),
-                        Toast.LENGTH_LONG
-                    ).show()
-                    binding.etBridges.setText(current.joinToString("\n"))
-                } else {
-                    Toast.makeText(
-                        requireContext(),
-                        R.string.invalid_bridge_qr_code,
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-        }
     }
 
     private var dialog: AlertDialog? = null

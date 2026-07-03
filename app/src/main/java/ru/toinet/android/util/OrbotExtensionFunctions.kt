@@ -48,6 +48,7 @@ fun Context.sendIntentToService(action: String) {
     val rehabilitatorEnabled = Prefs.rehabilitatorEnabled
 
     val turnProxyEnabled = Prefs.turnProxyEnabled
+    val operaProxyEnabled = Prefs.operaProxyEnabled
 
     val isPing = action == "ACTIVE" || action == OrbotConstants.CMD_ACTIVE
     val isStop = action == org.torproject.jni.TorService.ACTION_STOP
@@ -97,7 +98,10 @@ fun Context.sendIntentToService(action: String) {
                 this,
                 Prefs.tgwsHost,
                 Prefs.tgwsPort,
-                Prefs.tgwsDcMappings
+                Prefs.tgwsDcMappings,
+                Prefs.tgwsSecret,
+                Prefs.tgwsFakeTls,
+                Prefs.tgwsUseByeDpi
             )
         } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
             ru.toinet.android.tgws.TgwsService.stop(this)
@@ -119,15 +123,23 @@ fun Context.sendIntentToService(action: String) {
             ru.toinet.android.turnproxy.TurnProxyService.stop(this)
         }
     }
+    
+    if (operaProxyEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+        if (action == org.torproject.jni.TorService.ACTION_START) {
+            ru.toinet.android.operaproxy.OperaProxyService.start(this)
+        } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
+            ru.toinet.android.operaproxy.OperaProxyService.stop(this)
+        }
+    }
 
     if (!torEnabled && !isPing) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
-            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled || turnProxyEnabled)) {
+            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled || turnProxyEnabled || operaProxyEnabled)) {
                 val intent = Intent(OrbotConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_ON)
                 intent.setPackage(packageName)
                 sendBroadcast(intent)
-            } else if (!byedpiEnabled && !tgwsEnabled && !rehabilitatorEnabled && !turnProxyEnabled) {
+            } else if (!byedpiEnabled && !tgwsEnabled && !rehabilitatorEnabled && !turnProxyEnabled && !operaProxyEnabled) {
                 val intent = Intent(OrbotConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_OFF)
                 intent.setPackage(packageName)

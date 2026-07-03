@@ -10,7 +10,10 @@ import ru.toinet.android.localization.Languages
 import ru.toinet.android.localization.LocaleHelper
 import ru.toinet.android.service.circumvention.Transport.Companion.stateLocation
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.tgws.UniversalTgProxy
+import ru.toinet.android.util.NetworkSwitchListener
 
+import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import java.util.Locale
 
@@ -19,7 +22,22 @@ class OrbotApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        DynamicColors.applyToActivitiesIfAvailable(this)
+        
+        Prefs.setContext(applicationContext)
+        
+        // Removed revokeSelfPermissionOnKill block that was resetting notifications
+
+        AppCompatDelegate.setDefaultNightMode(Prefs.themeMode)
+        if (Prefs.useDynamicColors) {
+            DynamicColors.applyToActivitiesIfAvailable(this)
+        }
+        
+        /*
+        if (Prefs.universalTgProxyEnabled) {
+            UniversalTgProxy.start()
+        }
+        */
+        
 
         // set state dir for IPtProxy
         try {
@@ -37,7 +55,6 @@ class OrbotApp : Application() {
 
         })
 
-        Prefs.setContext(applicationContext)
         LocaleHelper.onAttach(applicationContext)
 
         Languages.setup(OrbotActivity::class.java, R.string.menu_settings)

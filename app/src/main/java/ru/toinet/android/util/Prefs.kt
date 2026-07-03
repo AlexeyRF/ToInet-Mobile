@@ -525,9 +525,69 @@ object Prefs {
         }
 
     @JvmStatic
+    var tgwsSecret: String
+        get() = cr?.getPrefString("tgws_secret") ?: ""
+        set(value) = cr?.putPref("tgws_secret", value) ?: Unit
+
+    @JvmStatic
+    var tgwsFakeTls: String
+        get() = cr?.getPrefString("tgws_fake_tls") ?: ""
+        set(value) = cr?.putPref("tgws_fake_tls", value) ?: Unit
+
+    @JvmStatic
     var rehabilitatorEnabled: Boolean
         get() = cr?.getPrefBoolean("rehabilitator_enabled", false) ?: false
         set(value) = cr?.putPref("rehabilitator_enabled", value) ?: Unit
+
+    @JvmStatic
+    var fakeVpnFakeTlsEnabled: Boolean
+        get() = cr?.getPrefBoolean("fakevpn_faketls_enabled", false) ?: false
+        set(value) = cr?.putPref("fakevpn_faketls_enabled", value) ?: Unit
+
+    @JvmStatic
+    var fakeVpnFakeTlsDomains: String
+        get() = cr?.getPrefString("fakevpn_faketls_domains") ?: "web.max.ru vk.com sber.ru"
+        set(value) = cr?.putPref("fakevpn_faketls_domains", value) ?: Unit
+
+    @JvmStatic
+    var operaProxyEnabled: Boolean
+        get() = cr?.getPrefBoolean("operaproxy_enabled", false) ?: false
+        set(value) = cr?.putPref("operaproxy_enabled", value) ?: Unit
+
+    @JvmStatic
+    var operaProxyBindAddress: String
+        get() = cr?.getPrefString("operaproxy_bind_address") ?: "127.0.0.1:1888"
+        set(value) = cr?.putPref("operaproxy_bind_address", value) ?: Unit
+
+    @JvmStatic
+    var operaProxyUpstream: String
+        get() = cr?.getPrefString("operaproxy_upstream") ?: ""
+        set(value) = cr?.putPref("operaproxy_upstream", value) ?: Unit
+
+    @JvmStatic
+    var operaProxyVerbose: Boolean
+        get() = cr?.getPrefBoolean("opera_proxy_verbose", false) ?: false
+        set(value) = cr?.putPref("opera_proxy_verbose", value) ?: Unit
+
+    @JvmStatic
+    var operaProxyUseByeDpi: Boolean
+        get() = cr?.getPrefBoolean("opera_proxy_use_byedpi", false) ?: false
+        set(value) = cr?.putPref("opera_proxy_use_byedpi", value) ?: Unit
+
+    @JvmStatic
+    var customSocksIp: String
+        get() = cr?.getPrefString("custom_socks_ip") ?: "127.0.0.1"
+        set(value) = cr?.putPref("custom_socks_ip", value) ?: Unit
+
+    @JvmStatic
+    var customSocksPort: Int
+        get() = cr?.getPrefInt("custom_socks_port", 1080) ?: 1080
+        set(value) = cr?.putPref("custom_socks_port", value) ?: Unit
+
+    @JvmStatic
+    var notificationLogProvider: String
+        get() = cr?.getPrefString("notification_log_provider") ?: "tor"
+        set(value) = cr?.putPref("notification_log_provider", value) ?: Unit
 
     @JvmStatic
     var rehabilitatorHost: String
@@ -563,5 +623,40 @@ object Prefs {
     var rehabilitatorArgs: String
         get() = cr?.getPrefString("rehabilitator_args") ?: "--disorder 1"
         set(value) = cr?.putPref("rehabilitator_args", value) ?: Unit
+
+    @JvmStatic
+    var useDynamicColors: Boolean
+        get() = cr?.getPrefBoolean("use_dynamic_colors", true) ?: true
+        set(value) = cr?.putPref("use_dynamic_colors", value) ?: Unit
+
+    @JvmStatic
+    var themeMode: Int
+        get() = cr?.getPrefInt("theme_mode", -1) ?: -1 // -1 is MODE_NIGHT_FOLLOW_SYSTEM
+        set(value) = cr?.putPref("theme_mode", value) ?: Unit
+
+    @JvmStatic
+    var wifiPreset: String
+        get() = cr?.getPrefString("preset_wifi") ?: ""
+        set(value) = cr?.putPref("preset_wifi", value) ?: Unit
+
+    @JvmStatic
+    var mobilePreset: String
+        get() = cr?.getPrefString("preset_mobile") ?: ""
+        set(value) = cr?.putPref("preset_mobile", value) ?: Unit
+
+    @JvmStatic
+    var universalTgProxyEnabled: Boolean
+        get() = cr?.getPrefBoolean("universal_tg_proxy_enabled", false) ?: false
+        set(value) = cr?.putPref("universal_tg_proxy_enabled", value) ?: Unit
+
+    @JvmStatic
+    var universalTgProxyProvider: String
+        get() = cr?.getPrefString("universal_tg_proxy_provider") ?: "tor"
+        set(value) = cr?.putPref("universal_tg_proxy_provider", value) ?: Unit
+
+    @JvmStatic
+    var networkSwitchMode: String
+        get() = cr?.getPrefString("network_switch_mode") ?: "smart_switch"
+        set(value) = cr?.putPref("network_switch_mode", value) ?: Unit
 
 }

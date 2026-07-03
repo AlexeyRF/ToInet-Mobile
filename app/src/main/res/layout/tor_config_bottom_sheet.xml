@@ -100,7 +100,16 @@
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
                 android:text="Настройка проксирования"
+                android:textAlignment="viewStart" />
+
+            <Button
+                android:id="@+id/btnExitNode"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Выбор выходного узла"
                 android:textAlignment="viewStart" />
 
         </LinearLayout>

@@ -73,13 +73,22 @@ public class OrbotService extends VpnService {
             mNotifyBuilder = new NotificationCompat
                     .Builder(this, Notifications.ORBOT_SERVICE_NOTIFICATION_CHANNEL)
                     .setCategory(Notification.CATEGORY_SERVICE)
+                    .setGroup("toinet_services")
                     .setSmallIcon(R.drawable.ic_stat_tor);
         }
 
         mNotifyBuilder.setOngoing(true);
         mNotifyBuilder.clearActions(); // clear out any notification actions, if any
 
-        if (false) {}
+        if ("none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) {
+            mNotifyBuilder
+                    .setSmallIcon(icon)
+                    .setContentTitle("ToInet")
+                    .setContentText(null)
+                    .setSubText(null)
+                    .setProgress(0, 0, false)
+                    .setContentIntent(pendIntent);
+        }
         else {
             mNotifyBuilder
                     .setSmallIcon(icon)
@@ -170,7 +179,11 @@ public class OrbotService extends VpnService {
         mPortTrans = -1;
 
         if (!showNotification) { // clear notifications and stopSelf
-            if (mNotificationManager != null) mNotificationManager.cancelAll();
+            if (ru.toinet.android.util.Prefs.getNotificationLogProvider().equals("tor")) {
+                if (mNotificationManager != null) {
+                    mNotificationManager.notify(NOTIFY_ID, mNotifyBuilder.build());
+                }
+            }
             if (mOrbotRawEventListener != null) mOrbotRawEventListener.getNodes().clear();
         }
 

@@ -186,11 +186,12 @@ class TurnProxyService : Service() {
 
             Thread {
                 try {
-                    java.io.BufferedReader(java.io.InputStreamReader(proc.inputStream)).use { reader ->
+                    proc.inputStream.bufferedReader().use { reader ->
                         var line: String?
                         while (reader.readLine().also { line = it } != null) {
                             val l = line!!
                             Log.d(TAG, "TurnProxy: $l")
+                            ru.toinet.android.util.NotificationLogger.log(this@TurnProxyService, "turnproxy", l)
 
                             val matcher = CAPTCHA_URL_REGEX.matcher(l)
                             if (matcher.find()) {

@@ -7,6 +7,8 @@ import java.io.OutputStream
 import java.net.Socket
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import ru.toinet.android.util.Prefs
+import java.security.SecureRandom
 
 class DirectSocks5Connection(
     private val clientSock: Socket
@@ -86,7 +88,16 @@ class DirectSocks5Connection(
             clientOut.flush()
 
             // 6. Pipe
-            val p1 = launch { pipe(clientIn, remoteSock.getOutputStream()) }
+            val fakeTlsEnabled = Prefs.fakeVpnFakeTlsEnabled && port == 443
+            val fakeTlsDomains = Prefs.fakeVpnFakeTlsDomains.split(" ", "\n", "\r").filter { it.isNotBlank() }
+
+            val p1 = launch { 
+                if (fakeTlsEnabled && fakeTlsDomains.isNotEmpty()) {
+                    pipeWithFakeTls(clientIn, remoteSock.getOutputStream(), fakeTlsDomains)
+                } else {
+                    pipe(clientIn, remoteSock.getOutputStream())
+                }
+            }
             val p2 = launch { pipe(remoteSock.getInputStream(), clientOut) }
             p1.join()
             p2.join()
@@ -112,6 +123,38 @@ class DirectSocks5Connection(
             var read: Int
             while (input.read(buffer).also { read = it } != -1) {
                 output.write(buffer, 0, read)
+                output.flush()
+            }
+        } catch (e: Exception) {
+        } finally {
+            try { input.close() } catch (e: Exception) {}
+            try { output.close() } catch (e: Exception) {}
+        }
+    }
+
+    private fun pipeWithFakeTls(input: InputStream, output: OutputStream, fakeDomains: List<String>) {
+        val buffer = ByteArray(16384)
+        var firstChunk = true
+        try {
+            var read: Int
+            while (input.read(buffer).also { read = it } != -1) {
+                var toWrite = buffer
+                var toWriteLen = read
+                
+                if (firstChunk) {
+                    firstChunk = false
+                    val randomDomain = fakeDomains[SecureRandom().nextInt(fakeDomains.size)]
+                    val modified = SniSpoofer.spoofSni(buffer.copyOfRange(0, read), randomDomain)
+                    if (modified != null) {
+                        toWrite = modified
+                        toWriteLen = modified.size
+                        Log.d(TAG, "FakeVPN: SNI replaced with $randomDomain")
+                    } else {
+                        Log.d(TAG, "FakeVPN: SNI replacement failed or not a ClientHello")
+                    }
+                }
+                
+                output.write(toWrite, 0, toWriteLen)
                 output.flush()
             }
         } catch (e: Exception) {

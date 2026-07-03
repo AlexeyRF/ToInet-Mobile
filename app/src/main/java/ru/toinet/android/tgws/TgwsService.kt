@@ -23,12 +23,14 @@ class TgwsService : Service() {
         var isRunning = false
             private set
 
-        fun start(context: Context, host: String, port: Int, dcMappings: Map<Int, String>, useByeDpi: Boolean = false) {
+        fun start(context: Context, host: String, port: Int, dcMappings: Map<Int, String>, secret: String = "", fakeTls: String = "", useByeDpi: Boolean = false) {
             val intent = Intent(context, TgwsService::class.java).apply {
                 putExtra("host", host)
                 putExtra("port", port)
                 val mappingList = dcMappings.map { "${it.key}:${it.value}" }.toTypedArray()
                 putExtra("dcMappings", mappingList)
+                putExtra("secret", secret)
+                putExtra("fakeTls", fakeTls)
                 putExtra("useByeDpi", useByeDpi)
             }
             context.startService(intent)
@@ -54,9 +56,13 @@ class TgwsService : Service() {
             parts[0].toInt() to parts[1]
         }
 
+        val secret = intent?.getStringExtra("secret") ?: ""
+        val fakeTls = intent?.getStringExtra("fakeTls") ?: ""
+
         tgwsCore?.stop()
-        tgwsCore = TgwsCore(host, port, dcMappings, useByeDpi) { msg ->
+        tgwsCore = TgwsCore(host, port, dcMappings, secret, fakeTls, useByeDpi) { msg ->
             _logs.tryEmit(msg)
+            ru.toinet.android.util.NotificationLogger.log(this, "tgws", msg)
         }
         tgwsCore?.start()
         isRunning = true

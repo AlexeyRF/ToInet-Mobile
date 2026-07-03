@@ -5,4 +5,24 @@
         <item>SOCKS4</item>
         <item>SOCKS5</item>
     </array>
+    
+    <array name="log_providers">
+        <item>Просто уведомление (ToInet)</item>
+        <item>TOR</item>
+        <item>ByeDPI</item>
+        <item>TGWS</item>
+        <item>Socks Rehab</item>
+        <item>vk-turn</item>
+        <item>Opera Proxy</item>
+    </array>
+    
+    <array name="log_providers_values">
+        <item>none</item>
+        <item>tor</item>
+        <item>byedpi</item>
+        <item>tgws</item>
+        <item>rehab</item>
+        <item>turnproxy</item>
+        <item>operaproxy</item>
+    </array>
 </resources>

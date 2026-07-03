@@ -9,6 +9,14 @@
         <item name="android:layout">@layout/fragment_settings</item>
     </style>
     
+    <style name="Theme.Transparent" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 
     <style name="BottomSheetTextView" parent="android:Widget.TextView">
         <item name="android:textColor">?attr/colorOnSurface</item>

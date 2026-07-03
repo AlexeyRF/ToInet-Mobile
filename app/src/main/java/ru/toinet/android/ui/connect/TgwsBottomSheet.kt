@@ -9,6 +9,11 @@ import ru.toinet.android.databinding.TgwsBottomSheetBinding
 import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.putPref
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import java.security.SecureRandom
 
 class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
 
@@ -33,6 +38,10 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
         binding.swEnabled.isChecked = Prefs.tgwsEnabled
         binding.swUseByeDpi.isChecked = Prefs.tgwsUseByeDpi
         binding.etPort.setText(Prefs.tgwsPort.toString())
+        /*
+        binding.etSecret.setText(Prefs.tgwsSecret)
+        binding.etFakeTls.setText(Prefs.tgwsFakeTls)
+        */
         
         val mappingStr = Prefs.tgwsDcMappings.map { "${it.key}:${it.value}" }.joinToString("\n")
         binding.etMappings.setText(mappingStr)
@@ -62,11 +71,55 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
 
+        /*
+        binding.btnGenerateSecret.setOnClickListener {
+            val randomBytes = ByteArray(16)
+            SecureRandom().nextBytes(randomBytes)
+            val randomHex = randomBytes.joinToString("") { "%02x".format(it) }
+            
+            val fakeTls = binding.etFakeTls.text.toString().trim()
+            if (fakeTls.isNotEmpty()) {
+                val domainHex = fakeTls.toByteArray().joinToString("") { "%02x".format(it) }
+                binding.etSecret.setText("ee$randomHex$domainHex")
+            } else {
+                binding.etSecret.setText("dd$randomHex")
+            }
+            Toast.makeText(requireContext(), "Секрет сгенерирован", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnCopyLinks.setOnClickListener {
+            val port = binding.etPort.text.toString().toIntOrNull() ?: 1480
+            val secret = binding.etSecret.text.toString().trim()
+            val socksLink = "tg://socks?server=127.0.0.1&port=$port"
+            
+            if (secret.isNotEmpty()) {
+                val mtprotoLink = "tg://proxy?server=127.0.0.1&port=$port&secret=$secret"
+                androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Какую ссылку скопировать?")
+                    .setItems(arrayOf("MTProto", "SOCKS5")) { _, which ->
+                        val link = if (which == 0) mtprotoLink else socksLink
+                        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("TG Proxy", link))
+                        Toast.makeText(requireContext(), "Ссылка скопирована!", Toast.LENGTH_SHORT).show()
+                    }
+                    .show()
+            } else {
+                val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("TG Proxy", socksLink))
+                Toast.makeText(requireContext(), "SOCKS5 ссылка скопирована!", Toast.LENGTH_SHORT).show()
+            }
+        }
+        */
+
         binding.btnSave.setOnClickListener {
             Prefs.tgwsEnabled = binding.swEnabled.isChecked
             Prefs.tgwsUseByeDpi = binding.swUseByeDpi.isChecked
             val port = binding.etPort.text.toString().toIntOrNull() ?: 1480
             Prefs.tgwsPort = port
+            /*
+            Prefs.tgwsSecret = binding.etSecret.text.toString().trim()
+            Prefs.tgwsFakeTls = binding.etFakeTls.text.toString().trim()
+            */
             
             val mappings = binding.etMappings.text.toString().split("\n")
                 .filter { it.contains(":") }

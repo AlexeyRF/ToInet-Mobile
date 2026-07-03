@@ -32,10 +32,20 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
             "rehab" -> binding.rbRehab.isChecked = true
             "turnproxy" -> binding.rbTurnProxy.isChecked = true
             "fakevpn" -> binding.rbFakeVpn.isChecked = true
+            "operaproxy" -> binding.rbOperaProxy.isChecked = true
+            "custom" -> {
+                binding.rbCustom.isChecked = true
+                binding.llCustomSocks.visibility = View.VISIBLE
+            }
             else -> binding.rbByedpi.isChecked = true
         }
 
+        binding.etCustomIp.setText(Prefs.customSocksIp)
+        binding.etCustomPort.setText(Prefs.customSocksPort.toString())
+
         binding.rgVpnProvider.setOnCheckedChangeListener { _, checkedId ->
+            binding.llCustomSocks.visibility = if (checkedId == binding.rbCustom.id) View.VISIBLE else View.GONE
+            
             if (checkedId == binding.rbTgws.id) {
                 AlertDialog.Builder(requireContext())
                     .setTitle("Уведомление TGWS")
@@ -65,7 +75,14 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
                 binding.rbRehab.id -> "rehab"
                 binding.rbTurnProxy.id -> "turnproxy"
                 binding.rbFakeVpn.id -> "fakevpn"
+                binding.rbOperaProxy.id -> "operaproxy"
+                binding.rbCustom.id -> "custom"
                 else -> "byedpi"
+            }
+            
+            if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbCustom.id) {
+                Prefs.customSocksIp = binding.etCustomIp.text.toString().trim().takeIf { it.isNotBlank() } ?: "127.0.0.1"
+                Prefs.customSocksPort = binding.etCustomPort.text.toString().trim().toIntOrNull() ?: 1080
             }
             
             viewModel.triggerRefreshMenuList()

@@ -26,12 +26,14 @@ class TorConfigBottomSheet : OrbotBottomSheetDialogFragment() {
         val isCustom = Prefs.transport == ru.toinet.android.service.circumvention.Transport.CUSTOM
         binding.btnBridges.isEnabled = Prefs.torEnabled && isCustom
         binding.btnProxy.isEnabled = Prefs.torEnabled
+        binding.btnExitNode.isEnabled = Prefs.torEnabled
 
         binding.swTorEnabled.setOnCheckedChangeListener { _, isChecked ->
             Prefs.torEnabled = isChecked
             val isCustomChecked = binding.rbCustom.isChecked
             binding.btnBridges.isEnabled = isChecked && isCustomChecked
             binding.btnProxy.isEnabled = isChecked
+            binding.btnExitNode.isEnabled = isChecked
             for (i in 0 until binding.rgTorMode.childCount) {
                 binding.rgTorMode.getChildAt(i).isEnabled = isChecked
             }
@@ -82,6 +84,13 @@ class TorConfigBottomSheet : OrbotBottomSheetDialogFragment() {
             ProxyBottomSheet().show(
                 requireActivity().supportFragmentManager,
                 ProxyBottomSheet.TAG
+            )
+        }
+
+        binding.btnExitNode.setOnClickListener {
+            ExitNodeBottomSheet().show(
+                requireActivity().supportFragmentManager,
+                "ExitNodeBottomSheet"
             )
         }
 

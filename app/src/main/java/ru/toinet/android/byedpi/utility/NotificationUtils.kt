@@ -17,10 +17,14 @@ fun registerNotificationChannel(context: Context, id: String, @StringRes name: I
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
 
+        val isNone = ru.toinet.android.util.Prefs.notificationLogProvider == "none"
+        val actualId = if (isNone) "${id}_min" else "${id}_low"
+        val importance = if (isNone) NotificationManager.IMPORTANCE_MIN else NotificationManager.IMPORTANCE_LOW
+
         val channel = NotificationChannel(
-            id,
+            actualId,
             context.getString(name),
-            NotificationManager.IMPORTANCE_DEFAULT
+            importance
         )
         channel.enableLights(false)
         channel.enableVibration(false)
@@ -36,11 +40,28 @@ fun createConnectionNotification(
     @StringRes title: Int,
     @StringRes content: Int,
     service: Class<*>,
-): Notification =
-    NotificationCompat.Builder(context, channelId)
+): Notification {
+    val isNone = ru.toinet.android.util.Prefs.notificationLogProvider == "none"
+    val actualId = if (isNone) "${channelId}_min" else "${channelId}_low"
+
+    val builder = NotificationCompat.Builder(context, actualId)
         .setSmallIcon(R.drawable.ic_stat_tor)
         .setSilent(true)
-            .setContentTitle(context.getString(title))
+        .setGroup("toinet_services")
+        .setPriority(if (isNone) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
+        .setContentIntent(
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, OrbotActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+        )
+
+    if (isNone) {
+        builder.setContentTitle("ToInet")
+    } else {
+        builder.setContentTitle(context.getString(title))
             .setContentText(context.getString(content))
             .addAction(0, context.getString(R.string.disable),
                 PendingIntent.getService(
@@ -50,12 +71,7 @@ fun createConnectionNotification(
                     PendingIntent.FLAG_IMMUTABLE,
                 )
             )
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    context,
-                    0,
-                    Intent(context, OrbotActivity::class.java),
-                    PendingIntent.FLAG_IMMUTABLE,
-                )
-            )
-        .build()
+    }
+
+    return builder.build()
+}

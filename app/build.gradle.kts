@@ -9,7 +9,7 @@ plugins {
 
 kotlin { jvmToolchain(21) }
 
-val ToInetBaseVersionCode = 8
+val ToInetBaseVersionCode = 11
 
 // Provider for git version, configuration-cache safe
 val gitVersionProvider = providers.exec {
@@ -38,7 +38,7 @@ configure<ApplicationExtension> {
     defaultConfig {
         applicationId = namespace
         versionCode = ToInetBaseVersionCode
-        versionName = "DNR"
+        versionName = "MSK"
         minSdk = 24
         targetSdk = 36
         multiDexEnabled = true
@@ -53,7 +53,7 @@ configure<ApplicationExtension> {
 
     splits {
         abi {
-            isEnable = true
+            isEnable = false
             reset()
             include("x86", "armeabi-v7a", "x86_64", "arm64-v8a")
             isUniversalApk = true
@@ -207,9 +207,7 @@ androidComponents {
             }
             
             // Modern APK renaming using outputFileName property
-            val abi = output.filters.find { it.filterType.name == "ABI" }?.identifier
-            val namePart = if (abi != null) "-$abi" else ""
-            output.outputFileName.set(gitVersionProvider.map { "ToInet-$it$namePart.apk" })
+            output.outputFileName.set("Toinet.apk")
         }
     }
 }
@@ -243,7 +241,6 @@ dependencies {
     implementation(libs.androidx.work.kotlin)
     implementation(libs.upnp)
     implementation(libs.iptproxy)
-    implementation(libs.quickie)
 
     // Tor
     implementation(files("../libs/geoip.jar"))
@@ -255,7 +252,6 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso)
     androidTestImplementation(libs.androidx.rules)
     androidTestImplementation(libs.androidx.runner)
-    androidTestImplementation(libs.screengrab)
     androidTestImplementation(libs.androidx.espresso.contrib)
     androidTestUtil(libs.androidx.orchestrator)
 }

@@ -14,6 +14,16 @@
             android:title="@string/set_locale_title"
             app:iconSpaceReserved="false" />
 
+        <ListPreference
+            android:enabled="true"
+            android:key="notification_log_provider"
+            android:defaultValue="tor"
+            android:title="Провайдер логов в уведомлении"
+            android:entries="@array/log_providers"
+            android:entryValues="@array/log_providers_values"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
+
         <CheckBoxPreference
             android:defaultValue="true"
             android:enabled="true"
@@ -52,19 +62,7 @@
 
     </PreferenceScreen>
 
-    <PreferenceScreen
-        android:key="category_kindness"
-        android:title="@string/volunteer_mode"
-        app:iconSpaceReserved="false">
 
-        <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="pref_show_snowflake_proxy_msg"
-            android:summary="@string/snowflake_proxy_msg_description"
-            android:title="@string/snowflake_proxy_msg_title"
-            app:iconSpaceReserved="false" />
-
-    </PreferenceScreen>
 
     <PreferenceScreen
         android:key="category_node_config"

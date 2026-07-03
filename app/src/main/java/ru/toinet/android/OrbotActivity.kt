@@ -112,7 +112,10 @@ class OrbotActivity : BaseActivity() {
                 this,
                 Prefs.tgwsHost,
                 Prefs.tgwsPort,
-                Prefs.tgwsDcMappings
+                Prefs.tgwsDcMappings,
+                Prefs.tgwsSecret,
+                Prefs.tgwsFakeTls,
+                Prefs.tgwsUseByeDpi
             )
         }
 
