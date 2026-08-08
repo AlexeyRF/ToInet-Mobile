@@ -41,3 +41,5 @@ app/src/main/assets/LICENSE
 
 # Local Kotlin config
 .kotlin/
+/unused_files.txt
+/app/src/main/java/ru/toinet/android/tgws/TgwsCore.kt.bak

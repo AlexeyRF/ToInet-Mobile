@@ -42,9 +42,15 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
 
         binding.etCustomIp.setText(Prefs.customSocksIp)
         binding.etCustomPort.setText(Prefs.customSocksPort.toString())
+        binding.etCustomVpnDns.setText(Prefs.customVpnDns)
+
+        if (binding.rbFakeVpn.isChecked || binding.rbByedpi.isChecked) {
+            binding.llCustomVpnDns.visibility = View.VISIBLE
+        }
 
         binding.rgVpnProvider.setOnCheckedChangeListener { _, checkedId ->
             binding.llCustomSocks.visibility = if (checkedId == binding.rbCustom.id) View.VISIBLE else View.GONE
+            binding.llCustomVpnDns.visibility = if (checkedId == binding.rbFakeVpn.id || checkedId == binding.rbByedpi.id) View.VISIBLE else View.GONE
             
             if (checkedId == binding.rbTgws.id) {
                 AlertDialog.Builder(requireContext())
@@ -83,6 +89,9 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
             if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbCustom.id) {
                 Prefs.customSocksIp = binding.etCustomIp.text.toString().trim().takeIf { it.isNotBlank() } ?: "127.0.0.1"
                 Prefs.customSocksPort = binding.etCustomPort.text.toString().trim().toIntOrNull() ?: 1080
+            }
+            if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbFakeVpn.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbByedpi.id) {
+                Prefs.customVpnDns = binding.etCustomVpnDns.text.toString().trim()
             }
             
             viewModel.triggerRefreshMenuList()

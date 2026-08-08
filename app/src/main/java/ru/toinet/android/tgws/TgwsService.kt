@@ -23,7 +23,7 @@ class TgwsService : Service() {
         var isRunning = false
             private set
 
-        fun start(context: Context, host: String, port: Int, dcMappings: Map<Int, String>, secret: String = "", fakeTls: String = "", useByeDpi: Boolean = false) {
+        fun start(context: Context, host: String, port: Int, dcMappings: Map<Int, String>, secret: String = "", fakeTls: String = "", useByeDpi: Boolean = false, cfWorkerDomains: List<String> = emptyList(), cfProxyDomains: List<String> = emptyList()) {
             val intent = Intent(context, TgwsService::class.java).apply {
                 putExtra("host", host)
                 putExtra("port", port)
@@ -32,6 +32,8 @@ class TgwsService : Service() {
                 putExtra("secret", secret)
                 putExtra("fakeTls", fakeTls)
                 putExtra("useByeDpi", useByeDpi)
+                putExtra("cfWorkerDomains", cfWorkerDomains.toTypedArray())
+                putExtra("cfProxyDomains", cfProxyDomains.toTypedArray())
             }
             context.startService(intent)
         }
@@ -58,9 +60,11 @@ class TgwsService : Service() {
 
         val secret = intent?.getStringExtra("secret") ?: ""
         val fakeTls = intent?.getStringExtra("fakeTls") ?: ""
+        val cfWorkerDomains = intent?.getStringArrayExtra("cfWorkerDomains")?.toList() ?: emptyList()
+        val cfProxyDomains = intent?.getStringArrayExtra("cfProxyDomains")?.toList() ?: emptyList()
 
         tgwsCore?.stop()
-        tgwsCore = TgwsCore(host, port, dcMappings, secret, fakeTls, useByeDpi) { msg ->
+        tgwsCore = TgwsCore(host, port, dcMappings, secret, fakeTls, useByeDpi, false, cfWorkerDomains, cfProxyDomains) { msg ->
             _logs.tryEmit(msg)
             ru.toinet.android.util.NotificationLogger.log(this, "tgws", msg)
         }

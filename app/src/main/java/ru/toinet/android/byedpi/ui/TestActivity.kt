@@ -206,7 +206,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 strategyAdapter.updateStrategies(strategies, sortByPercentage = false)
             }
 
-            if (isProxyRunning()) {
+            if (appStatus.first != AppStatus.Halted) {
                 ServiceManager.stop(this@TestActivity)
                 waitForProxyStatus(AppStatus.Halted)
                 // Add a small delay to ensure the system fully destroys the service
@@ -230,7 +230,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
                 updateCmdArgs(strategy.command)
 
-                if (isProxyRunning()) stopTesting()
+                if (appStatus.first != AppStatus.Halted) stopTesting()
                 else ServiceManager.start(this@TestActivity, Mode.Proxy)
 
                 if (!waitForProxyStatus(AppStatus.Running)) {
@@ -270,7 +270,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                     saveResults(strategies)
                 }
 
-                if (isProxyRunning()) ServiceManager.stop(this@TestActivity)
+                if (appStatus.first != AppStatus.Halted) ServiceManager.stop(this@TestActivity)
                 else stopTesting()
 
                 if (!waitForProxyStatus(AppStatus.Halted)) {
@@ -296,7 +296,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
             testJob?.cancel()
             testJob = null
 
-            if (isProxyRunning()) {
+            if (appStatus.first != AppStatus.Halted) {
                 ServiceManager.stop(this@TestActivity)
             }
 
@@ -304,6 +304,8 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 startStopButton.text = getString(R.string.test_start)
                 progressTextView.text = getString(R.string.test_complete)
+
+                suggestCombinations(strategies.filter { it.isCompleted })
 
                 strategyAdapter.setTestingState(false)
                 strategyAdapter.updateStrategies(strategies, sortByPercentage = true)
@@ -313,10 +315,72 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         }
     }
 
+    private fun suggestCombinations(completeStrategies: List<StrategyResult>) {
+        if (completeStrategies.isEmpty() || !::sites.isInitialized || sites.isEmpty()) return
+
+        val hasPerfect = completeStrategies.any { it.successCount == it.totalRequests && it.totalRequests > 0 }
+        if (hasPerfect) return
+
+        val domainToWorkingCmds = mutableMapOf<String, List<String>>()
+        var canCoverAll = true
+
+        for (domain in sites) {
+            val workingStrats = completeStrategies.filter { strat ->
+                strat.siteResults.any { it.site == domain && it.successCount == it.totalCount && it.totalCount > 0 }
+            }.map { it.command }
+
+            if (workingStrats.isNotEmpty()) {
+                domainToWorkingCmds[domain] = workingStrats
+            } else {
+                if (prefs.getBoolean("byedpi_proxytest_tor_fallback", false)) {
+                    domainToWorkingCmds[domain] = listOf("TOR")
+                }
+            }
+        }
+
+        if (domainToWorkingCmds.isNotEmpty()) {
+            val maxCombos = 3
+            for (i in 0 until maxCombos) {
+                val currentCombo = mutableMapOf<String, String>()
+                for ((domain, cmds) in domainToWorkingCmds) {
+                    val cmdIndex = if (i < cmds.size) i else 0
+                    currentCombo[domain] = cmds[cmdIndex]
+                }
+
+                try {
+                    val jsonObject = org.json.JSONObject()
+                    currentCombo.forEach { (domain, cmd) ->
+                        jsonObject.put(domain, cmd)
+                    }
+                    val combinedCmd = jsonObject.toString()
+
+                    if (strategies.any { it.command == combinedCmd }) continue
+
+                    val combinedResult = StrategyResult(command = combinedCmd).apply {
+                        isCompleted = true
+                        val reqs = prefs.getIntStringNotNull("byedpi_proxytest_requests", 1)
+                        successCount = sites.size * reqs
+                        totalRequests = successCount
+
+                        sites.forEach { domain ->
+                            siteResults.add(SiteResult(domain, reqs, reqs))
+                        }
+                    }
+                    strategies.add(combinedResult)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
     private fun addToHistory(command: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             cmdHistoryUtils.addCommand(command)
             withContext(Dispatchers.Main) {
+                if (command.contains("\"TOR\"") && !ru.toinet.android.util.Prefs.torEnabled) {
+                    Toast.makeText(applicationContext, "Внимание: используется маршрутизация через TOR, но TOR отключен в настройках!", Toast.LENGTH_LONG).show()
+                }
                 val intent = Intent()
                 intent.putExtra("strategy", command)
                 setResult(RESULT_OK, intent)
@@ -398,7 +462,12 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
             val content = prefs.getStringNotNull("byedpi_proxytest_commands", "")
             content.replace("{sni}", "\"${sniValue}\"").lines().map { it.trim() }.filter { it.isNotEmpty() }
         } else {
-            val content = assets.open("proxytest_strategies.list").bufferedReader().readText()
+            val file = File(filesDir, "proxytest_strategies.list")
+            val content = if (file.exists()) {
+                file.readText()
+            } else {
+                assets.open("proxytest_strategies.list").bufferedReader().readText()
+            }
             content.replace("{sni}", "\"${sniValue}\"").lines().map { it.trim() }.filter { it.isNotEmpty() }
         }
     }

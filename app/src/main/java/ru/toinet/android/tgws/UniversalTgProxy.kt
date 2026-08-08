@@ -16,17 +16,19 @@ object UniversalTgProxy {
     )
 
     fun start() {
-        /* MTProto proxy is disabled because it does not work.
         if (core != null) return
         try {
+            val listenHost = if (Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
             core = TgwsCore(
-                host = "0.0.0.0",
+                host = listenHost,
                 port = 1082,
                 dcMappings = IP_TO_DC,
                 secret = Prefs.tgwsSecret,
-                fakeTlsDomain = "",
+                fakeTlsDomain = Prefs.tgwsFakeTls,
                 useByeDpi = true, // this enables the vpnProvider check in createSocket!
-                disableWebSockets = true,
+                disableWebSockets = false,
+                cfWorkerDomains = Prefs.tgwsCfWorkerDomains,
+                cfProxyDomains = Prefs.tgwsCfProxyDomains,
                 onLog = { msg -> Log.d(TAG, msg) }
             )
             core?.start()
@@ -34,16 +36,13 @@ object UniversalTgProxy {
         } catch (e: Exception) {
             Log.e(TAG, "Error starting UniversalTgProxy", e)
         }
-        */
     }
 
     fun stop() {
-        /* MTProto proxy is disabled because it does not work.
         try {
             core?.stop()
         } catch (e: Exception) {}
         core = null
         Log.i(TAG, "Stopped")
-        */
     }
 }

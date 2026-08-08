@@ -29,7 +29,7 @@ object TorConfig {
         val isolate = getIsolation()
         val ipv6Pref = getIpv6()
 
-        if (Prefs.openProxyOnAllInterfaces()) {
+        if (Prefs.openProxyOnAllInterfaces) {
             conf.add("SOCKSPort 0.0.0.0:$socksPortPref $ipv6Pref $isolate OptimisticData")
             conf.add("SocksPolicy accept *:*")
         } else {

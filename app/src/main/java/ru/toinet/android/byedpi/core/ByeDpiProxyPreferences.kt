@@ -40,7 +40,12 @@ class ByeDpiProxyCmdPreferences(val args: Array<String>) : ByeDpiProxyPreference
             return 1080
         }
 
-    constructor(cmd: String) : this(cmdToArgs(cmd))
+    constructor(cmd: String) : this(
+        if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) 
+            cmdToArgs(cmd + " -i 0.0.0.0") 
+        else 
+            cmdToArgs(cmd)
+    )
 
     constructor(preferences: SharedPreferences) : this(
         preferences.getStringNotNull(
@@ -87,7 +92,7 @@ class ByeDpiProxyUIPreferences(
     dropSack: Boolean? = null,
     byedpiFakeOffset: Int? = null,
 ) : ByeDpiProxyPreferences {
-    val ip: String = ip ?: "127.0.0.1"
+    val ip: String = ip ?: if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
     override val port: Int = port ?: 1080
     val maxConnections: Int = maxConnections ?: 512
     val bufferSize: Int = bufferSize ?: 16384

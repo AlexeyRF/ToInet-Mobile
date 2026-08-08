@@ -26,6 +26,7 @@ import java.io.File
 class ByeDpiVpnService : LifecycleVpnService() {
     private var tunFd: ParcelFileDescriptor? = null
     private var fakeVpnServer: ru.toinet.android.fakevpn.DirectSocks5Server? = null
+    private var socksToHttpProxy: ru.toinet.android.operaproxy.SocksToHttpProxy? = null
     private val mutex = Mutex()
     private var stopping: Boolean = false
 
@@ -161,7 +162,7 @@ class ByeDpiVpnService : LifecycleVpnService() {
             "rehab" -> "127.0.0.1:1788"
             "turnproxy" -> "127.0.0.1:${ru.toinet.android.util.Prefs.turnProxyLocalPort}"
             "fakevpn" -> "127.0.0.1:1790"
-            "operaproxy" -> ru.toinet.android.util.Prefs.operaProxyBindAddress
+            "operaproxy" -> "127.0.0.1:1889"
             "custom" -> "${ru.toinet.android.util.Prefs.customSocksIp}:${ru.toinet.android.util.Prefs.customSocksPort}"
             else -> "127.0.0.1:${getByeDpiPreferences().port}"
         }
@@ -173,7 +174,19 @@ class ByeDpiVpnService : LifecycleVpnService() {
             fakeVpnServer?.start(lifecycleScope)
         }
         
-        val dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
+        if (provider == "operaproxy") {
+            val bindAddress = ru.toinet.android.util.Prefs.operaProxyBindAddress
+            val host = bindAddress.split(":").first()
+            val port = bindAddress.split(":").last().toIntOrNull() ?: 1888
+            socksToHttpProxy = ru.toinet.android.operaproxy.SocksToHttpProxy(1889, host, port)
+            socksToHttpProxy?.start(lifecycleScope)
+        }
+        
+        var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
+        if ((provider == "fakevpn" || provider == "byedpi") && ru.toinet.android.util.Prefs.customVpnDns.isNotBlank()) {
+            dns = ru.toinet.android.util.Prefs.customVpnDns
+        }
+
         val ipv6 = sharedPreferences.getBoolean("ipv6_enable", false)
 
         val fd = createBuilder("8.8.8.8", ipv6).establish()
@@ -246,6 +259,9 @@ class ByeDpiVpnService : LifecycleVpnService() {
 
         fakeVpnServer?.stop()
         fakeVpnServer = null
+        
+        socksToHttpProxy?.stop()
+        socksToHttpProxy = null
 
         Log.i(TAG, "Tun2socks stopped")
     }

@@ -46,6 +46,7 @@ class TorConfigBottomSheet : OrbotBottomSheetDialogFragment() {
             ru.toinet.android.service.circumvention.Transport.NONE -> binding.rbDirect.isChecked = true
             ru.toinet.android.service.circumvention.Transport.OBFS4 -> binding.rbObfs4.isChecked = true
             ru.toinet.android.service.circumvention.Transport.WEBTUNNEL -> binding.rbWebtunnel.isChecked = true
+            ru.toinet.android.service.circumvention.Transport.DNSTT -> binding.rbDnstt.isChecked = true
             ru.toinet.android.service.circumvention.Transport.CUSTOM -> binding.rbCustom.isChecked = true
             else -> binding.rbDirect.isChecked = true
         }
@@ -62,6 +63,14 @@ class TorConfigBottomSheet : OrbotBottomSheetDialogFragment() {
                 binding.rbDirect.id -> ru.toinet.android.service.circumvention.Transport.NONE
                 binding.rbObfs4.id -> ru.toinet.android.service.circumvention.Transport.OBFS4
                 binding.rbWebtunnel.id -> ru.toinet.android.service.circumvention.Transport.WEBTUNNEL
+                binding.rbDnstt.id -> {
+                    android.app.AlertDialog.Builder(requireContext())
+                        .setTitle(ru.toinet.android.R.string.limit_dns_tunnel_use)
+                        .setMessage(ru.toinet.android.R.string.dns_tunnel_usage_description)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                    ru.toinet.android.service.circumvention.Transport.DNSTT
+                }
                 binding.rbCustom.id -> ru.toinet.android.service.circumvention.Transport.CUSTOM
                 else -> ru.toinet.android.service.circumvention.Transport.NONE
             }

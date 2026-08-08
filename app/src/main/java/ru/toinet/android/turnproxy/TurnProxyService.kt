@@ -101,7 +101,8 @@ class TurnProxyService : Service() {
                 cmdArgs.add(Prefs.turnProxyVkLink)
             }
             cmdArgs.add("-listen")
-            cmdArgs.add("127.0.0.1:${Prefs.turnProxyLocalPort}")
+            val bindHost = if (Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+            cmdArgs.add("$bindHost:${Prefs.turnProxyLocalPort}")
 
             val threads = Prefs.turnProxyThreads
             if (threads > 0) {

@@ -95,13 +95,6 @@ class ConnectFragment : Fragment(),
         }
 
         binding.btnConnectCard.setOnClickListener {
-            it.isEnabled = false
-            it.alpha = 0.5f
-            it.postDelayed({
-                it.isEnabled = true
-                it.alpha = 1f
-            }, DEFAULT_THROTTLE_INTERVAL)
-            
             val isChecked = lastState == TorService.ACTION_START
             if (!isChecked) {
                 if (Prefs.outboundProxy.second != null) {
@@ -182,6 +175,23 @@ class ConnectFragment : Fragment(),
             "custom" -> true
             else -> false
         }
+
+        if (provider == "tgws") {
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Внимание")
+                .setMessage("Павел Дуров признан террористом на территории России и в будущем возможен законодательный запрет (не просто блокировка) на использование телеграмм, поэтому использование tgws, который не маскирует трафик telegram не рекомендуется")
+                .setPositiveButton("Продолжить") { _, _ ->
+                    continueStartTor(provider, isProviderActive)
+                }
+                .setNegativeButton("Отмена", null)
+                .show()
+            return
+        }
+
+        continueStartTor(provider, isProviderActive)
+    }
+
+    private fun continueStartTor(provider: String, isProviderActive: Boolean) {
         if (Prefs.isGlobalVpnEnabled && !isProviderActive) {
             Toast.makeText(context, "Внимание: выбранный провайдер VPN ($provider) не активен!", Toast.LENGTH_LONG).show()
         }

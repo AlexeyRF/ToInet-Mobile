@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import ru.toinet.android.databinding.TgwsBottomSheetBinding
 import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
@@ -14,11 +15,29 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import java.security.SecureRandom
+import java.net.NetworkInterface
 
 class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
 
     private lateinit var binding: TgwsBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
+
+    private fun getLocalIpAddress(): String {
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val intf = interfaces.nextElement()
+                val addrs = intf.inetAddresses
+                while (addrs.hasMoreElements()) {
+                    val addr = addrs.nextElement()
+                    if (!addr.isLoopbackAddress && addr is java.net.Inet4Address) {
+                        return addr.hostAddress ?: "127.0.0.1"
+                    }
+                }
+            }
+        } catch (ex: Exception) { }
+        return "127.0.0.1"
+    }
 
     private val PRESETS = listOf(
         "Официальные IP" to "1:149.154.175.50\n2:149.154.167.51\n3:149.154.175.100\n4:149.154.167.91\n5:91.108.56.100\n203:91.105.192.100",
@@ -37,11 +56,14 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
 
         binding.swEnabled.isChecked = Prefs.tgwsEnabled
         binding.swUseByeDpi.isChecked = Prefs.tgwsUseByeDpi
+        binding.swShareProxy.isChecked = Prefs.openProxyOnAllInterfaces
         binding.etPort.setText(Prefs.tgwsPort.toString())
-        /*
+        
         binding.etSecret.setText(Prefs.tgwsSecret)
         binding.etFakeTls.setText(Prefs.tgwsFakeTls)
-        */
+        binding.etCfWorkerDomains.setText(Prefs.tgwsCfWorkerDomains.joinToString(","))
+        binding.etCfProxyDomains.setText(Prefs.tgwsCfProxyDomains.joinToString(","))
+        
         
         val mappingStr = Prefs.tgwsDcMappings.map { "${it.key}:${it.value}" }.joinToString("\n")
         binding.etMappings.setText(mappingStr)
@@ -71,7 +93,7 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
 
-        /*
+        
         binding.btnGenerateSecret.setOnClickListener {
             val randomBytes = ByteArray(16)
             SecureRandom().nextBytes(randomBytes)
@@ -90,10 +112,11 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
         binding.btnCopyLinks.setOnClickListener {
             val port = binding.etPort.text.toString().toIntOrNull() ?: 1480
             val secret = binding.etSecret.text.toString().trim()
-            val socksLink = "tg://socks?server=127.0.0.1&port=$port"
+            val hostIp = if (binding.swShareProxy.isChecked) getLocalIpAddress() else "127.0.0.1"
+            val socksLink = "tg://socks?server=$hostIp&port=$port"
             
             if (secret.isNotEmpty()) {
-                val mtprotoLink = "tg://proxy?server=127.0.0.1&port=$port&secret=$secret"
+                val mtprotoLink = "tg://proxy?server=$hostIp&port=$port&secret=$secret"
                 androidx.appcompat.app.AlertDialog.Builder(requireContext())
                     .setTitle("Какую ссылку скопировать?")
                     .setItems(arrayOf("MTProto", "SOCKS5")) { _, which ->
@@ -109,17 +132,19 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
                 Toast.makeText(requireContext(), "SOCKS5 ссылка скопирована!", Toast.LENGTH_SHORT).show()
             }
         }
-        */
+        
 
         binding.btnSave.setOnClickListener {
             Prefs.tgwsEnabled = binding.swEnabled.isChecked
             Prefs.tgwsUseByeDpi = binding.swUseByeDpi.isChecked
+            Prefs.openProxyOnAllInterfaces = binding.swShareProxy.isChecked
             val port = binding.etPort.text.toString().toIntOrNull() ?: 1480
             Prefs.tgwsPort = port
-            /*
+            
             Prefs.tgwsSecret = binding.etSecret.text.toString().trim()
             Prefs.tgwsFakeTls = binding.etFakeTls.text.toString().trim()
-            */
+            Prefs.tgwsCfWorkerDomains = binding.etCfWorkerDomains.text.toString().split(",").map { it.trim() }
+            Prefs.tgwsCfProxyDomains = binding.etCfProxyDomains.text.toString().split(",").map { it.trim() }
             
             val mappings = binding.etMappings.text.toString().split("\n")
                 .filter { it.contains(":") }
@@ -131,6 +156,17 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
             
             viewModel.triggerRefreshMenuList()
             dismiss()
+        }
+
+        binding.tvLogs.movementMethod = android.text.method.ScrollingMovementMethod()
+        lifecycleScope.launchWhenStarted {
+            ru.toinet.android.tgws.TgwsService.logs.collect { logMsg ->
+                binding.tvLogs.append("$logMsg\n")
+                val scrollAmount = binding.tvLogs.layout.getLineTop(binding.tvLogs.lineCount) - binding.tvLogs.height
+                if (scrollAmount > 0) {
+                    binding.tvLogs.scrollTo(0, scrollAmount)
+                }
+            }
         }
 
         return binding.root

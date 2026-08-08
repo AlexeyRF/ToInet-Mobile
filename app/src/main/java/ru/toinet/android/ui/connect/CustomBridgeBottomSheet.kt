@@ -103,13 +103,6 @@ class CustomBridgeBottomSheet() :
         val isValid = inputText.isNotEmpty() && isValidBridge(inputText)
 
         binding.btnAction.isEnabled = isValid
-        binding.btnAction.backgroundTintList = ColorStateList.valueOf(
-            if (isValid) {
-                requireContext().getColor(R.color.orbot_btn_enabled_purple)
-            } else {
-                Color.DKGRAY
-            }
-        )
 
         if (!isValidBridge(inputText)) {
             binding.etBridges.error = requireContext().getString(R.string.invalid_bridge_format)

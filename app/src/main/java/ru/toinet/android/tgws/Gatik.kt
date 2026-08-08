@@ -28,7 +28,8 @@ object Gatik {
 
         job = CoroutineScope(Dispatchers.IO).launch {
             try {
-                serverSocket = java.net.ServerSocket(LISTEN_PORT, 50, java.net.InetAddress.getByName("127.0.0.1"))
+                val bindHost = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+                serverSocket = java.net.ServerSocket(LISTEN_PORT, 50, java.net.InetAddress.getByName(bindHost))
                 Log.i(TAG, "Gatik started on port $LISTEN_PORT")
 
                 while (isActive) {

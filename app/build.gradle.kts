@@ -9,7 +9,7 @@ plugins {
 
 kotlin { jvmToolchain(21) }
 
-val ToInetBaseVersionCode = 11
+val ToInetBaseVersionCode = 12
 
 // Provider for git version, configuration-cache safe
 val gitVersionProvider = providers.exec {
@@ -38,7 +38,7 @@ configure<ApplicationExtension> {
     defaultConfig {
         applicationId = namespace
         versionCode = ToInetBaseVersionCode
-        versionName = "MSK"
+        versionName = "PMR"
         minSdk = 24
         targetSdk = 36
         multiDexEnabled = true

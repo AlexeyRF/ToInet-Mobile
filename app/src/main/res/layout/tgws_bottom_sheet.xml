@@ -32,6 +32,13 @@
             android:text="Проксировать через ByeDPI"
             android:layout_marginBottom="16dp" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swShareProxy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Раздавать прокси в локальной сети"
+            android:layout_marginBottom="16dp" />
+
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -46,7 +53,6 @@
                 android:inputType="number" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!--
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -99,7 +105,34 @@
                 android:layout_marginStart="8dp"
                 android:text="Скопировать ссылки" />
         </LinearLayout>
-        -->
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Домены CF Workers (через запятую)"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_marginBottom="16dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etCfWorkerDomains"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Свои домены CF Proxy (через запятую)"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_marginBottom="16dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etCfProxyDomains"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
             android:layout_width="wrap_content"
@@ -134,6 +167,27 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:text="Сохранить" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Логи TGWS:"
+            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvLogs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="100dp"
+            android:maxHeight="300dp"
+            android:scrollbars="vertical"
+            android:background="#1A000000"
+            android:padding="8dp"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:text="Ожидание логов..." />
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

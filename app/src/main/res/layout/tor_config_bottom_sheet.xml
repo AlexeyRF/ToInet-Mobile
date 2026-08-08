@@ -73,6 +73,12 @@
                     android:text="Встроенные мосты (webtunnel)" />
 
                 <RadioButton
+                    android:id="@+id/rbDnstt"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Встроенные мосты (dnstt)" />
+
+                <RadioButton
                     android:id="@+id/rbCustom"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

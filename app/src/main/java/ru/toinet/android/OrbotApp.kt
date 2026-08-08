@@ -16,6 +16,12 @@ import ru.toinet.android.util.NetworkSwitchListener
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 class OrbotApp : Application() {
 
@@ -68,6 +74,30 @@ class OrbotApp : Application() {
 
             // tell OrbotService it needs to reinstall geoip
             Prefs.isGeoIpReinstallNeeded = true
+        }
+
+        // Check and update proxytest_strategies.list from github
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val lastUpdate = Prefs.lastStrategiesUpdate
+                val now = System.currentTimeMillis()
+                if (now - lastUpdate > 24 * 60 * 60 * 1000L) {
+                    val url = URL("https://raw.githubusercontent.com/romanvht/ByeByeDPI/master/app/src/main/assets/proxytest_strategies.list")
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.connectTimeout = 10000
+                    connection.readTimeout = 10000
+                    if (connection.responseCode == 200) {
+                        val content = connection.inputStream.bufferedReader().readText()
+                        if (content.isNotBlank()) {
+                            val file = File(filesDir, "proxytest_strategies.list")
+                            file.writeText(content)
+                            Prefs.lastStrategiesUpdate = now
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("OrbotApp", "Failed to update strategies list", e)
+            }
         }
     }
 

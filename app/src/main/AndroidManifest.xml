@@ -159,6 +159,13 @@
                 android:value="ByeDPI Proxy functionality" />
         </service>
 
+        <service android:name=".byedpi.services.ByeDpiInstance1Service" android:process=":proxy1" android:exported="false" />
+        <service android:name=".byedpi.services.ByeDpiInstance2Service" android:process=":proxy2" android:exported="false" />
+        <service android:name=".byedpi.services.ByeDpiInstance3Service" android:process=":proxy3" android:exported="false" />
+        <service android:name=".byedpi.services.ByeDpiInstance4Service" android:process=":proxy4" android:exported="false" />
+        <service android:name=".byedpi.services.ByeDpiInstance5Service" android:process=":proxy5" android:exported="false" />
+
+
         <service
             android:name=".tgws.TgwsService"
             android:enabled="true"

@@ -184,6 +184,19 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             },
             OrbotMenuAction(
                 0,
+                R.drawable.ic_menu_onion, // proxy/share icon
+                statusString = "Раздавать все прокси на локальную сеть: " + if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"
+            ) {
+                Prefs.openProxyOnAllInterfaces = !Prefs.openProxyOnAllInterfaces
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    "Раздача прокси: ${if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"}. Перезапустите прокси для применения.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                dismiss()
+            },
+            OrbotMenuAction(
+                0,
                 R.drawable.ic_settings_gear,
                 statusString = "Настройки уведомлений"
             ) {

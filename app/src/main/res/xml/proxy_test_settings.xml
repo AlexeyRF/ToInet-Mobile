@@ -50,6 +50,13 @@
         app:iconSpaceReserved="false" />
 
     <SwitchPreference
+        android:key="byedpi_proxytest_tor_fallback"
+        android:title="Использовать Tor для недоступных доменов"
+        android:summary="Если стратегия не найдена для домена, перенаправлять его через Tor."
+        android:defaultValue="false"
+        app:iconSpaceReserved="false" />
+
+    <SwitchPreference
         android:key="byedpi_proxytest_usercommands"
         android:title="@string/test_settings_usercommands"
         app:iconSpaceReserved="false" />

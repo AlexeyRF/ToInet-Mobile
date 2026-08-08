@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.isActive
 
 class ByeDpiProxyService : LifecycleService() {
     private var proxy = ByeDpiProxy()
@@ -124,18 +125,42 @@ class ByeDpiProxyService : LifecycleService() {
             throw IllegalStateException("Proxy fields not null")
         }
 
-        proxy = ByeDpiProxy()
-        val preferences = getByeDpiPreferences()
+        val sharedPrefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+        val cmdStrOriginal = sharedPrefs.getString("byedpi_cmd_args", "") ?: ""
+        val cmdStr = if (cmdStrOriginal.trim().equals("TOR", ignoreCase = true)) {
+            "{\"\":\"TOR\"}"
+        } else {
+            cmdStrOriginal
+        }
 
-        proxyJob = lifecycleScope.launch(Dispatchers.IO) {
-            val code = proxy.startProxy(preferences)
+        val isRouter = cmdStr.trim().startsWith("{") && cmdStr.trim().endsWith("}") && sharedPrefs.getBoolean("byedpi_enable_cmd_settings", true)
 
-            withContext(Dispatchers.Main) {
-                if (code != 0) {
-                    Log.e(TAG, "Proxy stopped with code $code")
-                    updateStatus(ServiceStatus.Failed)
-                } else {
-                    updateStatus(ServiceStatus.Disconnected)
+        if (isRouter) {
+            Log.i(TAG, "Starting router")
+            val ip = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+            val port = getByeDpiPreferences().port
+            ru.toinet.android.byedpi.core.ByeDpiRouter.start(this, cmdStr, port, ip)
+
+            proxyJob = lifecycleScope.launch(Dispatchers.IO) {
+                while (isActive) {
+                    kotlinx.coroutines.delay(1000)
+                }
+            }
+            updateStatus(ServiceStatus.Connected)
+        } else {
+            proxy = ByeDpiProxy()
+            val preferences = getByeDpiPreferences()
+
+            proxyJob = lifecycleScope.launch(Dispatchers.IO) {
+                val code = proxy.startProxy(preferences)
+
+                withContext(Dispatchers.Main) {
+                    if (code != 0) {
+                        Log.e(TAG, "Proxy stopped with code $code")
+                        updateStatus(ServiceStatus.Failed)
+                    } else {
+                        updateStatus(ServiceStatus.Disconnected)
+                    }
                 }
             }
         }
@@ -151,7 +176,9 @@ class ByeDpiProxyService : LifecycleService() {
             return
         }
 
+        ru.toinet.android.byedpi.core.ByeDpiRouter.stop(this)
         proxy.stopProxy()
+        proxyJob?.cancel()
         proxyJob?.join()
         proxyJob = null
 

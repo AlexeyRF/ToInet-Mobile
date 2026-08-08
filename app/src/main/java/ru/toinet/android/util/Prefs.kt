@@ -150,9 +150,9 @@ object Prefs {
         return cr?.getPrefBoolean(PREF_ALLOW_BACKGROUND_STARTS, true) ?: true
     }
 
-    fun openProxyOnAllInterfaces(): Boolean {
-        return cr?.getPrefBoolean(PREF_OPEN_PROXY_ON_ALL_INTERFACES) ?: false
-    }
+    var openProxyOnAllInterfaces: Boolean
+        get() = cr?.getPrefBoolean(PREF_OPEN_PROXY_ON_ALL_INTERFACES) ?: false
+        set(value) = cr?.putPref(PREF_OPEN_PROXY_ON_ALL_INTERFACES, value) ?: Unit
 
     fun startOnBoot(): Boolean {
         return cr?.getPrefBoolean(PREF_START_ON_BOOT, true) ?: true
@@ -502,8 +502,8 @@ object Prefs {
 
     @JvmStatic
     var tgwsHost: String
-        get() = cr?.getPrefString("tgws_host") ?: "127.0.0.1"
-        set(value) = cr?.putPref("tgws_host", value) ?: Unit
+        get() = if (openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+        set(value) = Unit
 
     @JvmStatic
     var tgwsPort: Int
@@ -534,6 +534,14 @@ object Prefs {
         get() = cr?.getPrefString("tgws_fake_tls") ?: ""
         set(value) = cr?.putPref("tgws_fake_tls", value) ?: Unit
 
+    var tgwsCfWorkerDomains: List<String>
+        get() = cr?.getPrefString("tgws_cf_worker_domains")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        set(value) = cr?.putPref("tgws_cf_worker_domains", value.joinToString(",")) ?: Unit
+
+    var tgwsCfProxyDomains: List<String>
+        get() = cr?.getPrefString("tgws_cf_proxy_domains")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        set(value) = cr?.putPref("tgws_cf_proxy_domains", value.joinToString(",")) ?: Unit
+
     @JvmStatic
     var rehabilitatorEnabled: Boolean
         get() = cr?.getPrefBoolean("rehabilitator_enabled", false) ?: false
@@ -556,7 +564,11 @@ object Prefs {
 
     @JvmStatic
     var operaProxyBindAddress: String
-        get() = cr?.getPrefString("operaproxy_bind_address") ?: "127.0.0.1:1888"
+        get() {
+            val addr = cr?.getPrefString("operaproxy_bind_address") ?: "127.0.0.1:1888"
+            val port = addr.split(":").lastOrNull() ?: "1888"
+            return if (openProxyOnAllInterfaces) "0.0.0.0:$port" else "127.0.0.1:$port"
+        }
         set(value) = cr?.putPref("operaproxy_bind_address", value) ?: Unit
 
     @JvmStatic
@@ -591,8 +603,8 @@ object Prefs {
 
     @JvmStatic
     var rehabilitatorHost: String
-        get() = cr?.getPrefString("rehabilitator_host") ?: "127.0.0.1"
-        set(value) = cr?.putPref("rehabilitator_host", value) ?: Unit
+        get() = if (openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+        set(value) = Unit
 
     @JvmStatic
     var rehabilitatorPort: Int
@@ -659,4 +671,13 @@ object Prefs {
         get() = cr?.getPrefString("network_switch_mode") ?: "smart_switch"
         set(value) = cr?.putPref("network_switch_mode", value) ?: Unit
 
+    @JvmStatic
+    var customVpnDns: String
+        get() = cr?.getPrefString("custom_vpn_dns") ?: ""
+        set(value) = cr?.putPref("custom_vpn_dns", value) ?: Unit
+
+    @JvmStatic
+    var lastStrategiesUpdate: Long
+        get() = cr?.getPrefLong("last_strategies_update", 0L) ?: 0L
+        set(value) = cr?.putPref("last_strategies_update", value) ?: Unit
 }
