@@ -49,6 +49,17 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             },
             ToInetMenuAction(
                 0,
+                R.drawable.ic_server,
+                statusString = "Zapret: ${if (Prefs.zapretEnabled) "ВКЛ" else "ВЫКЛ"}\n(прокси tpws)"
+            ) {
+                ZapretBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    ZapretBottomSheet.TAG
+                )
+                dismiss()
+            },
+            ToInetMenuAction(
+                0,
                 R.drawable.ic_send_airplane,
                 statusString = "TGWS: ${if (Prefs.tgwsEnabled) "ВКЛ" else "ВЫКЛ"}\n(порт, маппинги)"
             ) {

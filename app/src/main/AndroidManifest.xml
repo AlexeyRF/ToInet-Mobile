@@ -356,6 +356,12 @@
             android:name=".operaproxy.OperaProxyService"
             android:exported="false" />
 
+        <service
+            android:name=".zapret.ZapretService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false" />
     </application>
 </manifest>
 

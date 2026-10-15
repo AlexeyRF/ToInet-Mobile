@@ -172,6 +172,7 @@ class AppVpnService : LifecycleVpnService() {
             "fakevpn" -> actualPort = 1790
             "operaproxy" -> actualPort = 1889
             "easyvpn" -> actualPort = 1791
+            "zapret" -> actualPort = ru.toinet.android.util.Prefs.zapretPort
             "custom" -> {
                 actualHost = ru.toinet.android.util.Prefs.customSocksIp
                 actualPort = ru.toinet.android.util.Prefs.customSocksPort
@@ -200,8 +201,12 @@ class AppVpnService : LifecycleVpnService() {
             socksToHttpProxy?.start(lifecycleScope)
         }
 
+        if (provider == "zapret") {
+            ru.toinet.android.zapret.ZapretService.start(this)
+        }
+
         var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
-        if ((provider == "fakevpn" || provider == "byedpi") && ru.toinet.android.util.Prefs.customVpnDns.isBlank()) {
+        if ((provider == "fakevpn" || provider == "byedpi" || provider == "zapret") && ru.toinet.android.util.Prefs.customVpnDns.isNotBlank()) {
             dns = ru.toinet.android.util.Prefs.customVpnDns
         }
 
@@ -288,6 +293,10 @@ class AppVpnService : LifecycleVpnService() {
         dnsProxyServer?.stop()
         dnsProxyServer = null
 
+        if (ru.toinet.android.util.Prefs.vpnProvider == "zapret" && !ru.toinet.android.util.Prefs.zapretEnabled) {
+            ru.toinet.android.zapret.ZapretService.stop(this)
+        }
+
         Log.i(TAG, "Tun2socks stopped")
     }
 
@@ -336,7 +345,11 @@ class AppVpnService : LifecycleVpnService() {
 
     private fun createNotification(): Notification {
         val provider = ru.toinet.android.util.Prefs.vpnProvider
-        val title = if (provider == "easyvpn") "EasyVPN" else getString(R.string.byedpi_notification_title)
+        val title = when (provider) {
+            "easyvpn" -> "EasyVPN"
+            "zapret" -> "Zapret"
+            else -> getString(R.string.byedpi_notification_title)
+        }
         
         return createConnectionNotificationString(
             this,
@@ -350,7 +363,13 @@ class AppVpnService : LifecycleVpnService() {
     private fun createBuilder(dns: String, ipv6: Boolean): Builder {
         Log.d(TAG, "DNS: $dns")
         val builder = Builder()
-        builder.setSession("ByeDPI")
+        val provider = ru.toinet.android.util.Prefs.vpnProvider
+        val sessionName = when (provider) {
+            "easyvpn" -> "EasyVPN"
+            "zapret" -> "Zapret"
+            else -> "ByeDPI"
+        }
+        builder.setSession(sessionName)
         builder.setConfigureIntent(
             PendingIntent.getActivity(
                 this,

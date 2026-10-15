@@ -14,6 +14,7 @@
         <item>Socks Rehab</item>
         <item>vk-turn</item>
         <item>Opera Proxy</item>
+        <item>Zapret</item>
     </array>
     
     <array name="log_providers_values">
@@ -24,6 +25,7 @@
         <item>rehab</item>
         <item>turnproxy</item>
         <item>operaproxy</item>
+        <item>zapret</item>
     </array>
     
     <string-array name="dns_protocols">

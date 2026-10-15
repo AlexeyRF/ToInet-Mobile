@@ -102,6 +102,10 @@ object PresetManager {
             OperaProxyService.stop(context)
         }
         
+        if (oldJson.optBoolean("zapret_enabled") && (!newJson.optBoolean("zapret_enabled") || changed(oldJson, newJson, listOf("zapret_port", "zapret_args")))) {
+            ru.toinet.android.zapret.ZapretService.stop(context)
+        }
+        
         if (oldJson.optBoolean("rehabilitator_enabled") && (!newJson.optBoolean("rehabilitator_enabled") || changed(oldJson, newJson, listOf("rehabilitator_bind_address")))) {
             RehabilitatorService.stop(context)
         }
@@ -136,6 +140,7 @@ object PresetManager {
         ru.toinet.android.vpn.services.ServiceManager.stop(context)
         TurnProxyService.stop(context)
         OperaProxyService.stop(context)
+        ru.toinet.android.zapret.ZapretService.stop(context)
         RehabilitatorService.stop(context)
         //ru.toinet.android.tgws.Gatik.stop()
     }
@@ -157,6 +162,9 @@ object PresetManager {
         }
         if (Prefs.operaProxyEnabled) {
             OperaProxyService.start(context)
+        }
+        if (Prefs.zapretEnabled) {
+            ru.toinet.android.zapret.ZapretService.start(context)
         }
         if (Prefs.rehabilitatorEnabled) {
             RehabilitatorService.start(context)

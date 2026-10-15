@@ -314,6 +314,7 @@ class TgwsCore(
                 "turnproxy" -> Prefs.turnProxyLocalPort
                 "fakevpn" -> 1790
                 "operaproxy" -> Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1888
+                "zapret" -> Prefs.zapretPort
                 "custom" -> Prefs.customSocksPort
                 else -> 1080
             }

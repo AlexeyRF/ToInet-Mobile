@@ -33,6 +33,7 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
             "turnproxy" -> binding.rbTurnProxy.isChecked = true
             "fakevpn" -> binding.rbFakeVpn.isChecked = true
             "operaproxy" -> binding.rbOperaProxy.isChecked = true
+            "zapret" -> binding.rbZapret.isChecked = true
             "easyvpn" -> {
                 binding.rbEasyVpn.isChecked = true
                 binding.llEasyVpnSettings.visibility = View.VISIBLE
@@ -49,13 +50,13 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
         binding.etCustomVpnDns.setText(Prefs.customVpnDns)
         binding.etEasyVpnSubs.setText(Prefs.easyVpnSubs)
 
-        if (binding.rbFakeVpn.isChecked || binding.rbByedpi.isChecked) {
+        if (binding.rbFakeVpn.isChecked || binding.rbByedpi.isChecked || binding.rbZapret.isChecked) {
             binding.llCustomVpnDns.visibility = View.VISIBLE
         }
 
         binding.rgVpnProvider.setOnCheckedChangeListener { _, checkedId ->
             binding.llCustomSocks.visibility = if (checkedId == binding.rbCustom.id) View.VISIBLE else View.GONE
-            binding.llCustomVpnDns.visibility = if (checkedId == binding.rbFakeVpn.id || checkedId == binding.rbByedpi.id) View.VISIBLE else View.GONE
+            binding.llCustomVpnDns.visibility = if (checkedId == binding.rbFakeVpn.id || checkedId == binding.rbByedpi.id || checkedId == binding.rbZapret.id) View.VISIBLE else View.GONE
             binding.llEasyVpnSettings.visibility = if (checkedId == binding.rbEasyVpn.id) View.VISIBLE else View.GONE
             
             if (checkedId == binding.rbTgws.id) {
@@ -88,6 +89,7 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 binding.rbTurnProxy.id -> "turnproxy"
                 binding.rbFakeVpn.id -> "fakevpn"
                 binding.rbOperaProxy.id -> "operaproxy"
+                binding.rbZapret.id -> "zapret"
                 binding.rbEasyVpn.id -> "easyvpn"
                 binding.rbCustom.id -> "custom"
                 else -> "byedpi"
@@ -97,7 +99,7 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 Prefs.customSocksIp = binding.etCustomIp.text.toString().trim().takeIf { it.isNotBlank() } ?: "127.0.0.1"
                 Prefs.customSocksPort = binding.etCustomPort.text.toString().trim().toIntOrNull() ?: 1080
             }
-            if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbFakeVpn.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbByedpi.id) {
+            if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbFakeVpn.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbByedpi.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbZapret.id) {
                 Prefs.customVpnDns = binding.etCustomVpnDns.text.toString().trim()
             }
             if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbEasyVpn.id) {

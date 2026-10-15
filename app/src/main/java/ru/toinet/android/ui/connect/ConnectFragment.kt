@@ -173,6 +173,7 @@ class ConnectFragment : Fragment(),
             "fakevpn" -> true
             "operaproxy" -> Prefs.operaProxyEnabled
             "easyvpn" -> true
+            "zapret" -> Prefs.zapretEnabled
             "custom" -> true
             else -> false
         }

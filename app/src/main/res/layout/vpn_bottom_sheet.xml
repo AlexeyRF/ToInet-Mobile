@@ -81,6 +81,12 @@
                 android:text="Opera Proxy" />
                 
             <RadioButton
+                android:id="@+id/rbZapret"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Zapret (порт 1081)" />
+                
+            <RadioButton
                 android:id="@+id/rbCustom"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

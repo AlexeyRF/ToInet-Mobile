@@ -427,6 +427,26 @@ object Prefs {
         set(value) = cr?.putPref("byedpi_enable_cmd_settings", value) ?: Unit
 
     @JvmStatic
+    var zapretEnabled: Boolean
+        get() = cr?.getPrefBoolean("zapret_enabled", false) ?: false
+        set(value) = cr?.putPref("zapret_enabled", value) ?: Unit
+
+    @JvmStatic
+    var zapretPort: Int
+        get() = cr?.getPrefInt("zapret_port", 1081) ?: 1081
+        set(value) = cr?.putPref("zapret_port", value) ?: Unit
+
+    @JvmStatic
+    var zapretHost: String
+        get() = if (openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+        set(value) = Unit
+
+    @JvmStatic
+    var zapretArgs: String
+        get() = cr?.getPrefString("zapret_args") ?: "--split-pos=2"
+        set(value) = cr?.putPref("zapret_args", value) ?: Unit
+
+    @JvmStatic
     var tgwsEnabled: Boolean
         get() = cr?.getPrefBoolean("tgws_enabled", false) ?: false
         set(value) = cr?.putPref("tgws_enabled", value) ?: Unit

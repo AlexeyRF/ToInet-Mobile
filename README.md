@@ -1,7 +1,7 @@
 # ToInet-Mobile
 **Версия для ПК:** [ToInet](https://github.com/AlexeyRF/ToInet)
 
-**ToInet-Mobile** - это мобильное приложение-лаунчер для Android, объединяющее в себе несколько инструментов обхода блокировок: **Tor (ЛМ)**, **Telegram WebSocket Proxy (TGWS)**, **ByeDPI**, **vk-turn-proxy** и **Socks-Reabilitator**. 
+**ToInet-Mobile** - это мобильное приложение-лаунчер для Android, объединяющее в себе несколько инструментов обхода блокировок: **Tor (ЛМ)**, **Telegram WebSocket Proxy (TGWS)**, **ByeDPI**, **Zapret (tpws)**, **vk-turn-proxy** и **Socks-Reabilitator**. 
 
 Приложение позволяет управлять этими инструментами и маршрутизировать трафик через VPN-сервис устройства или использовать их как локальные прокси-серверы для отдельных приложений.
 
@@ -9,6 +9,7 @@
 
 ## Основные возможности
 *   **ByeDPI** 
+*   **Zapret (tpws)**
 *   **Tor** 
 *   **TGWS** 
 *   **Socks-Reabilitator**
@@ -30,6 +31,7 @@
 | **Socks-Reabilitator** | `1788` | SOCKS5     |
 | **Opera-Proxy**        | `1888` | HTTP       |
 | **Byedpi**             | `1080` | SOCKS5     |
+| **Zapret**             | `1081` | SOCKS5     |
 ---
 
 > [!WARNING]
@@ -42,6 +44,7 @@
 **Лицензия:** Все права принадлежат тем, кому они принадлежат.
 
 *   [ЛМ (Tor)](https://torproject.org)
+*   [zapret](https://github.com/bol-van/zapret)
 *   [byedpiandroid](https://github.com/dovecoteescapee/byedpiandroid)
 *   [byedpi](https://github.com/hufrea/byedpi)
 *   [ByeByeDPI](https://github.com/romanvht/ByeByeDPI/)

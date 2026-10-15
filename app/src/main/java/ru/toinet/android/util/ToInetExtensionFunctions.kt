@@ -49,6 +49,7 @@ fun Context.sendIntentToService(action: String) {
 
     val turnProxyEnabled = Prefs.turnProxyEnabled
     val operaProxyEnabled = Prefs.operaProxyEnabled
+    val zapretEnabled = Prefs.zapretEnabled
 
     val isPing = action == "ACTIVE" || action == ToInetConstants.CMD_ACTIVE
     val isStop = action == org.torproject.jni.TorService.ACTION_STOP
@@ -67,6 +68,14 @@ fun Context.sendIntentToService(action: String) {
             },
             isForeground = !isPing && !isStop
         )
+    }
+
+    if (zapretEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+        if (action == org.torproject.jni.TorService.ACTION_START) {
+            ru.toinet.android.zapret.ZapretService.start(this)
+        } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
+            ru.toinet.android.zapret.ZapretService.stop(this)
+        }
     }
 
     if (isGlobalVpnEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
@@ -134,12 +143,12 @@ fun Context.sendIntentToService(action: String) {
 
     if (!torEnabled && !isPing) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
-            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled || turnProxyEnabled || operaProxyEnabled)) {
+            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled || turnProxyEnabled || operaProxyEnabled || zapretEnabled)) {
                 val intent = Intent(ToInetConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_ON)
                 intent.setPackage(packageName)
                 sendBroadcast(intent)
-            } else if (!byedpiEnabled && !tgwsEnabled && !rehabilitatorEnabled && !turnProxyEnabled && !operaProxyEnabled) {
+            } else if (!byedpiEnabled && !tgwsEnabled && !rehabilitatorEnabled && !turnProxyEnabled && !operaProxyEnabled && !zapretEnabled) {
                 val intent = Intent(ToInetConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_OFF)
                 intent.setPackage(packageName)
