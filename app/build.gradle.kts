@@ -43,7 +43,6 @@ configure<ApplicationExtension> {
         targetSdk = 36
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        flavorDimensions += listOf("vpn", "free")
     }
 
     compileOptions {
@@ -66,15 +65,16 @@ configure<ApplicationExtension> {
     }
 
     testOptions { execution = "ANDROIDX_TEST_ORCHESTRATOR" }
+    val keystorePropertiesFile = rootProject.file("keystore.properties")
+    val keystoreProperties = Properties()
+    if (keystorePropertiesFile.canRead()) {
+        keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+    }
+    val hasReleaseKey = keystoreProperties.isNotEmpty() && keystoreProperties.containsKey("storeFile")
 
     signingConfigs {
-        create("release") {
-            val keystorePropertiesFile = rootProject.file("keystore.properties")
-            val keystoreProperties = Properties()
-            if (keystorePropertiesFile.canRead()) {
-                keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
-            }
-            if (keystoreProperties.isNotEmpty()) {
+        if (hasReleaseKey) {
+            create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
                 storeFile = file(keystoreProperties["storeFile"] as String)
@@ -91,7 +91,7 @@ configure<ApplicationExtension> {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.txt"
             )
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
         getByName("debug") {
             isDebuggable = true
@@ -107,23 +107,6 @@ configure<ApplicationExtension> {
         }
     }
 
-    productFlavors {
-        create("withEasyVpn") {
-            dimension = "vpn"
-        }
-        create("noEasyVpn") {
-            dimension = "vpn"
-        }
-        create("fullperm") {
-            dimension = "free"
-        }
-        create("nightly") {
-            dimension = "free"
-            // overwrites defaults from defaultConfig
-            applicationId = "ru.toinet.android.nightly"
-            versionCode = (Date().time / 1000).toInt()
-        }
-    }
 
     packaging {
         resources {
@@ -146,7 +129,7 @@ configure<ApplicationExtension> {
 
     sourceSets {
         getByName("main") {
-            jniLibs.setSrcDirs(listOf("src/main/jniLibs"))
+            jniLibs.setSrcDirs(listOf("src/main/jniLibs", "src/main/xrayLibs"))
         }
     }
 
@@ -221,7 +204,7 @@ androidComponents {
 
 // Safer way to depend on variant-specific tasks that are created lazily by AGP
 tasks.matching { 
-    it.name == "preFullpermReleaseBuild" || it.name == "preNightlyReleaseBuild" 
+    it.name == "preReleaseBuild" 
 }.configureEach {
     dependsOn(copyLicenseToAssets)
 }
@@ -264,7 +247,7 @@ dependencies {
 }
 
 tasks.register<Copy>("copyAllApks") {
-    dependsOn("assembleFullpermRelease")
+    dependsOn("assembleRelease")
     from(layout.buildDirectory.dir("outputs/apk"))
     include("**/*.apk")
     exclude("**/*-unaligned.apk")
@@ -273,4 +256,9 @@ tasks.register<Copy>("copyAllApks") {
     eachFile {
         path = name
     }
+}
+
+// Compatibility alias for scripts targeting assembleFullpermRelease
+tasks.register("assembleFullpermRelease") {
+    dependsOn("assembleRelease")
 }

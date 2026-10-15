@@ -91,14 +91,15 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
     fun start() {
         job = scope.launch(Dispatchers.IO) {
             try {
-                // Hardcoded URLs as requested
-                val subs = listOf(
+                val defaultSubs = listOf(
                     "https://gitverse.ru/api/repos/zieng2/wl/raw/branch/master/list_lite.txt",
                     "https://gitverse.ru/api/repos/zieng2/wl/raw/branch/master/list_universal.txt",
                     "https://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_lite.txt",
                     "https://raw.githubusercontent.com/solovyov-jenya2004/all_subs/refs/heads/main/final_sorted",
                     "https://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_universal.txt"
                 )
+                val userSubs = Prefs.easyVpnSubs.split("\n", ",").map { it.trim() }.filter { it.isNotEmpty() }
+                val subs = if (userSubs.isNotEmpty()) userSubs else defaultSubs
 
                 val nodes = mutableListOf<String>()
                 for (urlStr in subs) {
@@ -107,13 +108,13 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                             nodes.add(urlStr)
                             continue
                         }
-                        
+
                         val url = URL(urlStr)
                         val conn = url.openConnection() as HttpURLConnection
                         conn.connectTimeout = 10000
                         conn.readTimeout = 10000
                         val data = conn.inputStream.bufferedReader().readText()
-                        
+
                         var decoded = data
                         if (!data.contains("vless://")) {
                             try {
@@ -122,7 +123,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                                 // ignore
                             }
                         }
-                        
+
                         decoded.split("\n").forEach { line ->
                             val t = line.trim()
                             if (t.startsWith("vless://")) {
@@ -142,7 +143,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                 val parsedNodes = nodes.mapNotNull { VlessNode.parse(it) }
 
                 val workingNodes = mutableListOf<VlessNode>()
-                
+
                 // Limit concurrency to 100 to avoid overwhelming network/DNS and match EVPN-x64 behavior
                 val semaphore = Semaphore(100)
                 val deferreds = parsedNodes.map { node ->
@@ -160,8 +161,8 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                         }
                     }
                 }
-                
-                deferreds.awaitAll().forEach { 
+
+                deferreds.awaitAll().forEach {
                     if (it != null) workingNodes.add(it)
                 }
 
@@ -170,182 +171,227 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                     return@launch
                 }
 
-                buildAndRunSingBox(workingNodes)
+                buildAndRunXray(workingNodes)
             } catch (e: Exception) {
                 Log.e(TAG, "Error in EasyVpnServer", e)
             }
         }
     }
 
-    private fun buildAndRunSingBox(nodes: List<VlessNode>) {
+    private fun buildAndRunXray(nodes: List<VlessNode>) {
         val outbounds = JSONArray()
-        outbounds.put(JSONObject().apply {
-            put("type", "direct")
-            put("tag", "direct")
-        })
-
         val proxyTags = JSONArray()
 
         nodes.take(200).forEachIndexed { i, node ->
             try {
                 val tag = "proxy-$i"
-                
-                val outbound = JSONObject().apply {
-                    put("type", "vless")
-                    put("tag", tag)
-                    put("server", node.server)
-                    put("server_port", node.port)
-                    put("uuid", node.uuid)
-                    put("packet_encoding", "xudp")
+
+                val userObj = JSONObject().apply {
+                    put("id", node.uuid)
+                    put("encryption", if (node.method.isNotEmpty()) node.method else "none")
+                    if (node.flow.isNotEmpty()) {
+                        put("flow", node.flow)
+                    }
                 }
-                
-                if (node.flow.isNotEmpty()) {
-                    outbound.put("flow", node.flow)
+
+                val vnextObj = JSONObject().apply {
+                    put("address", node.server)
+                    put("port", node.port)
+                    put("users", JSONArray().apply { put(userObj) })
                 }
-                
-                if (node.security == "tls" || node.security == "reality") {
-                    val tlsConfig = JSONObject().apply {
-                        put("enabled", true)
-                        put("server_name", if (node.sni.isNotEmpty()) node.sni else node.server)
-                        put("utls", JSONObject().apply {
-                            put("enabled", true)
+
+                val settingsObj = JSONObject().apply {
+                    put("vnext", JSONArray().apply { put(vnextObj) })
+                }
+
+                val streamSettings = JSONObject().apply {
+                    put("network", if (node.type.isNotEmpty()) node.type else "tcp")
+                    val sec = if (node.security == "reality" || node.security == "tls") node.security else "none"
+                    put("security", sec)
+
+                    if (sec == "tls") {
+                        val tlsObj = JSONObject().apply {
+                            put("serverName", if (node.sni.isNotEmpty()) node.sni else node.server)
+                            if (node.fp.isNotEmpty()) {
+                                put("fingerprint", node.fp)
+                            }
+                            if (node.alpn.isNotEmpty()) {
+                                val alpnList = node.alpn.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                if (alpnList.isNotEmpty()) {
+                                    put("alpn", JSONArray(alpnList))
+                                }
+                            }
+                        }
+                        put("tlsSettings", tlsObj)
+                    } else if (sec == "reality") {
+                        val realityObj = JSONObject().apply {
+                            put("serverName", if (node.sni.isNotEmpty()) node.sni else node.server)
                             put("fingerprint", if (node.fp.isNotEmpty()) node.fp else "chrome")
-                        })
+                            put("publicKey", node.pbk)
+                            put("shortId", node.sid)
+                            put("spiderX", "")
+                        }
+                        put("realitySettings", realityObj)
                     }
-                    if (node.alpn.isNotEmpty()) {
-                        tlsConfig.put("alpn", JSONArray(node.alpn.split(",").map { it.trim() }))
-                    }
-                    if (node.security == "reality") {
-                        tlsConfig.put("reality", JSONObject().apply {
-                            put("enabled", true)
-                            put("public_key", node.pbk)
-                            put("short_id", node.sid)
-                        })
-                    }
-                    outbound.put("tls", tlsConfig)
-                }
-                
-                when (node.type) {
-                    "ws" -> {
-                        val transport = JSONObject().apply {
-                            put("type", "ws")
-                            put("path", node.path)
-                            if (node.host.isNotEmpty()) {
-                                put("headers", JSONObject().apply {
-                                    put("Host", node.host)
-                                })
+
+                    when (node.type) {
+                        "ws" -> {
+                            val wsObj = JSONObject().apply {
+                                put("path", if (node.path.isNotEmpty()) node.path else "/")
+                                val headers = JSONObject()
+                                val hostVal = if (node.host.isNotEmpty()) node.host else (if (node.sni.isNotEmpty()) node.sni else node.server)
+                                if (hostVal.isNotEmpty()) {
+                                    headers.put("Host", hostVal)
+                                }
+                                put("headers", headers)
                             }
+                            put("wsSettings", wsObj)
                         }
-                        outbound.put("transport", transport)
-                    }
-                    "grpc" -> {
-                        val transport = JSONObject().apply {
-                            put("type", "grpc")
-                            put("service_name", node.serviceName)
-                        }
-                        outbound.put("transport", transport)
-                    }
-                    "httpupgrade" -> {
-                        val transport = JSONObject().apply {
-                            put("type", "httpupgrade")
-                            put("path", node.path)
-                            if (node.host.isNotEmpty()) {
-                                put("headers", JSONObject().apply {
-                                    put("Host", node.host)
-                                })
+                        "grpc" -> {
+                            val grpcObj = JSONObject().apply {
+                                put("serviceName", node.serviceName)
+                                put("multiMode", true)
                             }
+                            put("grpcSettings", grpcObj)
                         }
-                        outbound.put("transport", transport)
+                        "httpupgrade" -> {
+                            val huObj = JSONObject().apply {
+                                put("path", if (node.path.isNotEmpty()) node.path else "/")
+                                val hostVal = if (node.host.isNotEmpty()) node.host else (if (node.sni.isNotEmpty()) node.sni else node.server)
+                                if (hostVal.isNotEmpty()) {
+                                    put("host", hostVal)
+                                }
+                            }
+                            put("httpupgradeSettings", huObj)
+                        }
                     }
                 }
-                
+
+                val outbound = JSONObject().apply {
+                    put("tag", tag)
+                    put("protocol", "vless")
+                    put("settings", settingsObj)
+                    put("streamSettings", streamSettings)
+                }
+
                 outbounds.put(outbound)
                 proxyTags.put(tag)
             } catch (e: Exception) {
-                // Ignore parsing errors for individual nodes
                 Log.e(TAG, "Failed to build node $i", e)
             }
         }
 
-        val autoOutbound = JSONObject().apply {
-            put("type", "urltest")
-            put("tag", "auto")
-            put("outbounds", proxyTags)
-            put("url", "http://cp.cloudflare.com/generate_204")
-            put("interval", "3m")
-            put("tolerance", 5000)
-        }
-        
-        val newOutbounds = JSONArray()
-        newOutbounds.put(autoOutbound)
-        for (i in 0 until outbounds.length()) {
-            newOutbounds.put(outbounds.get(i))
-        }
+        // Direct outbound
+        outbounds.put(JSONObject().apply {
+            put("tag", "direct")
+            put("protocol", "freedom")
+            put("settings", JSONObject())
+        })
 
         val config = JSONObject().apply {
             put("log", JSONObject().apply {
-                put("level", "info")
+                put("loglevel", "warning")
             })
-            // Removed local DNS block to allow pdnsd to route DNS over VLESS proxy
+
             put("inbounds", JSONArray().apply {
                 put(JSONObject().apply {
-                    put("type", "socks")
                     put("tag", "socks-in")
                     put("listen", "127.0.0.1")
-                    put("listen_port", 1791)
-                })
-            })
-            put("outbounds", newOutbounds)
-            put("route", JSONObject().apply {
-                put("rules", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("inbound", "socks-in")
-                        put("outbound", "auto")
+                    put("port", 1791)
+                    put("protocol", "socks")
+                    put("settings", JSONObject().apply {
+                        put("auth", "noauth")
+                        put("udp", true)
+                    })
+                    put("sniffing", JSONObject().apply {
+                        put("enabled", true)
+                        put("destOverride", JSONArray().apply {
+                            put("http")
+                            put("tls")
+                        })
                     })
                 })
-                put("auto_detect_interface", true)
-                put("final", "auto")
+            })
+
+            put("outbounds", outbounds)
+
+            put("routing", JSONObject().apply {
+                put("domainStrategy", "AsIs")
+                put("balancers", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("tag", "balancer")
+                        put("selector", JSONArray().apply { put("proxy-") })
+                        put("strategy", JSONObject().apply {
+                            put("type", "leastPing")
+                        })
+                    })
+                })
+                put("rules", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("type", "field")
+                        put("inboundTag", JSONArray().apply { put("socks-in") })
+                        put("balancerTag", "balancer")
+                    })
+                })
+            })
+
+            put("observatory", JSONObject().apply {
+                put("subjectSelector", JSONArray().apply { put("proxy-") })
+                put("probeUrl", "http://cp.cloudflare.com/generate_204")
+                put("probeInterval", "3m")
+                put("enableConcurrency", true)
             })
         }
 
-        val configFile = File(context.filesDir, "easyvpn_config.json")
+        val configFile = File(context.filesDir, "xray_config.json")
         configFile.writeText(config.toString(2))
 
         val libDir = context.applicationInfo.nativeLibraryDir
-        val nativeSingBox = File(libDir, "libsing-box.so")
-        
-        if (!nativeSingBox.exists()) {
-            Log.e(TAG, "sing-box binary not found in $libDir. Make sure you built the withEasyVpn flavor.")
+        val nativeXray = File(libDir, "libxray.so")
+
+        if (!nativeXray.exists()) {
+            Log.e(TAG, "xray binary not found in $libDir.")
             return
         }
 
-        val singBoxBinary = File(context.filesDir, "sing-box")
+        val xrayBinary = File(context.filesDir, "xray")
         try {
-            nativeSingBox.copyTo(singBoxBinary, overwrite = true)
-            singBoxBinary.setExecutable(true)
+            nativeXray.copyTo(xrayBinary, overwrite = true)
+            xrayBinary.setExecutable(true)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to copy sing-box binary to filesDir", e)
+            Log.e(TAG, "Failed to copy xray binary to filesDir", e)
             return
         }
 
-        val pb = ProcessBuilder(singBoxBinary.absolutePath, "run", "-c", configFile.absolutePath)
+        val pb = ProcessBuilder(xrayBinary.absolutePath, "run", "-c", configFile.absolutePath)
         pb.directory(context.filesDir)
         pb.redirectErrorStream(true)
-        
-        val env = pb.environment()
-        env["ENABLE_DEPRECATED_LEGACY_DNS_SERVERS"] = "true"
-        env["ENABLE_DEPRECATED_OUTBOUND_DNS_RULE_ITEM"] = "true"
-        env["ENABLE_DEPRECATED_MISSING_DOMAIN_RESOLVER"] = "true"
-        
-        process = pb.start()
-        Log.i(TAG, "sing-box started")
+
+        try {
+            process = pb.start()
+            Log.i(TAG, "xray started")
+
+            scope.launch(Dispatchers.IO) {
+                try {
+                    process?.inputStream?.bufferedReader()?.useLines { lines ->
+                        lines.forEach { line ->
+                            Log.d(TAG, "[xray] $line")
+                        }
+                    }
+                } catch (e: Exception) {
+                    // stream closed
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start xray process", e)
+        }
     }
 
     fun stop() {
         job?.cancel()
         process?.destroy()
         process = null
-        Log.i(TAG, "sing-box stopped")
+        Log.i(TAG, "xray stopped")
     }
 }
 
