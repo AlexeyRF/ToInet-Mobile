@@ -67,7 +67,7 @@ public class OnionServiceActionsDialogFragment extends DialogFragment {
     private void doCopy(Bundle arguments, Context context) {
         String onion = arguments.getString(OnionServiceActivity.BUNDLE_KEY_DOMAIN);
         if (onion == null)
-            Toast.makeText(context, R.string.please_restart_Orbot_to_enable_the_changes, Toast.LENGTH_LONG).show();
+            Toast.makeText(context, R.string.please_restart_ToInet_to_enable_the_changes, Toast.LENGTH_LONG).show();
         else
             StringUtils.copyToClipboard("onion", onion, context);
     }
@@ -76,7 +76,7 @@ public class OnionServiceActionsDialogFragment extends DialogFragment {
         String filename = "onion_service" + arguments.getString(OnionServiceActivity.BUNDLE_KEY_PORT) + ".zip";
 //        String relativePath = arguments.getString(OnionServiceActivity.BUNDLE_KEY_PATH);
         if (arguments.getString(OnionServiceActivity.BUNDLE_KEY_DOMAIN) == null) {
-            Toast.makeText(context, R.string.please_restart_Orbot_to_enable_the_changes, Toast.LENGTH_LONG).show();
+            Toast.makeText(context, R.string.please_restart_ToInet_to_enable_the_changes, Toast.LENGTH_LONG).show();
             return;
         }
         Intent createFileIntent = DiskUtils.createWriteFileIntent(filename, "application/zip");

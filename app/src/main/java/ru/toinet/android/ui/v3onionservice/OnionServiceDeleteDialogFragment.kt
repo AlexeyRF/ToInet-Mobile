@@ -11,7 +11,7 @@ import androidx.fragment.app.DialogFragment
 
 import ru.toinet.android.R
 import ru.toinet.android.util.DiskUtils.recursivelyDeleteDirectory
-import ru.toinet.android.service.OrbotConstants
+import ru.toinet.android.service.ToInetConstants
 
 import java.io.File
 
@@ -36,7 +36,7 @@ class OnionServiceDeleteDialogFragment internal constructor(arguments: Bundle?) 
             ),
             null
         )
-        val base = context.filesDir.absolutePath + "/" + OrbotConstants.ONION_SERVICES_DIR
+        val base = context.filesDir.absolutePath + "/" + ToInetConstants.ONION_SERVICES_DIR
         val localPath = arguments?.getString(OnionServiceActivity.BUNDLE_KEY_PATH)
         localPath?.let { recursivelyDeleteDirectory(File(base, localPath)) }
         (requireActivity() as OnionServiceActivity).showBatteryOptimizationsMessageIfAppropriate()

@@ -112,7 +112,7 @@ class OperaProxyService : Service() {
 
         try {
             val pb = ProcessBuilder(cmdArgs)
-            if (Prefs.operaProxyUseByeDpi) {
+            if (false) /* Disabled */ {
                 pb.environment()["ALL_PROXY"] = "socks5://127.0.0.1:1080"
                 pb.environment()["all_proxy"] = "socks5://127.0.0.1:1080"
                 Log.i(TAG, "OperaProxy using ByeDpi proxy on 127.0.0.1:1080")

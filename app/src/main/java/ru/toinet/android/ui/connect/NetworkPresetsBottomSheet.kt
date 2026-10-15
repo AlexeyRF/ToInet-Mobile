@@ -8,7 +8,7 @@ import android.widget.ListView
 import android.widget.Toast
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import ru.toinet.android.R
-import ru.toinet.android.ui.OrbotMenuAction
+import ru.toinet.android.ui.ToInetMenuAction
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.PresetManager
 import android.widget.TextView
@@ -30,7 +30,7 @@ class NetworkPresetsBottomSheet : BottomSheetDialogFragment() {
 
     private fun setupMenu(view: View) {
         val actions = arrayListOf(
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Сохранить текущие настройки для Wi-Fi"
@@ -39,7 +39,7 @@ class NetworkPresetsBottomSheet : BottomSheetDialogFragment() {
                 Toast.makeText(requireContext(), "Пресет Wi-Fi сохранен", Toast.LENGTH_SHORT).show()
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Сохранить текущие настройки для Мобильной сети"
@@ -48,7 +48,7 @@ class NetworkPresetsBottomSheet : BottomSheetDialogFragment() {
                 Toast.makeText(requireContext(), "Пресет Мобильной сети сохранен", Toast.LENGTH_SHORT).show()
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Режим переключения: ${if (Prefs.networkSwitchMode == "smart_switch") "Мягкий (Умный)" else "Жесткий (Перезапуск)"}"

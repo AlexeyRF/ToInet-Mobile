@@ -9,7 +9,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import ru.toinet.android.OrbotActivity
+import ru.toinet.android.ToInetActivity
 import ru.toinet.android.R
 
 class TgwsService : Service() {

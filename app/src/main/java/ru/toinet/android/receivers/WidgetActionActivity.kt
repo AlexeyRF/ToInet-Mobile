@@ -22,9 +22,9 @@ class WidgetActionActivity : AppCompatActivity() {
                 @Suppress("DEPRECATION")
                 val isRunning = am.getRunningServices(Int.MAX_VALUE).any {
                     it.service.packageName == packageName && (
-                        it.service.className == "ru.toinet.android.service.OrbotService" ||
+                        it.service.className == "ru.toinet.android.service.ToInetService" ||
                         it.service.className == "ru.toinet.android.byedpi.services.ByeDpiProxyService" ||
-                        it.service.className == "ru.toinet.android.byedpi.services.ByeDpiVpnService"
+                        it.service.className == "ru.toinet.android.vpn.services.AppVpnService"
                     )
                 }
 
@@ -69,3 +69,4 @@ class WidgetActionActivity : AppCompatActivity() {
         finish()
     }
 }
+

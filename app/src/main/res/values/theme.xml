@@ -6,7 +6,7 @@
         <item name="preferenceTheme">@style/PrefsTheme</item>
     </style>
 
-    <style name="OrbotDialogTheme" parent="Theme.Material3.DayNight.Dialog.Alert">
+    <style name="ToInetDialogTheme" parent="Theme.Material3.DayNight.Dialog.Alert">
         <item name="android:background">@color/dark_purple</item>
         <item name="android:textColor">@android:color/white</item>
         <item name="android:textStyle">bold</item>

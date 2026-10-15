@@ -8,10 +8,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.databinding.VpnBottomSheetBinding
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 
-class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
+class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: VpnBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
@@ -33,6 +33,10 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
             "turnproxy" -> binding.rbTurnProxy.isChecked = true
             "fakevpn" -> binding.rbFakeVpn.isChecked = true
             "operaproxy" -> binding.rbOperaProxy.isChecked = true
+            "easyvpn" -> {
+                binding.rbEasyVpn.isChecked = true
+                binding.llEasyVpnSettings.visibility = View.VISIBLE
+            }
             "custom" -> {
                 binding.rbCustom.isChecked = true
                 binding.llCustomSocks.visibility = View.VISIBLE
@@ -43,6 +47,7 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
         binding.etCustomIp.setText(Prefs.customSocksIp)
         binding.etCustomPort.setText(Prefs.customSocksPort.toString())
         binding.etCustomVpnDns.setText(Prefs.customVpnDns)
+        binding.etEasyVpnSubs.setText(Prefs.easyVpnSubs)
 
         if (binding.rbFakeVpn.isChecked || binding.rbByedpi.isChecked) {
             binding.llCustomVpnDns.visibility = View.VISIBLE
@@ -51,6 +56,7 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
         binding.rgVpnProvider.setOnCheckedChangeListener { _, checkedId ->
             binding.llCustomSocks.visibility = if (checkedId == binding.rbCustom.id) View.VISIBLE else View.GONE
             binding.llCustomVpnDns.visibility = if (checkedId == binding.rbFakeVpn.id || checkedId == binding.rbByedpi.id) View.VISIBLE else View.GONE
+            binding.llEasyVpnSettings.visibility = if (checkedId == binding.rbEasyVpn.id) View.VISIBLE else View.GONE
             
             if (checkedId == binding.rbTgws.id) {
                 AlertDialog.Builder(requireContext())
@@ -61,7 +67,7 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
             } else if (checkedId == binding.rbTurnProxy.id) {
                 AlertDialog.Builder(requireContext())
                     .setTitle("Уведомление vk-turn")
-                    .setMessage("На удалённом сервере должен быть запущен socks, а в настройках сервера и локального клиента должен быть vless режим.")
+                    .setMessage("На удалённом сервере должен быть запущен socks.")
                     .setPositiveButton("ОК", null)
                     .show()
             }
@@ -82,6 +88,7 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
                 binding.rbTurnProxy.id -> "turnproxy"
                 binding.rbFakeVpn.id -> "fakevpn"
                 binding.rbOperaProxy.id -> "operaproxy"
+                binding.rbEasyVpn.id -> "easyvpn"
                 binding.rbCustom.id -> "custom"
                 else -> "byedpi"
             }
@@ -92,6 +99,9 @@ class VpnBottomSheet : OrbotBottomSheetDialogFragment() {
             }
             if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbFakeVpn.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbByedpi.id) {
                 Prefs.customVpnDns = binding.etCustomVpnDns.text.toString().trim()
+            }
+            if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbEasyVpn.id) {
+                Prefs.easyVpnSubs = binding.etEasyVpnSubs.text.toString().trim()
             }
             
             viewModel.triggerRefreshMenuList()

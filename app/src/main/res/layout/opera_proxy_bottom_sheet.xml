@@ -59,12 +59,7 @@
             android:text="Логирование (Verbose)"
             android:layout_marginTop="16dp" />
             
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/swUseByeDpi"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Пускать трафик через ByeDPI (127.0.0.1:1080)"
-            android:layout_marginTop="16dp" />
+        
 
         <Button
             android:id="@+id/btnSave"

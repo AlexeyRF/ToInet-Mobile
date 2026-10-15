@@ -45,8 +45,8 @@
     <string name="enter_ports">Введите порты</string>
     <string name="enable_debug_log_to_output_must_use_adb_or_alogcat_to_view_">Включить вывод журнала отладки (требует использовать adb или aLogCat для просмотра)</string>
     <string name="project_home">Домашняя страница проекта:</string>
-    <string name="orbot_url" translatable="false">https://github.com/AlexeyRF/</string>
-    <string name="orbot_github" translatable="false">https://github.com/AlexeyRF</string>
+    <string name="toinet_url" translatable="false">https://github.com/AlexeyRF/</string>
+    <string name="toinet_github" translatable="false">https://github.com/AlexeyRF</string>
     <string name="openssl_url" translatable="false">OpenSSL: http://www.openssl.org</string>
     <string name="third_party_software">Программы сторонних разработчиков: </string>
     <string name="version">Версия:</string>
@@ -99,7 +99,7 @@
     <string name="restore_backup">Восстановить из копии</string>
     <string name="confirm_service_deletion">Подтверждение удаления службы</string>
     <string name="service_type">Тип службы</string>
-    <string name="please_restart_Orbot_to_enable_the_changes">Перезапустите ToInet для вступления изменения в силу</string>
+    <string name="please_restart_ToInet_to_enable_the_changes">Перезапустите ToInet для вступления изменения в силу</string>
     <string name="onion" translatable="false">.onion</string>
     <string name="disable">Отключить</string>
     <string name="enable">Включить</string>
@@ -225,14 +225,14 @@
     <string name="you_already_have_these_bridges">Вы уже добавили мосты из этого QR-кода</string>
 
     
-    <string name="orbot_vpn">ToInet VPN</string>
+    <string name="toinet_vpn">ToInet VPN</string>
     <string name="status_starting_up">Запуск ToInet…</string>
     <string name="status_activated">Подключён к сети ToInet</string>
     <string name="status_disabled">ToInet отключён</string>
-    <string name="open_orbot_to_connect_to_tor">Откройте ToInet для подключения к Tor</string>
+    <string name="open_toinet_to_connect_to_tor">Откройте ToInet для подключения к Tor</string>
     <string name="status_shutting_down">Служба ToInet выключается</string>
     <string name="connect_to_tor">Подключиться</string>
-    <string name="orbot_config_invalid">Конфигурация ToInet Неверна</string>
+    <string name="toinet_config_invalid">Конфигурация ToInet Неверна</string>
 
     <string name="couldn_t_start_tor_process_">Невозможно запустить ToInet: </string>
     <string name="unable_to_start_tor">Невозможно запустить ToInet:</string>
@@ -292,7 +292,7 @@
     <string name="limit_dns_tunnel_use">Ограничить использование Туннеля DNS</string>
     <string name="dns_tunnel_usage_description">DNS-туннели приоритизируют доступ над скоростью и могут ощущаться медленнее. Мы рекомендуем включать их только для ключевых приложений. Просмотр видео не рекомандован.</string>
 
-    <string name="unable_to_start_orbot_vpn_title">Не удаётся запустить ToInet VPN</string>
+    <string name="unable_to_start_toinet_vpn_title">Не удаётся запустить ToInet VPN</string>
     <string name="unable_to_start_legacy_vpn_error_msg">Настроен пользовательский профиль VPN как "Постоянно включённый". Пожалуйста, отключите его перед запуском ToInet.</string>
     <string name="unable_to_start_other_vpn_app_error_msg">Приложение %1$s настроено как "Постоянно включённый" VPN. Пожалуйста, отключите его перед запуском ToInet.</string>
     <string name="unable_to_start_unknown_reason_error_msg">В разрешении VPN было отказано, или другое VPN-приложение имеет включённую функцию "Постоянно включённый VPN". Вы можете закрыть это сообщение и переподключиться, если вы случайно вышли из предыдущего диалога запроса VPN. Технические пользователи могут использовать другое VPN-приложение и использовать Tor как SOCKS-прокси, включив в ToInet "Режим опытного пользователя".</string>

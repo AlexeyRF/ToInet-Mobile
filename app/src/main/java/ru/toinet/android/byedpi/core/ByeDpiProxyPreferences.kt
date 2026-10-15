@@ -2,7 +2,7 @@ package ru.toinet.android.byedpi.core
 
 import android.content.Context
 import android.content.SharedPreferences
-import ru.toinet.android.byedpi.utility.getStringNotNull
+import ru.toinet.android.vpn.utility.getStringNotNull
 import ru.toinet.android.byedpi.utility.shellSplit
 
 sealed interface ByeDpiProxyPreferences {
@@ -282,4 +282,5 @@ class ByeDpiProxyUIPreferences(
         }
     }
 }
+
 

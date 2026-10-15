@@ -12,10 +12,10 @@ import androidx.core.widget.addTextChangedListener
 import androidx.navigation.fragment.NavHostFragment
 import ru.toinet.android.R
 import ru.toinet.android.databinding.ConfigConnectionBottomSheetBinding
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 
 class ConfigConnectionBottomSheet :
-    OrbotBottomSheetDialogFragment(), CompoundButton.OnCheckedChangeListener,
+    ToInetBottomSheetDialogFragment(), CompoundButton.OnCheckedChangeListener,
     View.OnClickListener, View.OnKeyListener, View.OnFocusChangeListener,
     AdapterView.OnItemClickListener {
 

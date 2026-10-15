@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.preference.*
 import ru.toinet.android.byedpi.utility.*
+import ru.toinet.android.vpn.utility.*
 import ru.toinet.android.R
 
 class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
@@ -67,4 +68,5 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
         }
     }
 }
+
 

@@ -6,10 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.databinding.TurnProxyBottomSheetBinding
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 
-class TurnProxyBottomSheet : OrbotBottomSheetDialogFragment() {
+class TurnProxyBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: TurnProxyBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
@@ -22,7 +22,6 @@ class TurnProxyBottomSheet : OrbotBottomSheetDialogFragment() {
         binding = TurnProxyBottomSheetBinding.inflate(inflater, container, false)
 
         binding.swEnabled.isChecked = Prefs.turnProxyEnabled
-        binding.swUseByeDpi.isChecked = Prefs.turnProxyUseByeDpi
         binding.swRawMode.isChecked = Prefs.turnProxyRawMode
         binding.etRawCommand.setText(Prefs.turnProxyRawCommand)
         binding.etProvider.setText(Prefs.turnProxyProvider)
@@ -45,7 +44,6 @@ class TurnProxyBottomSheet : OrbotBottomSheetDialogFragment() {
 
         binding.btnSave.setOnClickListener {
             Prefs.turnProxyEnabled = binding.swEnabled.isChecked
-            Prefs.turnProxyUseByeDpi = binding.swUseByeDpi.isChecked
             Prefs.turnProxyRawMode = binding.swRawMode.isChecked
             Prefs.turnProxyRawCommand = binding.etRawCommand.text.toString()
             Prefs.turnProxyProvider = binding.etProvider.text.toString()

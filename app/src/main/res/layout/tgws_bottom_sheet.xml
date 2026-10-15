@@ -25,12 +25,7 @@
             android:text="Включить TGWS"
             android:layout_marginBottom="16dp" />
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/swUseByeDpi"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Проксировать через ByeDPI"
-            android:layout_marginBottom="16dp" />
+        
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/swShareProxy"

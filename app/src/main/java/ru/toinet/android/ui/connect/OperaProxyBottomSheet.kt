@@ -6,12 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.databinding.OperaProxyBottomSheetBinding
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 import android.os.Build
 import android.widget.Toast
 
-class OperaProxyBottomSheet : OrbotBottomSheetDialogFragment() {
+class OperaProxyBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: OperaProxyBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
@@ -27,7 +27,6 @@ class OperaProxyBottomSheet : OrbotBottomSheetDialogFragment() {
         binding.etBindAddress.setText(Prefs.operaProxyBindAddress)
         binding.etUpstream.setText(Prefs.operaProxyUpstream)
         binding.swVerbose.isChecked = Prefs.operaProxyVerbose
-        binding.swUseByeDpi.isChecked = Prefs.operaProxyUseByeDpi
         
         val supportedAbis = Build.SUPPORTED_ABIS
         val isArm = supportedAbis.any { it.contains("arm") }
@@ -45,7 +44,6 @@ class OperaProxyBottomSheet : OrbotBottomSheetDialogFragment() {
             Prefs.operaProxyBindAddress = binding.etBindAddress.text.toString()
             Prefs.operaProxyUpstream = binding.etUpstream.text.toString()
             Prefs.operaProxyVerbose = binding.swVerbose.isChecked
-            Prefs.operaProxyUseByeDpi = binding.swUseByeDpi.isChecked
             
             viewModel.triggerRefreshMenuList()
             dismiss()

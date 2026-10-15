@@ -7,7 +7,7 @@
     </array>
     
     <array name="log_providers">
-        <item>Просто уведомление (ToInet)</item>
+        <item>ToInet</item>
         <item>TOR</item>
         <item>ByeDPI</item>
         <item>TGWS</item>
@@ -25,4 +25,16 @@
         <item>turnproxy</item>
         <item>operaproxy</item>
     </array>
+    
+    <string-array name="dns_protocols">
+        <item>UDP</item>
+        <item>DOT</item>
+        <item>DOH</item>
+    </string-array>
+    
+    <string-array name="dns_proxy_modes">
+        <item>VPN</item>
+        <item>DIRECT</item>
+        <item>CUSTOM</item>
+    </string-array>
 </resources>

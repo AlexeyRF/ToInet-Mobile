@@ -3,7 +3,7 @@ package ru.toinet.android.util
 import android.content.Context
 import android.util.Log
 import org.json.JSONObject
-import ru.toinet.android.byedpi.services.ServiceManager
+import ru.toinet.android.vpn.services.ServiceManager
 import ru.toinet.android.operaproxy.OperaProxyService
 import ru.toinet.android.rehabilitator.RehabilitatorService
 import ru.toinet.android.tgws.TgwsService
@@ -91,14 +91,14 @@ object PresetManager {
         }
         
         if (oldJson.optBoolean("byedpi_enabled") && (!newJson.optBoolean("byedpi_enabled") || changed(oldJson, newJson, listOf("byedpi_port", "byedpi_args")))) {
-            ru.toinet.android.byedpi.services.ServiceManager.stop(context)
+            ru.toinet.android.vpn.services.ServiceManager.stop(context)
         }
         
         if (oldJson.optBoolean("turnproxy_enabled") && (!newJson.optBoolean("turnproxy_enabled") || changed(oldJson, newJson, listOf("turnproxy_port", "turnproxy_host")))) {
             TurnProxyService.stop(context)
         }
         
-        if (oldJson.optBoolean("operaproxy_enabled") && (!newJson.optBoolean("operaproxy_enabled") || changed(oldJson, newJson, listOf("operaproxy_bind_address", "operaproxy_upstream", "operaproxy_use_byedpi")))) {
+        if (oldJson.optBoolean("operaproxy_enabled") && (!newJson.optBoolean("operaproxy_enabled") || changed(oldJson, newJson, listOf("operaproxy_bind_address", "operaproxy_upstream")))) {
             OperaProxyService.stop(context)
         }
         
@@ -133,7 +133,7 @@ object PresetManager {
     fun stopAll(context: Context) {
         context.sendIntentToService(org.torproject.jni.TorService.ACTION_STOP)
         TgwsService.stop(context)
-        ru.toinet.android.byedpi.services.ServiceManager.stop(context)
+        ru.toinet.android.vpn.services.ServiceManager.stop(context)
         TurnProxyService.stop(context)
         OperaProxyService.stop(context)
         RehabilitatorService.stop(context)
@@ -147,10 +147,10 @@ object PresetManager {
             androidx.core.content.ContextCompat.startForegroundService(context, intent)
         }
         if (Prefs.tgwsEnabled) {
-            TgwsService.start(context, Prefs.tgwsHost, Prefs.tgwsPort, Prefs.tgwsDcMappings, Prefs.tgwsSecret, Prefs.tgwsFakeTls, Prefs.tgwsUseByeDpi)
+            TgwsService.start(context, Prefs.tgwsHost, Prefs.tgwsPort, Prefs.tgwsDcMappings, Prefs.tgwsSecret, Prefs.tgwsFakeTls, false)
         }
         if (Prefs.byedpiEnabled) {
-            ru.toinet.android.byedpi.services.ServiceManager.start(context, ru.toinet.android.byedpi.data.Mode.Proxy)
+            ru.toinet.android.vpn.services.ServiceManager.start(context, ru.toinet.android.vpn.data.Mode.Proxy)
         }
         if (Prefs.turnProxyEnabled) {
             TurnProxyService.start(context)
@@ -171,3 +171,4 @@ object PresetManager {
         }
     }
 }
+

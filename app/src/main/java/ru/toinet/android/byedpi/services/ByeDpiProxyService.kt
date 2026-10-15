@@ -10,8 +10,9 @@ import androidx.lifecycle.lifecycleScope
 import ru.toinet.android.R
 import ru.toinet.android.byedpi.core.ByeDpiProxy
 import ru.toinet.android.byedpi.core.ByeDpiProxyPreferences
-import ru.toinet.android.byedpi.data.*
+import ru.toinet.android.vpn.data.*
 import ru.toinet.android.byedpi.utility.*
+import ru.toinet.android.vpn.utility.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -125,14 +126,30 @@ class ByeDpiProxyService : LifecycleService() {
             throw IllegalStateException("Proxy fields not null")
         }
 
-        val sharedPrefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
-        val cmdStrOriginal = sharedPrefs.getString("byedpi_cmd_args", "") ?: ""
+        var cmdStrOriginal = ru.toinet.android.util.Prefs.byedpiArgs
+        val subUrl = ru.toinet.android.util.Prefs.byedpiSubscriptionUrl
+        if (subUrl.isNotBlank()) {
+            try {
+                Log.i(TAG, "Fetching ByeDPI config from $subUrl")
+                val fetchedArgs = withContext(Dispatchers.IO) {
+                    java.net.URL(subUrl).readText().trim()
+                }
+                if (fetchedArgs.isNotBlank()) {
+                    cmdStrOriginal = fetchedArgs
+                    // Optionally save it back or just use it in memory
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch ByeDPI config from subscription", e)
+            }
+        }
+
         val cmdStr = if (cmdStrOriginal.trim().equals("TOR", ignoreCase = true)) {
             "{\"\":\"TOR\"}"
         } else {
             cmdStrOriginal
         }
 
+        val sharedPrefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
         val isRouter = cmdStr.trim().startsWith("{") && cmdStr.trim().endsWith("}") && sharedPrefs.getBoolean("byedpi_enable_cmd_settings", true)
 
         if (isRouter) {
@@ -193,7 +210,7 @@ class ByeDpiProxyService : LifecycleService() {
 
         status = newStatus
 
-        ru.toinet.android.byedpi.services.setStatus(
+        ru.toinet.android.vpn.services.setStatus(
             when (newStatus) {
                 ServiceStatus.Connected -> AppStatus.Running
                 ServiceStatus.Disconnected,
@@ -206,12 +223,12 @@ class ByeDpiProxyService : LifecycleService() {
         )
 
         if (!ru.toinet.android.util.Prefs.torEnabled) {
-            val orbotStatus = when (newStatus) {
+            val toinetStatus = when (newStatus) {
                 ServiceStatus.Connected -> org.torproject.jni.TorService.STATUS_ON
                 ServiceStatus.Disconnected, ServiceStatus.Failed -> org.torproject.jni.TorService.STATUS_OFF
             }
-            val statusIntent = Intent(ru.toinet.android.service.OrbotConstants.LOCAL_ACTION_STATUS)
-            statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, orbotStatus)
+            val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS)
+            statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, toinetStatus)
             statusIntent.setPackage(packageName)
             sendBroadcast(statusIntent)
         }
@@ -236,3 +253,5 @@ class ByeDpiProxyService : LifecycleService() {
             ByeDpiProxyService::class.java,
         )
 }
+
+

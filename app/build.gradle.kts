@@ -43,7 +43,7 @@ configure<ApplicationExtension> {
         targetSdk = 36
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        flavorDimensions += "free"
+        flavorDimensions += listOf("vpn", "free")
     }
 
     compileOptions {
@@ -53,10 +53,10 @@ configure<ApplicationExtension> {
 
     splits {
         abi {
-            isEnable = false
+            isEnable = true
             reset()
             include("x86", "armeabi-v7a", "x86_64", "arm64-v8a")
-            isUniversalApk = true
+            isUniversalApk = false
         }
     }
 
@@ -108,6 +108,12 @@ configure<ApplicationExtension> {
     }
 
     productFlavors {
+        create("withEasyVpn") {
+            dimension = "vpn"
+        }
+        create("noEasyVpn") {
+            dimension = "vpn"
+        }
         create("fullperm") {
             dimension = "free"
         }
@@ -207,7 +213,8 @@ androidComponents {
             }
             
             // Modern APK renaming using outputFileName property
-            output.outputFileName.set("Toinet.apk")
+            val abiStr = output.filters.find { it.filterType.name == "ABI" }?.identifier ?: "universal"
+            output.outputFileName.set("Toinet-${variant.name}-$abiStr.apk")
         }
     }
 }
@@ -254,4 +261,16 @@ dependencies {
     androidTestImplementation(libs.androidx.runner)
     androidTestImplementation(libs.androidx.espresso.contrib)
     androidTestUtil(libs.androidx.orchestrator)
+}
+
+tasks.register<Copy>("copyAllApks") {
+    dependsOn("assembleFullpermRelease")
+    from(layout.buildDirectory.dir("outputs/apk"))
+    include("**/*.apk")
+    exclude("**/*-unaligned.apk")
+    into(rootProject.layout.projectDirectory.dir("release_apks"))
+    includeEmptyDirs = false
+    eachFile {
+        path = name
+    }
 }

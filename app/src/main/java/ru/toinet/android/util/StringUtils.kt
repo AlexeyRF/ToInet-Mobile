@@ -1,4 +1,4 @@
-/* Copyright (c) 2009, Nathan Freitas, Orbot / The Guardian Project - http://openideals.com/guardian */ /* See LICENSE for licensing information */
+/* Copyright (c) 2009, Nathan Freitas, ToInet / The Guardian Project - http://openideals.com/guardian */ /* See LICENSE for licensing information */
 package ru.toinet.android.util
 
 import android.content.ClipData

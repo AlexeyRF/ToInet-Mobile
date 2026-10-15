@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import ru.toinet.android.databinding.TgwsBottomSheetBinding
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.putPref
 import android.content.ClipData
@@ -17,7 +17,7 @@ import android.widget.Toast
 import java.security.SecureRandom
 import java.net.NetworkInterface
 
-class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
+class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: TgwsBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
@@ -55,7 +55,6 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
         binding = TgwsBottomSheetBinding.inflate(inflater, container, false)
 
         binding.swEnabled.isChecked = Prefs.tgwsEnabled
-        binding.swUseByeDpi.isChecked = Prefs.tgwsUseByeDpi
         binding.swShareProxy.isChecked = Prefs.openProxyOnAllInterfaces
         binding.etPort.setText(Prefs.tgwsPort.toString())
         
@@ -136,7 +135,6 @@ class TgwsBottomSheet : OrbotBottomSheetDialogFragment() {
 
         binding.btnSave.setOnClickListener {
             Prefs.tgwsEnabled = binding.swEnabled.isChecked
-            Prefs.tgwsUseByeDpi = binding.swUseByeDpi.isChecked
             Prefs.openProxyOnAllInterfaces = binding.swShareProxy.isChecked
             val port = binding.etPort.text.toString().toIntOrNull() ?: 1480
             Prefs.tgwsPort = port

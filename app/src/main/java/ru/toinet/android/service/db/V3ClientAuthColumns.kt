@@ -7,7 +7,7 @@ import android.net.Uri
 import android.provider.BaseColumns
 import android.util.Log
 import androidx.core.net.toUri
-import ru.toinet.android.service.OrbotConstants
+import ru.toinet.android.service.ToInetConstants
 import java.io.File
 import java.io.FileOutputStream
 
@@ -63,7 +63,7 @@ object V3ClientAuthColumns : BaseColumns {
 
     @JvmStatic
     fun createV3AuthDir(contextWrapper: ContextWrapper): File {
-        val baseDir = File(contextWrapper.filesDir.absolutePath, OrbotConstants.V3_CLIENT_AUTH_DIR)
+        val baseDir = File(contextWrapper.filesDir.absolutePath, ToInetConstants.V3_CLIENT_AUTH_DIR)
         if (!baseDir.isDirectory) baseDir.mkdirs()
         return baseDir
     }

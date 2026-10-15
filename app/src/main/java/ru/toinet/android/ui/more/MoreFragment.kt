@@ -13,12 +13,12 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import ru.toinet.android.OrbotActivity
+import ru.toinet.android.ToInetActivity
 import ru.toinet.android.R
 import ru.toinet.android.util.sendIntentToService
-import ru.toinet.android.service.OrbotConstants
-import ru.toinet.android.service.OrbotService
-import ru.toinet.android.ui.OrbotMenuAction
+import ru.toinet.android.service.ToInetConstants
+import ru.toinet.android.service.ToInetService
+import ru.toinet.android.ui.ToInetMenuAction
 import ru.toinet.android.ui.v3onionservice.OnionServiceActivity
 import ru.toinet.android.ui.v3onionservice.clientauth.ClientAuthActivity
 import ru.toinet.android.util.StringUtils
@@ -33,7 +33,7 @@ class MoreFragment : Fragment() {
     override fun onAttach(context: Context) {
         super.onAttach(context)
 
-        httpPort = (context as OrbotActivity).portHttp
+        httpPort = (context as ToInetActivity).portHttp
         socksPort = context.portSocks
 
         if (view != null) updateStatus()
@@ -43,7 +43,7 @@ class MoreFragment : Fragment() {
         val labelHttp = getString(R.string.http_port)
         val labelSocks = getString(R.string.socks_port)
         val notSet = "——"
-        val labels = listOf(labelHttp, labelSocks, "Orbot", "Tor")
+        val labels = listOf(labelHttp, labelSocks, "ToInet", "Tor")
         val labelWidth = labels.maxOf { it.length } + 6
         val isLeftToRight = StringUtils.isLeftToRight()
         fun row(label: String, value: String): String {
@@ -70,7 +70,7 @@ class MoreFragment : Fragment() {
         val info = pm.getPackageInfo(requireActivity().packageName, 0)
         val normalizedVersion = info.versionName?.substringBefore("tor")?.dropLast(1)
 
-        rows += row("Orbot", "$normalizedVersion")
+        rows += row("ToInet", "$normalizedVersion")
         rows += row("Tor", getTorVersion())
 
         tvPortAndVersionInfo.text = rows.joinToString("\n")
@@ -95,24 +95,24 @@ class MoreFragment : Fragment() {
         val rvMore = view.findViewById<RecyclerView>(R.id.rvMoreActions)
         val listItems = listOf(
 
-            OrbotMenuAction(R.string.btn_choose_apps, R.drawable.ic_choose_apps) {
+            ToInetMenuAction(R.string.btn_choose_apps, R.drawable.ic_choose_apps) {
                 findNavController().navigate(R.id.more_to_apps)
             },
-            OrbotMenuAction(R.string.title_safety, R.drawable.lock_24px) {
+            ToInetMenuAction(R.string.title_safety, R.drawable.lock_24px) {
                 findNavController().navigate(R.id.more_to_safety)
 
             },
-            OrbotMenuAction(R.string.menu_settings, R.drawable.ic_settings_gear) {
+            ToInetMenuAction(R.string.menu_settings, R.drawable.ic_settings_gear) {
                 findNavController().navigate(R.id.more_to_settings)
             },
-            OrbotMenuAction(R.string.menu_log, R.drawable.ic_log) { showLog() },
-            OrbotMenuAction(R.string.v3_hosted_services, R.drawable.ic_menu_onion) {
+            ToInetMenuAction(R.string.menu_log, R.drawable.ic_log) { showLog() },
+            ToInetMenuAction(R.string.v3_hosted_services, R.drawable.ic_menu_onion) {
                 startActivity(Intent(requireActivity(), OnionServiceActivity::class.java))
             },
-            OrbotMenuAction(R.string.v3_client_auth_activity_title, R.drawable.ic_shield) {
+            ToInetMenuAction(R.string.v3_client_auth_activity_title, R.drawable.ic_shield) {
                 startActivity(Intent(requireActivity(), ClientAuthActivity::class.java))
             },
-            OrbotMenuAction(R.string.menu_about, R.drawable.ic_about) {
+            ToInetMenuAction(R.string.menu_about, R.drawable.ic_about) {
                 AboutDialogFragment().show(
                     requireActivity().supportFragmentManager,
                     AboutDialogFragment.TAG
@@ -133,14 +133,14 @@ class MoreFragment : Fragment() {
 
     private fun doExit() {
         val killIntent = Intent(
-            requireActivity(), OrbotService::class.java
+            requireActivity(), ToInetService::class.java
         ).setAction(TorService.ACTION_STOP)
-            .putExtra(OrbotConstants.ACTION_STOP_FOREGROUND_TASK, true)
+            .putExtra(ToInetConstants.ACTION_STOP_FOREGROUND_TASK, true)
         requireContext().sendIntentToService(killIntent)
         requireActivity().finish()
     }
 
     private fun showLog() {
-        (activity as OrbotActivity).showLog()
+        (activity as ToInetActivity).showLog()
     }
 }

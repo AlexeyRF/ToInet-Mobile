@@ -21,7 +21,7 @@ object Notifications {
 
         manager.createNotificationChannel(
             NotificationChannel(
-                ORBOT_SERVICE_NOTIFICATION_CHANNEL,
+                TOINET_SERVICE_NOTIFICATION_CHANNEL,
                 appName,
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
@@ -53,5 +53,5 @@ object Notifications {
         return context.getString(R.string.status_disabled)
     }
 
-    const val ORBOT_SERVICE_NOTIFICATION_CHANNEL = "orbot_channel_1"
+    const val TOINET_SERVICE_NOTIFICATION_CHANNEL = "toinet_channel_1"
 }

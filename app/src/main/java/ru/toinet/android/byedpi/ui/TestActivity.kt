@@ -16,21 +16,21 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ru.toinet.android.R
 import ru.toinet.android.byedpi.adapters.StrategyResultAdapter
-import ru.toinet.android.byedpi.data.Mode
-import ru.toinet.android.byedpi.data.AppStatus
+import ru.toinet.android.vpn.data.Mode
+import ru.toinet.android.vpn.data.AppStatus
 import ru.toinet.android.byedpi.data.SiteResult
 import ru.toinet.android.byedpi.data.StrategyResult
-import ru.toinet.android.byedpi.services.appStatus
-import ru.toinet.android.byedpi.services.ServiceManager
+import ru.toinet.android.vpn.services.appStatus
+import ru.toinet.android.vpn.services.ServiceManager
 import ru.toinet.android.byedpi.utility.HistoryUtils
-import ru.toinet.android.byedpi.utility.getPreferences
+import ru.toinet.android.vpn.utility.getPreferences
 import ru.toinet.android.byedpi.utility.SiteCheckUtils
-import ru.toinet.android.byedpi.utility.getIntStringNotNull
-import ru.toinet.android.byedpi.utility.getLongStringNotNull
+import ru.toinet.android.vpn.utility.getIntStringNotNull
+import ru.toinet.android.vpn.utility.getLongStringNotNull
 import androidx.core.content.edit
-import ru.toinet.android.byedpi.utility.getStringNotNull
+import ru.toinet.android.vpn.utility.getStringNotNull
 import ru.toinet.android.byedpi.utility.DomainListUtils
-import ru.toinet.android.byedpi.utility.mode
+import ru.toinet.android.vpn.utility.mode
 import kotlinx.coroutines.*
 import java.io.File
 
@@ -500,6 +500,8 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         Toast.makeText(this, R.string.toast_copied, Toast.LENGTH_SHORT).show()
     }
 }
+
+
 
 
 

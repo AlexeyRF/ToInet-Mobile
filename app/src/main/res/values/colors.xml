@@ -3,8 +3,8 @@
         <color name="bright_green">#78C97B</color>
         <color name="dark_purple">#0E1621</color>
         <color name="progress_bar_purple">#E2DADA</color>
-        <color name="orbot_btn_enabled_purple">#0E1621</color>
-        <color name="orbot_btn_disable_grey">#0E1621</color>
+        <color name="toinet_btn_enabled_purple">#0E1621</color>
+        <color name="toinet_btn_disable_grey">#0E1621</color>
         <color name="menu_header">#efefef</color>
         <color name="new_background">#0E1621</color>
         <color name="text_purple">#E7E6E6</color>

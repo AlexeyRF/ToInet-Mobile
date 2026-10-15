@@ -1,7 +1,7 @@
 package ru.toinet.android.service.tor
 
 import android.content.Context
-import ru.toinet.android.service.OrbotConstants
+import ru.toinet.android.service.ToInetConstants
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -14,8 +14,8 @@ class CustomTorResourceInstaller(private val context: Context, private val insta
     @Throws(IOException::class)
     fun installGeoIP() {
         if (!installFolder.exists()) installFolder.mkdirs()
-        assetToFile(OrbotConstants.GEOIP_ASSET_KEY, OrbotConstants.GEOIP_ASSET_KEY)
-        assetToFile(OrbotConstants.GEOIP6_ASSET_KEY, OrbotConstants.GEOIP6_ASSET_KEY)
+        assetToFile(ToInetConstants.GEOIP_ASSET_KEY, ToInetConstants.GEOIP_ASSET_KEY)
+        assetToFile(ToInetConstants.GEOIP6_ASSET_KEY, ToInetConstants.GEOIP6_ASSET_KEY)
     }
 
     // Reads file from assetPath/assetKey writes it to the install folder

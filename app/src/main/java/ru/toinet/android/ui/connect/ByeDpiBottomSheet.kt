@@ -6,10 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.databinding.ByedpiBottomSheetBinding
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 
-class ByeDpiBottomSheet : OrbotBottomSheetDialogFragment() {
+class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: ByedpiBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
@@ -23,11 +23,13 @@ class ByeDpiBottomSheet : OrbotBottomSheetDialogFragment() {
 
         binding.swEnabled.isChecked = Prefs.byedpiEnabled
         binding.etArgs.setText(Prefs.byedpiArgs)
+        binding.etSubscriptionUrl.setText(Prefs.byedpiSubscriptionUrl)
         configureMultilineEditTextScrollEvent(binding.etArgs)
 
         binding.btnSave.setOnClickListener {
             Prefs.byedpiEnabled = binding.swEnabled.isChecked
             Prefs.byedpiArgs = binding.etArgs.text.toString().trim()
+            Prefs.byedpiSubscriptionUrl = binding.etSubscriptionUrl.text.toString().trim()
             Prefs.byedpiEnableCmdSettings = true
             viewModel.triggerRefreshMenuList()
             dismiss()

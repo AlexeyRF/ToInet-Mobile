@@ -24,15 +24,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.freehaven.tor.control.TorControlCommands
-import ru.toinet.android.OrbotActivity
+import ru.toinet.android.ToInetActivity
 import ru.toinet.android.R
 import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.databinding.FragmentConnectBinding
-import ru.toinet.android.service.OrbotConstants
-import ru.toinet.android.service.OrbotService
+import ru.toinet.android.service.ToInetConstants
+import ru.toinet.android.service.ToInetService
 import ru.toinet.android.service.circumvention.Transport
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.ui.OrbotMenuAction
+import ru.toinet.android.ui.ToInetMenuAction
 import org.torproject.jni.TorService
 
 private const val DEFAULT_THROTTLE_INTERVAL = 4000L
@@ -45,7 +45,7 @@ class ConnectFragment : Fragment(),
     val viewModel: ConnectViewModel by activityViewModels()
 
     private val lastStatus: String
-        get() = (activity as? OrbotActivity)?.previousReceivedTorStatus ?: ""
+        get() = (activity as? ToInetActivity)?.previousReceivedTorStatus ?: ""
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -172,6 +172,7 @@ class ConnectFragment : Fragment(),
             "turnproxy" -> Prefs.turnProxyEnabled
             "fakevpn" -> true
             "operaproxy" -> Prefs.operaProxyEnabled
+            "easyvpn" -> true
             "custom" -> true
             else -> false
         }
@@ -199,7 +200,7 @@ class ConnectFragment : Fragment(),
         if (Prefs.isGlobalVpnEnabled) {
             val intent = VpnService.prepare(requireContext())
             if (intent != null) {
-                requireActivity().startActivityForResult(intent, OrbotActivity.REQUEST_CODE_VPN)
+                requireActivity().startActivityForResult(intent, ToInetActivity.REQUEST_CODE_VPN)
                 return
             }
         }
@@ -278,8 +279,8 @@ class ConnectFragment : Fragment(),
         Prefs.exitNodes = "{$countryCode}"
 
         requireContext().sendIntentToService(
-            Intent(requireActivity(), OrbotService::class.java)
-                .setAction(OrbotConstants.CMD_SET_EXIT).putExtra("exit", countryCode)
+            Intent(requireActivity(), ToInetService::class.java)
+                .setAction(ToInetConstants.CMD_SET_EXIT).putExtra("exit", countryCode)
         )
 
         refreshMenuList(requireContext())

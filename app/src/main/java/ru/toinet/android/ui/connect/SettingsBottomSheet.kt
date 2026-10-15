@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.ListView
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import ru.toinet.android.R
-import ru.toinet.android.ui.OrbotMenuAction
+import ru.toinet.android.ui.ToInetMenuAction
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.tgws.UniversalTgProxy
 import android.content.ClipboardManager
@@ -25,7 +25,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         val lvSettings = view.findViewById<ListView>(R.id.lvSettings)
 
         val listItems = arrayListOf(
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = if (Prefs.torEnabled) "Конфигурация Tor (мосты и прокси)" else "Конфигурация Tor: ВЫКЛ"
@@ -36,7 +36,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_server,
                 statusString = "ByeDPI: ${if (Prefs.byedpiEnabled) "ВКЛ" else "ВЫКЛ"}\n(прокси)"
@@ -47,7 +47,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_send_airplane,
                 statusString = "TGWS: ${if (Prefs.tgwsEnabled) "ВКЛ" else "ВЫКЛ"}\n(порт, маппинги)"
@@ -58,7 +58,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_add_plus,
                 statusString = "SocksRehabilitator: ${if (Prefs.rehabilitatorEnabled) "Вкл" else "Выкл"}\n(SOCKS5 через ByeDPI)"
@@ -69,7 +69,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_flight_off,
                 statusString = "TurnProxy: ${if (Prefs.turnProxyEnabled) "Вкл" else "Выкл"}\n(Обход по TURN)"
@@ -80,7 +80,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "FakeVPN: ${if (Prefs.fakeVpnFakeTlsEnabled) "FakeTLS Вкл" else "Обычный"}"
@@ -91,7 +91,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Opera Proxy: ${if (Prefs.operaProxyEnabled) "Вкл" else "Выкл"}"
@@ -102,7 +102,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Тема: ${getThemeString()}"
@@ -110,7 +110,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 showThemeSettings()
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Цвета Material You: ${if (Prefs.useDynamicColors) "Вкл" else "Выкл"}"
@@ -120,7 +120,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 dismiss()
             },
             /*
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Universal TG Proxy: ${if (Prefs.universalTgProxyEnabled) "Вкл" else "Выкл"}"
@@ -133,7 +133,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 }
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Universal TG Proxy провайдер: ${Prefs.universalTgProxyProvider}"
@@ -142,7 +142,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 dismiss()
             },
             */
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Добавить прокси в Telegram"
@@ -182,7 +182,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                     .show()
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_menu_onion, // proxy/share icon
                 statusString = "Раздавать все прокси на локальную сеть: " + if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"
@@ -195,7 +195,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 ).show()
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Настройки уведомлений"
@@ -203,7 +203,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 showNotificationSettings()
                 dismiss()
             },
-            OrbotMenuAction(
+            ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Сценарии сети (Wi-Fi / Мобильная)"

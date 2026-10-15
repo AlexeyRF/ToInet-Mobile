@@ -13,6 +13,8 @@ keystore.properties
 # Windows thumbnail db
 Thumbs.db
 
+*.py
+
 # OSX files
 .DS_Store
 
@@ -43,3 +45,4 @@ app/src/main/assets/LICENSE
 .kotlin/
 /unused_files.txt
 /app/src/main/java/ru/toinet/android/tgws/TgwsCore.kt.bak
+

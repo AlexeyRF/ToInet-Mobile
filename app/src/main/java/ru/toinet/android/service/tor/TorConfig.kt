@@ -1,7 +1,7 @@
 package ru.toinet.android.service.tor
 
 import android.content.ContextWrapper
-import ru.toinet.android.service.OrbotConstants
+import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.service.db.OnionServiceColumns
 import ru.toinet.android.service.db.V3ClientAuthColumns
 import ru.toinet.android.util.NetworkUtils
@@ -23,8 +23,8 @@ object TorConfig {
             "LongLivedPorts 21,22,706,1863,5050,5190,5222,5223,6667,6697,8300,443,80,8443,5228"
         )
 
-        val socksPortPref = getPort(Prefs.proxySocksPort ?: OrbotConstants.SOCKS_PROXY_PORT_DEFAULT)
-        val httpPortPref = getPort(Prefs.proxyHttpPort ?: OrbotConstants.HTTP_PROXY_PORT_DEFAULT)
+        val socksPortPref = getPort(Prefs.proxySocksPort ?: ToInetConstants.SOCKS_PROXY_PORT_DEFAULT)
+        val httpPortPref = getPort(Prefs.proxyHttpPort ?: ToInetConstants.HTTP_PROXY_PORT_DEFAULT)
 
         val isolate = getIsolation()
         val ipv6Pref = getIpv6()
@@ -54,8 +54,8 @@ object TorConfig {
             conf.add("ReducedCircuitPadding 1")
         }
 
-        val transPort = Prefs.torTransPort ?: OrbotConstants.TOR_TRANSPROXY_PORT_DEFAULT.toString()
-        val dnsPort = Prefs.torDnsPort ?: OrbotConstants.TOR_DNS_PORT_DEFAULT.toString()
+        val transPort = Prefs.torTransPort ?: ToInetConstants.TOR_TRANSPROXY_PORT_DEFAULT.toString()
+        val dnsPort = Prefs.torDnsPort ?: ToInetConstants.TOR_DNS_PORT_DEFAULT.toString()
 
         conf.add("TransPort ${NetworkUtils.checkPortOrAuto(transPort)} $isolate")
         conf.add("DNSPort ${NetworkUtils.checkPortOrAuto(dnsPort)} $isolate")

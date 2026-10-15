@@ -75,7 +75,7 @@
     <string name="restore_backup">Восстановить из копии</string>
     <string name="confirm_service_deletion">Подтверждение удаления службы</string>
     <string name="service_type">Тип службы</string>
-    <string name="please_restart_Orbot_to_enable_the_changes">Перезапустите ToInet для вступления изменения в силу</string>
+    <string name="please_restart_ToInet_to_enable_the_changes">Перезапустите ToInet для вступления изменения в силу</string>
     <string name="disable">Отключить</string>
     <string name="enable">Включить</string>
     <string name="consider_disable_battery_optimizations">Работают размещённые службы, рассмотрите возможность отключения оптимизации батареи</string>
@@ -208,10 +208,10 @@
     <string name="unlock_app_msg" formatted="true">Пожалуйста разблокируйте ваше устройство, чтобы использовать %s</string>
     <string name="run_smart_connect_">Использовать Умное Подключение, чтобы найти лучший путь</string>
     <string name="scan_qr_code">Сканировать QR-код</string>
-    <string name="orbot_vpn">ToInet VPN</string>
-    <string name="open_orbot_to_connect_to_tor">Откройте ToInet для подключения к Tor</string>
+    <string name="toinet_vpn">ToInet VPN</string>
+    <string name="open_toinet_to_connect_to_tor">Откройте ToInet для подключения к Tor</string>
     <string name="connect_to_tor">Подключиться</string>
-    <string name="orbot_config_invalid">Конфигурация ToInet Неверна</string>
+    <string name="toinet_config_invalid">Конфигурация ToInet Неверна</string>
     <string name="kibibyte_per_second">KiB/s</string>
     <string name="mebibyte_per_second">MiB/s</string>
     <string name="snowflake_proxy_client_connected_msg">%1$s Режим доброты помог кому-то обойти цензуру %2$s</string>

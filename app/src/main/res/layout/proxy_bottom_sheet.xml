@@ -37,14 +37,7 @@
             app:layout_constraintTop_toBottomOf="@id/tvProxyHeader"
             style="@style/BottomSheetTextView" />
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/swUseByeDpiAsUpstream"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="@string/pref_byedpi_use_as_upstream_title"
-            app:layout_constraintTop_toBottomOf="@id/swProxyEnabled"
-            style="@style/BottomSheetTextView" />
+        
 
         <TextView
             android:id="@+id/tvProxyTypeLabel"
@@ -53,7 +46,7 @@
             android:layout_marginTop="15dp"
             android:text="@string/socks_proxy_type"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/swUseByeDpiAsUpstream"
+            app:layout_constraintTop_toBottomOf="@id/swProxyEnabled"
             style="@style/BottomSheetTextView" />
 
         <Spinner

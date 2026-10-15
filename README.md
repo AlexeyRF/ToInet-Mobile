@@ -42,7 +42,6 @@
 **Лицензия:** Все права принадлежат тем, кому они принадлежат.
 
 *   [ЛМ (Tor)](https://torproject.org)
-*   [Orbot](https://github.com/guardianproject/orbot-android)
 *   [byedpiandroid](https://github.com/dovecoteescapee/byedpiandroid)
 *   [byedpi](https://github.com/hufrea/byedpi)
 *   [ByeByeDPI](https://github.com/romanvht/ByeByeDPI/)

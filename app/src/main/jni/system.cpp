@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 #include <errno.h>
 #include <cpu-features.h>
 
@@ -57,6 +58,8 @@ jint Java_ru_toinet_android_byedpi_utility_VpnSystem_sendfd(JNIEnv *env, jobject
 
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
+    
+    signal(SIGPIPE, SIG_IGN);
     addr.sun_path[0] = '\0';
     snprintf(addr.sun_path + 1, sizeof(addr.sun_path) - 1, "net.typeblog.socks.tun2socks.%d", getuid());
 
@@ -76,7 +79,7 @@ jint Java_ru_toinet_android_byedpi_utility_VpnSystem_sendfd(JNIEnv *env, jobject
     return 0;
 }
 
-static const char *classPathName = "ru/toinet/android/byedpi/utility/VpnSystem";
+static const char *classPathName = "ru/toinet/android/vpn/utility/VpnSystem";
 
 static JNINativeMethod method_table[] = {
     { "jniclose", "(I)V",

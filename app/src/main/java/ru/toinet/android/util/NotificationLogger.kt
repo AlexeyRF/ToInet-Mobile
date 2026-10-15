@@ -7,12 +7,12 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import ru.toinet.android.OrbotActivity
+import ru.toinet.android.ToInetActivity
 import ru.toinet.android.R
 
 object NotificationLogger {
     private const val NOTIFY_ID = 1
-    private const val CHANNEL_ID = "orbot_channel_1"
+    private const val CHANNEL_ID = "toinet_channel_1"
     
     fun log(context: Context, providerName: String, message: String) {
         if (Prefs.notificationLogProvider != providerName) return
@@ -22,13 +22,13 @@ object NotificationLogger {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Orbot",
+                "ToInet",
                 NotificationManager.IMPORTANCE_LOW
             )
             manager.createNotificationChannel(channel)
         }
 
-        val intent = Intent(context, OrbotActivity::class.java).apply {
+        val intent = Intent(context, ToInetActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
@@ -36,7 +36,7 @@ object NotificationLogger {
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("Orbot: $providerName")
+            .setContentTitle("ToInet: $providerName")
             .setContentText(message)
             .setSmallIcon(R.drawable.ic_stat_tor)
             .setContentIntent(pendingIntent)

@@ -13,7 +13,7 @@ import tools.fastlane.screengrab.Screengrab
 
 class ScreenshotKindnessModeFragment : BaseScreenshotTest() {
     @get:Rule
-    var mActivityScenarioRule = ActivityScenarioRule(OrbotActivity::class.java)
+    var mActivityScenarioRule = ActivityScenarioRule(ToInetActivity::class.java)
 
     @Test
     fun openKindnessModeFragment() {

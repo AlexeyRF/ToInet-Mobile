@@ -6,6 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
+import ru.toinet.android.vpn.utility.*
 
 private const val TAG = "ValidateUtils"
 
@@ -80,7 +81,7 @@ fun PreferenceFragmentCompat.setEditTextPreferenceListener(
                     Log.w(
                         TAG,
                         "Invalid type for ${preference.key}: " +
-                                "$newValue has type ${newValue::class.java}"
+                                "$newValue has type ${newValue?.javaClass?.name}"
                     )
                     false
                 }

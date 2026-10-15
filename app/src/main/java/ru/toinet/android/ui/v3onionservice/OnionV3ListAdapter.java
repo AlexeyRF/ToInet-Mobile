@@ -57,7 +57,7 @@ public class OnionV3ListAdapter extends CursorAdapter {
             ContentValues fields = new ContentValues();
             fields.put(OnionServiceColumns.ENABLED, isChecked);
             resolver.update(OnionServiceContentProvider.CONTENT_URI, fields, where, null);
-            Toast.makeText(context, R.string.please_restart_Orbot_to_enable_the_changes, Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, R.string.please_restart_ToInet_to_enable_the_changes, Toast.LENGTH_SHORT).show();
         });
     }
 }

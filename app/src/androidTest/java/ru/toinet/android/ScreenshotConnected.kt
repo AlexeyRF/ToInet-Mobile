@@ -9,7 +9,7 @@ import tools.fastlane.screengrab.Screengrab
 
 class ScreenshotConnected : BaseScreenshotTest() {
     @get:Rule
-    var mActivityScenarioRule = ActivityScenarioRule(OrbotActivity::class.java)
+    var mActivityScenarioRule = ActivityScenarioRule(ToInetActivity::class.java)
 
     @Before
     fun setup() {
@@ -26,7 +26,7 @@ class ScreenshotConnected : BaseScreenshotTest() {
         mActivityScenarioRule.scenario.onActivity { _ ->
             isVisible()
             Thread.sleep(300)
-            Screengrab.screenshot("A-orbot_connected")
+            Screengrab.screenshot("A-toinet_connected")
         }
     }
 

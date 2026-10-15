@@ -47,7 +47,7 @@ public class ClientAuthListAdapter extends CursorAdapter {
             ContentValues fields = new ContentValues();
             fields.put(V3ClientAuthColumns.ENABLED, isChecked);
             resolver.update(ClientAuthContentProvider.CONTENT_URI, fields, where, null);
-            Toast.makeText(context, R.string.please_restart_Orbot_to_enable_the_changes, Toast.LENGTH_LONG).show();
+            Toast.makeText(context, R.string.please_restart_ToInet_to_enable_the_changes, Toast.LENGTH_LONG).show();
         });
     }
 }

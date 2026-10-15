@@ -10,10 +10,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.shape.CornerFamily
 import ru.toinet.android.R
-import ru.toinet.android.ui.OrbotMenuAction
+import ru.toinet.android.ui.ToInetMenuAction
 
 class MoreActionAdapter(
-    private val items: List<OrbotMenuAction>
+    private val items: List<ToInetMenuAction>
 ) : RecyclerView.Adapter<MoreActionAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {

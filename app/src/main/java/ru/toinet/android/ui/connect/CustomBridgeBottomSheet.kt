@@ -14,14 +14,14 @@ import android.widget.Toast
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.R
 import ru.toinet.android.databinding.CustomBridgeBottomSheetBinding
-import ru.toinet.android.service.OrbotConstants
+import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.service.circumvention.MoatApi
 import ru.toinet.android.service.circumvention.Transport
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 
 class CustomBridgeBottomSheet() :
-    OrbotBottomSheetDialogFragment() {
+    ToInetBottomSheetDialogFragment() {
 
     private val viewModel: ConnectViewModel by activityViewModels()
 
@@ -59,7 +59,7 @@ class CustomBridgeBottomSheet() :
     ): View {
         binding = CustomBridgeBottomSheetBinding.inflate(inflater, container, false)
 
-        val uri = OrbotConstants.GET_BRIDES_BRIDGES_URI.buildUpon()
+        val uri = ToInetConstants.GET_BRIDES_BRIDGES_URI.buildUpon()
         uri.path("/options")
 
         binding.tvCancel.setOnClickListener { dismiss() }

@@ -15,13 +15,13 @@ import ru.toinet.android.R
 import ru.toinet.android.localization.Languages
 import ru.toinet.android.util.StringUtils
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 
 import java.text.Collator
 import java.util.Locale
 import java.util.TreeMap
 
-class ExitNodeBottomSheet : OrbotBottomSheetDialogFragment() {
+class ExitNodeBottomSheet : ToInetBottomSheetDialogFragment() {
 
     interface ExitNodeSelectedCallback {
         fun onExitNodeSelected(countryCode: String)

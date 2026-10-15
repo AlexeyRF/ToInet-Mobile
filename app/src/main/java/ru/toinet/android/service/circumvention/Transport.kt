@@ -203,7 +203,7 @@ enum class Transport(val id: String) {
             result.add("NoProxy 127.0.0.1")
         }
 
-        if (Prefs.byedpiEnabled && Prefs.byedpiUseAsUpstream) {
+        if (false) /* Disabled */ {
             val byedpiPort = ru.toinet.android.byedpi.core.ByeDpiProxyPreferences.fromSharedPreferences(
                 androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
             ).port
@@ -339,7 +339,7 @@ enum class Transport(val id: String) {
                     re-enabling this feature. also remove android:visibility="gone" from the SQS
                     container in app project's layout/config_connection_bottom_sheet.xml
                     */
-                throw RuntimeException("Snowflake SQS Not supported right now https://github.com/guardianproject/orbot-android/issues/1320")
+                throw RuntimeException("Snowflake SQS Not supported right now https://github.com/guardianproject/toinet-android/issues/1320")
 
                 controller.snowflakeIceServers =
                     BuiltInBridges.getInstance(context)?.snowflake?.firstOrNull()?.ice ?: ""

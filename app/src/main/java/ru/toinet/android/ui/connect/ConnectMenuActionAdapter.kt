@@ -17,13 +17,13 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.net.toUri
 import ru.toinet.android.R
-import ru.toinet.android.ui.OrbotMenuAction
+import ru.toinet.android.ui.ToInetMenuAction
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.StringUtils
 import java.util.TreeMap
 
-class ConnectMenuActionAdapter(context: Context, list: ArrayList<OrbotMenuAction>) :
-    ArrayAdapter<OrbotMenuAction>(
+class ConnectMenuActionAdapter(context: Context, list: ArrayList<ToInetMenuAction>) :
+    ArrayAdapter<ToInetMenuAction>(
         context, R.layout.action_list_view, list
     ) {
 
@@ -111,7 +111,7 @@ class ConnectMenuActionAdapter(context: Context, list: ArrayList<OrbotMenuAction
                         icons[packageManager.getApplicationLabel(applicationInfo).toString()] = iv
                     } catch (_ : PackageManager.NameNotFoundException) {
                         //couldn't draw icon for the package name
-                        Log.d("Orbot", "error getting package info for: $tordApp")
+                        Log.d("ToInet", "error getting package info for: $tordApp")
 
                     }
                 }

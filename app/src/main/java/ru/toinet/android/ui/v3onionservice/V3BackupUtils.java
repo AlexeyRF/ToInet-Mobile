@@ -14,7 +14,7 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 import ru.toinet.android.R;
-import ru.toinet.android.service.OrbotConstants;
+import ru.toinet.android.service.ToInetConstants;
 import ru.toinet.android.service.db.OnionServiceColumns;
 import ru.toinet.android.service.db.V3ClientAuthColumns;
 import ru.toinet.android.ui.v3onionservice.clientauth.ClientAuthContentProvider;
@@ -61,7 +61,7 @@ public class V3BackupUtils {
         return backupFile.getPath();
     }
 
-    /** @noinspection CallToPrintStackTrace*/ // todo this doesn't export data for onions that orbot hosts which have authentication (not supported yet...)
+    /** @noinspection CallToPrintStackTrace*/ // todo this doesn't export data for onions that toinet hosts which have authentication (not supported yet...)
     @SuppressLint("Range")
     private String[] createFilesForZippingV3(String relativePath) {
         final String v3BasePath = getV3BasePath() + "/" + relativePath + "/";
@@ -149,7 +149,7 @@ public class V3BackupUtils {
     }
 
     private File getV3BasePath() {
-        return new File(mContext.getFilesDir().getAbsolutePath(), OrbotConstants.ONION_SERVICES_DIR);
+        return new File(mContext.getFilesDir().getAbsolutePath(), ToInetConstants.ONION_SERVICES_DIR);
     }
 
     public void restoreZipBackupV3(Uri zipUri) {

@@ -11,7 +11,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.util.UUID
 import androidx.core.net.toUri
-import ru.toinet.android.service.OrbotConstants
+import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.util.DiskUtils
 
 object OnionServiceColumns : BaseColumns {
@@ -116,7 +116,7 @@ object OnionServiceColumns : BaseColumns {
 
     @JvmStatic
     fun createV3OnionDir(contextWrapper: ContextWrapper): File {
-        val basePath = File(contextWrapper.filesDir.absolutePath, OrbotConstants.ONION_SERVICES_DIR)
+        val basePath = File(contextWrapper.filesDir.absolutePath, ToInetConstants.ONION_SERVICES_DIR)
         if (!basePath.isDirectory) basePath.mkdirs()
         return basePath
     }

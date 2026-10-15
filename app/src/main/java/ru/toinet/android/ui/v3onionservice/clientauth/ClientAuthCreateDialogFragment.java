@@ -69,7 +69,7 @@ public class ClientAuthCreateDialogFragment extends DialogFragment {
         fields.put(V3ClientAuthColumns.HASH, hash);
         ContentResolver cr = context.getContentResolver();
         cr.insert(ClientAuthContentProvider.CONTENT_URI, fields);
-        Toast.makeText(context, R.string.please_restart_Orbot_to_enable_the_changes, Toast.LENGTH_LONG).show();
+        Toast.makeText(context, R.string.please_restart_ToInet_to_enable_the_changes, Toast.LENGTH_LONG).show();
     }
 
     private String sanitizeOnionDomainTextField() {

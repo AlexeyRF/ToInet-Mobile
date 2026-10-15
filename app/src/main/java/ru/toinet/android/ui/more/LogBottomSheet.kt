@@ -11,9 +11,9 @@ import android.widget.TextView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import ru.toinet.android.R
 import ru.toinet.android.util.showToast
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 
-class LogBottomSheet : OrbotBottomSheetDialogFragment() {
+class LogBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var tvLog: TextView
     private var buffer = StringBuffer()
@@ -22,7 +22,7 @@ class LogBottomSheet : OrbotBottomSheetDialogFragment() {
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         val v = inflater.inflate(R.layout.log_bottom_sheet, container, false)
-        tvLog = v.findViewById(R.id.orbotLog)
+        tvLog = v.findViewById(R.id.toinetLog)
         tvLog.text = buffer.toString()
 
         v.findViewById<FloatingActionButton>(R.id.btnCopyLog).setOnClickListener {

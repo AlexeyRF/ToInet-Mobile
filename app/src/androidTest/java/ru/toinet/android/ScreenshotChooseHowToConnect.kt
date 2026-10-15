@@ -18,7 +18,7 @@ import tools.fastlane.screengrab.Screengrab
 class ScreenshotChooseHowToConnect : BaseScreenshotTest() {
 
     @get:Rule
-    var mActivityScenarioRule = ActivityScenarioRule(OrbotActivity::class.java)
+    var mActivityScenarioRule = ActivityScenarioRule(ToInetActivity::class.java)
 
     @Before
     fun setup() {

@@ -5,12 +5,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import ru.toinet.android.databinding.TorConfigBottomSheetBinding
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.util.Prefs
 
-class TorConfigBottomSheet : OrbotBottomSheetDialogFragment() {
+class TorConfigBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: TorConfigBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()

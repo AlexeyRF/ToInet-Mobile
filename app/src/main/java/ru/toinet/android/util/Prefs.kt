@@ -5,7 +5,7 @@ import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
-import ru.toinet.android.service.OrbotConstants
+import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.service.circumvention.Transport
 import java.net.URI
 import java.net.URISyntaxException
@@ -21,11 +21,6 @@ object Prefs {
     private const val PREF_ALLOW_BACKGROUND_STARTS = "pref_allow_background_starts"
     private const val PREF_OPEN_PROXY_ON_ALL_INTERFACES = "pref_open_proxy_on_all_interfaces"
     private const val PREF_EXIT_NODES = "pref_exit_nodes"
-    private const val PREF_BE_A_SNOWFLAKE = "pref_be_a_snowflake"
-    private const val PREF_SHOW_SNOWFLAKE_MSG = "pref_show_snowflake_proxy_msg"
-    private const val PREF_BE_A_SNOWFLAKE_LIMIT_WIFI = "pref_be_a_snowflake_limit_wifi"
-    private const val PREF_BE_A_SNOWFLAKE_LIMIT_CHARGING = "pref_be_a_snowflake_limit_charing"
-
     private const val PREF_USE_SMART_CONNECT = "pref_use_smart_connect"
     private const val PREF_SMART_CONNECT_TIMEOUT = "pref_smart_connect_timeout"
 
@@ -36,9 +31,7 @@ object Prefs {
 
     private const val PREF_CURRENT_VERSION = "pref_current_version"
 
-    private const val PREF_CAMO_APP_PACKAGE = "pref_key_camo_app"
     private const val PREF_CAMO_APP_DISPLAY_NAME = "pref_key_camo_app_display_name"
-    private const val PREF_CAMO_APP_ALT_ICON_INDEX = "pref_key_camo_alticon"
     private const val PREF_REQUIRE_PASSWORD = "pref_require_password"
     private const val PREF_DISALLOW_BIOMETRIC_AUTH = "pref_auth_no_biometrics"
 
@@ -113,33 +106,7 @@ object Prefs {
         return cr?.getPrefBoolean(PREF_DETECT_ROOT, true) ?: true
     }
 
-    fun beSnowflakeProxy(): Boolean {
-        return cr?.getPrefBoolean(PREF_BE_A_SNOWFLAKE) ?: false
-    }
 
-    fun showSnowflakeProxyToast(): Boolean {
-        return cr?.getPrefBoolean(PREF_SHOW_SNOWFLAKE_MSG) ?: false
-    }
-
-    fun setBeSnowflakeProxy(beSnowflakeProxy: Boolean) {
-        cr?.putPref(PREF_BE_A_SNOWFLAKE, beSnowflakeProxy)
-    }
-
-    fun setBeSnowflakeProxyLimitWifi(beSnowflakeProxy: Boolean) {
-        cr?.putPref(PREF_BE_A_SNOWFLAKE_LIMIT_WIFI, beSnowflakeProxy)
-    }
-
-    fun setBeSnowflakeProxyLimitCharging(beSnowflakeProxy: Boolean) {
-        cr?.putPref(PREF_BE_A_SNOWFLAKE_LIMIT_CHARGING, beSnowflakeProxy)
-    }
-
-    fun limitSnowflakeProxyingWifi(): Boolean {
-        return cr?.getPrefBoolean(PREF_BE_A_SNOWFLAKE_LIMIT_WIFI) ?: false
-    }
-
-    fun limitSnowflakeProxyingCharging(): Boolean {
-        return cr?.getPrefBoolean(PREF_BE_A_SNOWFLAKE_LIMIT_CHARGING) ?: false
-    }
 
     @JvmStatic
     fun useDebugLogging(): Boolean {
@@ -163,30 +130,13 @@ object Prefs {
         get() = cr?.getPrefString(PREF_EXIT_NODES)
         set(country) = cr?.putPref(PREF_EXIT_NODES, country) ?: Unit
 
-    val snowflakesServed: Int
-        get() = cr?.getPrefInt(PREF_SNOWFLAKES_SERVED_COUNT) ?: 0
-
-    val snowflakesServedWeekly: Int
-        get() = cr?.getPrefInt(PREF_SNOWFLAKES_SERVED_COUNT_WEEKLY) ?: 0
-
-    fun addSnowflakeServed() {
-        cr?.putPref(PREF_SNOWFLAKES_SERVED_COUNT, snowflakesServed + 1)
-        cr?.putPref(PREF_SNOWFLAKES_SERVED_COUNT_WEEKLY, snowflakesServedWeekly + 1)
-    }
-
     fun resetSnowflakesServedWeekly() {
         cr?.putPref(PREF_SNOWFLAKES_SERVED_COUNT_WEEKLY, 0)
     }
 
     @JvmStatic
     var transport: Transport
-        /**
-         * @return How Orbot is configured to attempt to connect to Tor
-         */
         get() = Transport.fromId(cr?.getPrefString(PREF_CONNECTION_PATHWAY) ?: Transport.NONE.id)
-        /**
-         * Set how Orbot should initialize a tor connection (direct, with a PT, etc)
-         */
         set(value) = cr?.putPref(PREF_CONNECTION_PATHWAY, value.id) ?: Unit
 
     var smartConnect: Boolean
@@ -226,9 +176,6 @@ object Prefs {
         get() = cr?.getPrefString("pref_turn_proxy_obf_key") ?: ""
         set(value) = cr?.putPref("pref_turn_proxy_obf_key", value) ?: Unit
 
-    var turnProxyUseByeDpi: Boolean
-        get() = cr?.getPrefBoolean("pref_turn_proxy_use_byedpi") ?: false
-        set(value) = cr?.putPref("pref_turn_proxy_use_byedpi", value) ?: Unit
 
     var turnProxyThreads: Int
         get() = cr?.getPrefInt("pref_turn_proxy_threads") ?: 12
@@ -283,9 +230,6 @@ object Prefs {
         set(value) = cr?.putPref("pref_turn_proxy_obf_profile", value) ?: Unit
 
 
-    var tgwsUseByeDpi: Boolean
-        get() = cr?.getPrefBoolean("pref_tgws_use_byedpi") ?: false
-        set(value) = cr?.putPref("pref_tgws_use_byedpi", value) ?: Unit
 
     @JvmStatic
     var proxyEnabled: Boolean
@@ -351,24 +295,9 @@ object Prefs {
         get() = cr?.getPrefBoolean(PREF_SECURE_WINDOW_FLAG, false) ?: false
         set(isFlagSecure) = cr?.putPref(PREF_SECURE_WINDOW_FLAG, isFlagSecure) ?: Unit
 
-    const val DEFAULT_CAMO_DISABLED_ACTIVITY: String = "ru.toinet.android.OrbotActivity"
-
-
-    val selectedCamoApp: String
-        get() = cr?.getPrefString(PREF_CAMO_APP_PACKAGE, DEFAULT_CAMO_DISABLED_ACTIVITY) ?: ""
-
-    fun setCamoAppPackage(packageName: String?) {
-        cr?.putPref(PREF_CAMO_APP_PACKAGE, packageName)
-    }
-
     var camoAppDisplayName: String?
         get() = cr?.getPrefString(PREF_CAMO_APP_DISPLAY_NAME) ?: "Android"
         set(name) = cr?.putPref(PREF_CAMO_APP_DISPLAY_NAME, name) ?: Unit
-
-    var camoAppAltIconIndex: Int?
-        get() = cr?.getPrefInt(PREF_CAMO_APP_ALT_ICON_INDEX, -1)
-        set(index) = cr?.putPref(PREF_CAMO_APP_ALT_ICON_INDEX, index ?: -1) ?: Unit
-
 
     val requireDeviceAuthentication: Boolean
         get() = cr?.getPrefBoolean(PREF_REQUIRE_PASSWORD) ?: false
@@ -377,32 +306,32 @@ object Prefs {
         get() = cr?.getPrefBoolean(PREF_DISALLOW_BIOMETRIC_AUTH) ?: false
 
     val proxySocksPort: String?
-        get() = cr?.getPrefString(OrbotConstants.PREF_SOCKS)
+        get() = cr?.getPrefString(ToInetConstants.PREF_SOCKS)
 
     val proxyHttpPort: String?
-        get() = cr?.getPrefString(OrbotConstants.PREF_HTTP)
+        get() = cr?.getPrefString(ToInetConstants.PREF_HTTP)
 
     val connectionPadding: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_CONNECTION_PADDING) ?: false
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_CONNECTION_PADDING) ?: false
 
     val reducedConnectionPadding: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_REDUCED_CONNECTION_PADDING, true) ?: true
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_REDUCED_CONNECTION_PADDING, true) ?: true
 
     val circuitPadding: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_CIRCUIT_PADDING, true) ?: true
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_CIRCUIT_PADDING, true) ?: true
 
     val reducedCircuitPadding: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_REDUCED_CIRCUIT_PADDING, true) ?: true
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_REDUCED_CIRCUIT_PADDING, true) ?: true
 
     val torTransPort: String?
-        get() = cr?.getPrefString(OrbotConstants.PREF_TRANSPORT)
+        get() = cr?.getPrefString(ToInetConstants.PREF_TRANSPORT)
 
     var torIgnoreEmptyUrl: Boolean
         get() = cr?.getPrefBoolean("pref_tor_ignore_empty_url", false) ?: false
         set(value) = cr?.putPref("pref_tor_ignore_empty_url", value) ?: Unit
 
     val torDnsPort: String?
-        get() = cr?.getPrefString(OrbotConstants.PREF_DNSPORT)
+        get() = cr?.getPrefString(ToInetConstants.PREF_DNSPORT)
 
     val entryNodes: String?
         get() = cr?.getPrefString("pref_entrance_nodes")
@@ -414,40 +343,40 @@ object Prefs {
         get() = cr?.getPrefBoolean("pref_strict_nodes") ?: false
 
     val reachableAddresses: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_REACHABLE_ADDRESSES) ?: false
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_REACHABLE_ADDRESSES) ?: false
 
     val reachableAddressesPorts: String?
-        get() = cr?.getPrefString(OrbotConstants.PREF_REACHABLE_ADDRESSES_PORTS)
+        get() = cr?.getPrefString(ToInetConstants.PREF_REACHABLE_ADDRESSES_PORTS)
 
     val customTorRc: String?
         get() = cr?.getPrefString("pref_custom_torrc")
 
     val isolateDest: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_ISOLATE_DEST) ?: false
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_ISOLATE_DEST) ?: false
 
     val isolatePort: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_ISOLATE_PORT) ?: false
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_ISOLATE_PORT) ?: false
 
     val isolateProtocol: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_ISOLATE_PROTOCOL) ?: false
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_ISOLATE_PROTOCOL) ?: false
 
     val isolateKeepAlive: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_ISOLATE_KEEP_ALIVE) ?: false
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_ISOLATE_KEEP_ALIVE) ?: false
 
     val preferIpv6: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_PREFER_IPV6, true) ?: true
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_PREFER_IPV6, true) ?: true
 
     val disableIpv4: Boolean
-        get() = cr?.getPrefBoolean(OrbotConstants.PREF_DISABLE_IPV4) ?: false
+        get() = cr?.getPrefBoolean(ToInetConstants.PREF_DISABLE_IPV4) ?: false
 
     var torifiedApps: String
-        get() = cr?.getPrefString(OrbotConstants.PREFS_KEY_TORIFIED, "") ?: ""
-        set(value) = cr?.putPref(OrbotConstants.PREFS_KEY_TORIFIED, value) ?: Unit
+        get() = cr?.getPrefString(ToInetConstants.PREFS_KEY_TORIFIED, "") ?: ""
+        set(value) = cr?.putPref(ToInetConstants.PREFS_KEY_TORIFIED, value) ?: Unit
 
     @JvmStatic
     var torDnsPortResolved: Int
-        get() = cr?.getPrefInt(OrbotConstants.PREFS_DNS_PORT) ?: 0
-        set(value) = cr?.putPref(OrbotConstants.PREFS_DNS_PORT, value) ?: Unit
+        get() = cr?.getPrefInt(ToInetConstants.PREFS_DNS_PORT) ?: 0
+        set(value) = cr?.putPref(ToInetConstants.PREFS_DNS_PORT, value) ?: Unit
 
     @JvmStatic
     var torEnabled: Boolean
@@ -475,10 +404,12 @@ object Prefs {
         get() = cr?.getPrefBoolean("byedpi_enabled", false) ?: false
         set(value) = cr?.putPref("byedpi_enabled", value) ?: Unit
 
+
+
     @JvmStatic
-    var byedpiUseAsUpstream: Boolean
-        get() = cr?.getPrefBoolean("byedpi_use_as_upstream", false) ?: false
-        set(value) = cr?.putPref("byedpi_use_as_upstream", value) ?: Unit
+    var byedpiSubscriptionUrl: String
+        get() = cr?.getPrefString("byedpi_subscription_url") ?: ""
+        set(value) = cr?.putPref("byedpi_subscription_url", value) ?: Unit
 
     @JvmStatic
     var byedpiMode: String
@@ -581,10 +512,6 @@ object Prefs {
         get() = cr?.getPrefBoolean("opera_proxy_verbose", false) ?: false
         set(value) = cr?.putPref("opera_proxy_verbose", value) ?: Unit
 
-    @JvmStatic
-    var operaProxyUseByeDpi: Boolean
-        get() = cr?.getPrefBoolean("opera_proxy_use_byedpi", false) ?: false
-        set(value) = cr?.putPref("opera_proxy_use_byedpi", value) ?: Unit
 
     @JvmStatic
     var customSocksIp: String
@@ -605,11 +532,6 @@ object Prefs {
     var rehabilitatorHost: String
         get() = if (openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
         set(value) = Unit
-
-    @JvmStatic
-    var rehabilitatorPort: Int
-        get() = cr?.getPrefInt("rehabilitator_port") ?: 1080
-        set(value) = cr?.putPref("rehabilitator_port", value) ?: Unit
 
     @JvmStatic
     var rehabilitatorUpstreamHost: String
@@ -680,4 +602,15 @@ object Prefs {
     var lastStrategiesUpdate: Long
         get() = cr?.getPrefLong("last_strategies_update", 0L) ?: 0L
         set(value) = cr?.putPref("last_strategies_update", value) ?: Unit
+
+    @JvmStatic
+    var easyVpnSubs: String
+        get() {
+            val s = cr?.getPrefString("pref_easy_vpn_subs")
+            if (s.isNullOrEmpty()) {
+                return "https://raw.githubusercontent.com/solovyov-jenya2004/all_subs/refs/heads/main/final_sorted\nhttps://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_universal.txt\nhttps://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_lite.txt"
+            }
+            return s
+        }
+        set(value) = cr?.putPref("pref_easy_vpn_subs", value) ?: Unit
 }

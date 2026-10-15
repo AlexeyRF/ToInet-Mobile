@@ -1,4 +1,4 @@
-/* Copyright (c) 2009, Nathan Freitas, Orbot / The Guardian Project - http://openideals.com/guardian */ /* See LICENSE for licensing information */
+/* Copyright (c) 2009, Nathan Freitas, ToInet / The Guardian Project - http://openideals.com/guardian */ /* See LICENSE for licensing information */
 package ru.toinet.android.ui.more
 
 import android.os.Build
@@ -12,10 +12,10 @@ import androidx.core.os.LocaleListCompat
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.Preference.OnPreferenceChangeListener
-import ru.toinet.android.OrbotApp
+import ru.toinet.android.ToInetApp
 import ru.toinet.android.R
 import ru.toinet.android.localization.Languages
-import ru.toinet.android.service.OrbotConstants
+import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.sendIntentToService
 
@@ -66,8 +66,8 @@ class SettingsPreferenceFragment : AbstractPreferenceFragment() {
                     AppCompatDelegate.setApplicationLocales(LocaleListCompat.create(newLocale))
                     toolbar?.title = requireContext().getString(rootTitleId())
                 } else {
-                    requireActivity().sendIntentToService(OrbotConstants.ACTION_LOCAL_LOCALE_SET)
-                    (requireActivity().application as OrbotApp).setLocale()
+                    requireActivity().sendIntentToService(ToInetConstants.ACTION_LOCAL_LOCALE_SET)
+                    (requireActivity().application as ToInetApp).setLocale()
                     requireActivity().finish()
                 }
                 false

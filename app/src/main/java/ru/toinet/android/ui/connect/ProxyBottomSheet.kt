@@ -7,12 +7,12 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import ru.toinet.android.R
 import ru.toinet.android.databinding.ProxyBottomSheetBinding
-import ru.toinet.android.ui.OrbotBottomSheetDialogFragment
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.getPrefString
 import ru.toinet.android.util.putPref
 
-class ProxyBottomSheet : OrbotBottomSheetDialogFragment() {
+class ProxyBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: ProxyBottomSheetBinding
 
@@ -24,7 +24,6 @@ class ProxyBottomSheet : OrbotBottomSheetDialogFragment() {
         binding = ProxyBottomSheetBinding.inflate(inflater, container, false)
 
         binding.swProxyEnabled.isChecked = Prefs.proxyEnabled
-        binding.swUseByeDpiAsUpstream.isChecked = Prefs.byedpiUseAsUpstream
         
         val proxyType = requireContext().contentResolver.getPrefString("pref_proxy_type") ?: "SOCKS5"
         val proxyTypes = resources.getStringArray(R.array.proxy_types)
@@ -54,7 +53,6 @@ class ProxyBottomSheet : OrbotBottomSheetDialogFragment() {
 
     private fun saveAndDismiss() {
         Prefs.proxyEnabled = binding.swProxyEnabled.isChecked
-        Prefs.byedpiUseAsUpstream = binding.swUseByeDpiAsUpstream.isChecked
         
         val proxyTypes = resources.getStringArray(R.array.proxy_types)
         val selectedType = proxyTypes[binding.spProxyType.selectedItemPosition]

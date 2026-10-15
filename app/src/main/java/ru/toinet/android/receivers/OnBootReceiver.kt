@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import ru.toinet.android.service.OrbotService
+import ru.toinet.android.service.ToInetService
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.putNotSystem
 import org.torproject.jni.TorService.ACTION_START
@@ -28,13 +28,13 @@ class OnBootReceiver : BroadcastReceiver() {
                 sReceivedBoot = true
             }
         } catch (_: RuntimeException) {
-            //catch this to avoid malicious launches as document Cure53 Audit: ORB-01-009 WP1/2: Orbot DoS via exported activity (High)
+            //catch this to avoid malicious launches as document Cure53 Audit: ORB-01-009 WP1/2: ToInet DoS via exported activity (High)
         }
     }
 
     private fun startService(context: Context) {
         try {
-            val intent = Intent(context, OrbotService::class.java).apply {
+            val intent = Intent(context, ToInetService::class.java).apply {
                 this.action = ACTION_START
             }.putNotSystem()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -43,7 +43,7 @@ class OnBootReceiver : BroadcastReceiver() {
                 context.startService(intent)
             }
         } catch (_: RuntimeException) {
-            //catch this to avoid malicious launches as document Cure53 Audit: ORB-01-009 WP1/2: Orbot DoS via exported activity (High)
+            //catch this to avoid malicious launches as document Cure53 Audit: ORB-01-009 WP1/2: ToInet DoS via exported activity (High)
         }
     }
 
