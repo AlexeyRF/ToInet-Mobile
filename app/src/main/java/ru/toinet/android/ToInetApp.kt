@@ -12,6 +12,7 @@ import ru.toinet.android.service.circumvention.Transport.Companion.stateLocation
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.tgws.UniversalTgProxy
 import ru.toinet.android.util.NetworkSwitchListener
+import ru.toinet.android.util.NetworkBlackoutMonitor
 
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
@@ -45,6 +46,7 @@ class ToInetApp : Application() {
         */
         
         NetworkSwitchListener.register(this)
+        NetworkBlackoutMonitor.start(this)
         
 
         // set state dir for IPtProxy

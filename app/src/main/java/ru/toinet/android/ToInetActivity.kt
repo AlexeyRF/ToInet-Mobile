@@ -126,6 +126,8 @@ class ToInetActivity : BaseActivity() {
             rootDetectionShown = true
         }
 
+        ru.toinet.android.util.ArchHelper.checkAndShowWarning(this)
+
         onBackPressedDispatcher.addCallback(this) {
             navController.currentBackStackEntry?.let {
                 when (it.destination.id) {
@@ -196,6 +198,25 @@ class ToInetActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         sendIntentToService(ToInetConstants.CMD_ACTIVE)
+        checkStartVpnFromIntent()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        checkStartVpnFromIntent()
+    }
+
+    private fun checkStartVpnFromIntent() {
+        if (intent?.getBooleanExtra("start_vpn", false) == true) {
+            intent?.removeExtra("start_vpn")
+            val vpnIntent = android.net.VpnService.prepare(this)
+            if (vpnIntent != null) {
+                startActivityForResult(vpnIntent, REQUEST_CODE_VPN)
+            } else {
+                connectViewModel.triggerStartTorAndVpn()
+            }
+        }
     }
 
     override fun onDestroy() {

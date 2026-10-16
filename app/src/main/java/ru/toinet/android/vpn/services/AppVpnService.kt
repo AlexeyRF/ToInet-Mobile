@@ -411,29 +411,41 @@ class AppVpnService : LifecycleVpnService() {
             val packages = pm.getInstalledPackages(0)
             val excludedByUser = ru.toinet.android.util.Prefs.vpnExcludedApps.toMutableSet()
             var needsSave = false
-            
-            for (pkg in packages) {
-                val pkgName = pkg.packageName
-                if (!ru.toinet.android.util.Prefs.vpnAppsInitialized) {
-                    if (pkgName.contains("ru.", ignoreCase = true) || 
-                        pkgName.contains(".ru", ignoreCase = true) || 
-                        pkgName.contains("toinet", ignoreCase = true)) {
+
+            if (!ru.toinet.android.util.Prefs.vpnLoopProtectionInitialized) {
+                for (pkg in packages) {
+                    val pkgName = pkg.packageName
+                    if (ru.toinet.android.util.Prefs.isLockedVpnPackage(pkgName)) {
                         excludedByUser.add(pkgName)
                         needsSave = true
                     }
                 }
-                
-                if (excludedByUser.contains(pkgName)) {
-                    try {
-                        builder.addDisallowedApplication(pkgName)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to disallow app: $pkgName", e)
+                ru.toinet.android.util.Prefs.vpnLoopProtectionInitialized = true
+            }
+
+            if (!ru.toinet.android.util.Prefs.vpnAppsInitialized) {
+                for (pkg in packages) {
+                    val pkgName = pkg.packageName
+                    if (pkgName.contains("ru.", ignoreCase = true) || 
+                        pkgName.contains(".ru", ignoreCase = true)) {
+                        excludedByUser.add(pkgName)
+                        needsSave = true
                     }
                 }
+                ru.toinet.android.util.Prefs.vpnAppsInitialized = true
+                needsSave = true
             }
+
+            for (disallowedPkg in excludedByUser) {
+                try {
+                    builder.addDisallowedApplication(disallowedPkg)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to disallow app: $disallowedPkg", e)
+                }
+            }
+
             if (needsSave) {
                 ru.toinet.android.util.Prefs.vpnExcludedApps = excludedByUser
-                ru.toinet.android.util.Prefs.vpnAppsInitialized = true
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to configure split tunneling", e)
@@ -441,7 +453,9 @@ class AppVpnService : LifecycleVpnService() {
 
 
         try {
-            builder.addDisallowedApplication(applicationContext.packageName)
+            if (ru.toinet.android.util.Prefs.vpnExcludedApps.contains(applicationContext.packageName)) {
+                builder.addDisallowedApplication(applicationContext.packageName)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to disallow self: ${applicationContext.packageName}", e)
         }

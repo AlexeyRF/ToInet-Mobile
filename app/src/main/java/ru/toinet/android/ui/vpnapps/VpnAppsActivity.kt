@@ -111,12 +111,23 @@ class VpnAppsActivity : AppCompatActivity() {
                 "org.telegram.messenger.web"
             )
 
+            if (!Prefs.vpnLoopProtectionInitialized) {
+                for (appInfo in packages) {
+                    if (Prefs.isLockedVpnPackage(appInfo.packageName)) {
+                        excludedApps.add(appInfo.packageName)
+                    }
+                }
+                Prefs.vpnLoopProtectionInitialized = true
+                savePrefs()
+            }
+
             for (appInfo in packages) {
                 val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
                 val hasLaunchIntent = pm.getLaunchIntentForPackage(appInfo.packageName) != null
                 val isPriority = priorityApps.contains(appInfo.packageName)
+                val isLocked = Prefs.isLockedVpnPackage(appInfo.packageName)
 
-                if (!isSystem || hasLaunchIntent || isPriority) {
+                if (!isSystem || hasLaunchIntent || isPriority || isLocked) {
                     val name = appInfo.loadLabel(pm).toString()
                     val icon = appInfo.loadIcon(pm)
                     apps.add(AppItem(name, appInfo.packageName, icon))
@@ -156,44 +167,78 @@ class VpnAppsActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val app = filteredList[position]
+            val isLocked = Prefs.isLockedVpnPackage(app.packageName)
+            val isExcluded = excludedApps.contains(app.packageName)
             holder.tvName.text = app.name
-            holder.tvPackage.text = app.packageName
             holder.ivIcon.setImageDrawable(app.icon)
 
+            if (isLocked && isExcluded) {
+                holder.tvPackage.text = "${app.packageName} (защита от петли)"
+            } else {
+                holder.tvPackage.text = app.packageName
+            }
+
+            holder.swEnabled.isEnabled = true
             holder.swEnabled.setOnCheckedChangeListener(null)
-            holder.swEnabled.isChecked = !excludedApps.contains(app.packageName)
+            holder.swEnabled.isChecked = !isExcluded
+
+            holder.itemView.setOnClickListener {
+                holder.swEnabled.performClick()
+            }
 
             holder.swEnabled.setOnCheckedChangeListener { _, isChecked ->
                 val pkgName = app.packageName
                 if (isChecked) {
-                    val isToInet = pkgName.contains("toinet", ignoreCase = true)
-                    val isRu = pkgName.contains("ru.", ignoreCase = true) || pkgName.contains(".ru", ignoreCase = true)
-                    
-                    if (isToInet || isRu) {
-                        val message = if (isToInet) {
-                            "Включение VPN для приложения ToInet ($pkgName) может привести к петле маршрутизации. Вы уверены?"
-                        } else {
-                            "Включение VPN для российских приложений ($pkgName) может привести к компрометации прокси сервера. Вы уверены?"
-                        }
-                        
+                    if (isLocked) {
                         AlertDialog.Builder(this@VpnAppsActivity)
-                            .setTitle("Предупреждение")
-                            .setMessage(message)
-                            .setPositiveButton("Да") { _, _ ->
+                            .setTitle("Защита от петли")
+                            .setMessage("Возможна петля трафика. Отключить защиту?")
+                            .setPositiveButton("Отключить") { _, _ ->
                                 excludedApps.remove(pkgName)
                                 savePrefs()
+                                val pos = holder.bindingAdapterPosition
+                                if (pos != RecyclerView.NO_POSITION) {
+                                    notifyItemChanged(pos)
+                                }
                             }
                             .setNegativeButton("Отмена") { _, _ ->
                                 holder.swEnabled.isChecked = false
                             }
+                            .setOnCancelListener {
+                                holder.swEnabled.isChecked = false
+                            }
                             .show()
                     } else {
-                        excludedApps.remove(pkgName)
-                        savePrefs()
+                        val isRu = pkgName.contains("ru.", ignoreCase = true) || pkgName.contains(".ru", ignoreCase = true)
+                        if (isRu) {
+                            AlertDialog.Builder(this@VpnAppsActivity)
+                                .setTitle("Предупреждение")
+                                .setMessage("Включение VPN для российских приложений ($pkgName) может привести к компрометации прокси сервера. Вы уверены?")
+                                .setPositiveButton("Да") { _, _ ->
+                                    excludedApps.remove(pkgName)
+                                    savePrefs()
+                                }
+                                .setNegativeButton("Отмена") { _, _ ->
+                                    holder.swEnabled.isChecked = false
+                                }
+                                .setOnCancelListener {
+                                    holder.swEnabled.isChecked = false
+                                }
+                                .show()
+                        } else {
+                            excludedApps.remove(pkgName)
+                            savePrefs()
+                        }
                     }
                 } else {
                     excludedApps.add(pkgName)
                     savePrefs()
+                    if (isLocked) {
+                        val pos = holder.bindingAdapterPosition
+                        if (pos != RecyclerView.NO_POSITION) {
+                            notifyItemChanged(pos)
+                        }
+                    }
                 }
             }
         }

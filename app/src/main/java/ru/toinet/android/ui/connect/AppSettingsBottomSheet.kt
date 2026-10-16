@@ -8,12 +8,15 @@ import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import ru.toinet.android.R
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.ui.ToInetMenuAction
+import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.Prefs
 
-class AppSettingsBottomSheet : BottomSheetDialogFragment() {
+class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
+
+    override fun getHeightRatio(): Float = -1f
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -65,7 +68,13 @@ class AppSettingsBottomSheet : BottomSheetDialogFragment() {
             ToInetMenuAction(
                 0,
                 R.drawable.ic_autorenew,
-                statusString = "Сценарии перезапуска (Wi-Fi / Мобильная)\nРежим: ${if (Prefs.networkSwitchMode == "smart_switch") "Мягкий (Умный)" else "Жесткий (Перезапуск)"}"
+                statusString = "Сценарии перезапуска (Wi-Fi / Мобильная)\nРежим: ${
+                    when (Prefs.networkSwitchMode) {
+                        "disabled" -> "Отключено"
+                        "restart_all" -> "Жесткий (Перезапуск)"
+                        else -> "Мягкий (Умный)"
+                    }
+                }"
             ) {
                 NetworkPresetsBottomSheet().show(parentFragmentManager, NetworkPresetsBottomSheet.TAG)
                 dismiss()
@@ -115,15 +124,27 @@ class AppSettingsBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun showNotificationSettings(onUpdated: () -> Unit) {
-        val providers = resources.getStringArray(R.array.log_providers)
-        val providerValues = resources.getStringArray(R.array.log_providers_values)
+        val allProviders = resources.getStringArray(R.array.log_providers).toMutableList()
+        val allValues = resources.getStringArray(R.array.log_providers_values).toMutableList()
+
+        if (!ArchHelper.isOperaSupported) {
+            val operaIdx = allValues.indexOf("operaproxy")
+            if (operaIdx != -1) {
+                allProviders.removeAt(operaIdx)
+                allValues.removeAt(operaIdx)
+            }
+            if (Prefs.notificationLogProvider == "operaproxy") {
+                Prefs.notificationLogProvider = "tor"
+            }
+        }
+
         val currentProvider = Prefs.notificationLogProvider
-        val checkedItem = providerValues.indexOf(currentProvider).takeIf { it >= 0 } ?: 0
+        val checkedItem = allValues.indexOf(currentProvider).takeIf { it >= 0 } ?: 0
 
         AlertDialog.Builder(requireContext())
             .setTitle("Провайдер логов в уведомлении")
-            .setSingleChoiceItems(providers, checkedItem) { dialog, which ->
-                Prefs.notificationLogProvider = providerValues[which]
+            .setSingleChoiceItems(allProviders.toTypedArray(), checkedItem) { dialog, which ->
+                Prefs.notificationLogProvider = allValues[which]
                 onUpdated()
                 dialog.dismiss()
             }

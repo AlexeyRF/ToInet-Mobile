@@ -27,11 +27,15 @@ object NetworkSwitchListener {
                     if (currentType != -1 && currentType != lastNetworkType) {
                         if (lastNetworkType != -1) { // Ignore the very first callback at startup
                             Log.i(TAG, "Default network switched! New type: ${if (currentType == 0) "WIFI" else "CELLULAR"}")
-                            val presetJson = if (currentType == 0) Prefs.wifiPreset else Prefs.mobilePreset
-                            if (presetJson.isNotBlank()) {
-                                PresetManager.applySnapshot(context, presetJson)
+                            if (Prefs.networkSwitchMode == "disabled") {
+                                Log.i(TAG, "Network profile switching is disabled.")
                             } else {
-                                Log.i(TAG, "No preset saved for this network type.")
+                                val presetJson = if (currentType == 0) Prefs.wifiPreset else Prefs.mobilePreset
+                                if (presetJson.isNotBlank()) {
+                                    PresetManager.applySnapshot(context, presetJson)
+                                } else {
+                                    Log.i(TAG, "No preset saved for this network type.")
+                                }
                             }
                         }
                         lastNetworkType = currentType

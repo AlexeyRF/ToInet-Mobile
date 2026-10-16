@@ -12,12 +12,15 @@ import android.view.ViewGroup
 import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import ru.toinet.android.R
+import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.ui.ToInetMenuAction
+import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.Prefs
 
-class SettingsBottomSheet : BottomSheetDialogFragment() {
+class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
+
+    override fun getHeightRatio(): Float = -1f
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -105,43 +108,50 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                     FakeVpnBottomSheet.TAG
                 )
                 dismiss()
-            },
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_settings_gear,
-                statusString = "Opera Proxy: ${if (Prefs.operaProxyEnabled) "Вкл" else "Выкл"}"
-            ) {
-                OperaProxyBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    OperaProxyBottomSheet.TAG
-                )
-                dismiss()
-            },
+            }
+        )
+
+        if (ArchHelper.isOperaSupported) {
+            listItems.add(
+                ToInetMenuAction(
+                    0,
+                    R.drawable.ic_settings_gear,
+                    statusString = "Opera Proxy: ${if (Prefs.operaProxyEnabled) "Вкл" else "Выкл"}"
+                ) {
+                    OperaProxyBottomSheet().show(
+                        requireActivity().supportFragmentManager,
+                        OperaProxyBottomSheet.TAG
+                    )
+                    dismiss()
+                }
+            )
+        }
+
+        listItems.add(
             ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
                 statusString = "Добавить прокси в Telegram"
             ) {
                 val ctx = requireContext()
-                val proxies = arrayOf(
+                val proxies = arrayListOf(
                     "TOR (SOCKS5)",
-                    //"TGWS (MTPROTO)",
-                    "SR (SOCKS5)",
-                    "OP (SOCKS5)",
-                    "TGWS (SOCKS5)"
-                    //"Gatik (SOCKS5)"
+                    "SR (SOCKS5)"
                 )
-                val proxyLinks = arrayOf(
+                val proxyLinks = arrayListOf(
                     "tg://socks?server=127.0.0.1&port=5242",
-                    //"tg://proxy?server=127.0.0.1&port=1480&secret=${Prefs.tgwsSecret}",
-                    "tg://socks?server=127.0.0.1&port=1788",
-                    "tg://socks?server=127.0.0.1&port=1888",
-                    "tg://socks?server=127.0.0.1&port=1480"
-                    //"tg://socks?server=127.0.0.1&port=1777"
+                    "tg://socks?server=127.0.0.1&port=1788"
                 )
+                if (ArchHelper.isOperaSupported) {
+                    proxies.add("OP (SOCKS5)")
+                    proxyLinks.add("tg://socks?server=127.0.0.1&port=1888")
+                }
+                proxies.add("TGWS (SOCKS5)")
+                proxyLinks.add("tg://socks?server=127.0.0.1&port=1480")
+
                 AlertDialog.Builder(ctx)
                     .setTitle("Выберите прокси для добавления")
-                    .setItems(proxies) { _, which ->
+                    .setItems(proxies.toTypedArray()) { _, which ->
                         val link = proxyLinks[which]
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -155,7 +165,10 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                     }
                     .show()
                 dismiss()
-            },
+            }
+        )
+
+        listItems.add(
             ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,

@@ -92,6 +92,14 @@
         </receiver>
 
         <receiver
+            android:name=".receivers.EasyVpnActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="ru.toinet.android.action.CONNECT_EASYVPN" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".receivers.OnBootReceiver"
             android:directBootAware="false"
             android:enabled="true"

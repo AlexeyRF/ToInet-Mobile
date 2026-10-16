@@ -9,6 +9,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.databinding.VpnBottomSheetBinding
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
+import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.Prefs
 
 class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
@@ -22,6 +23,13 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
         savedInstanceState: Bundle?
     ): View {
         binding = VpnBottomSheetBinding.inflate(inflater, container, false)
+
+        if (!ArchHelper.isOperaSupported) {
+            binding.rbOperaProxy.visibility = View.GONE
+            if (Prefs.vpnProvider == "operaproxy") {
+                Prefs.vpnProvider = "byedpi"
+            }
+        }
 
         binding.swVpnEnabled.isChecked = Prefs.isGlobalVpnEnabled
 

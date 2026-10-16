@@ -9,57 +9,68 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Настройки VPN"
             android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="8dp" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/swVpnEnabled"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Включить VPN туннелирование"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="8dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="VPN Провайдер:"
             android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="4dp" />
 
         <RadioGroup
             android:id="@+id/rgVpnProvider"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="8dp">
 
             <RadioButton
                 android:id="@+id/rbByedpi"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="ByeDPI (порт 1080)" />
 
             <RadioButton
                 android:id="@+id/rbTor"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="TOR (порт 5242)" />
 
             <RadioButton
                 android:id="@+id/rbTgws"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="TGWS (порт 1480)" />
 
             <RadioButton
                 android:id="@+id/rbRehab"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="Socks Rehab (порт 1788)" />
 
             <!--
@@ -67,6 +78,8 @@
                 android:id="@+id/rbTurnProxy"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="vk-turn" />
             -->
                 
@@ -74,30 +87,40 @@
                 android:id="@+id/rbFakeVpn"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="FakeVPN (Напрямую)" />
                 
             <RadioButton
                 android:id="@+id/rbOperaProxy"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="Opera Proxy" />
                 
             <RadioButton
                 android:id="@+id/rbZapret"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="Zapret (порт 1081)" />
                 
             <RadioButton
                 android:id="@+id/rbCustom"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="Свой SOCKS5 прокси" />
                 
             <RadioButton
                 android:id="@+id/rbEasyVpn"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
                 android:text="Easy-VPN" />
         </RadioGroup>
 
@@ -186,14 +209,14 @@
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:text="Приложения для VPN" />
 
         <Button
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="8dp"
             android:text="Сохранить" />
 
     </LinearLayout>

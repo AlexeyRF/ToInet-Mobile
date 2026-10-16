@@ -3,9 +3,11 @@ package ru.toinet.android.ui.connect
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
+import ru.toinet.android.util.ArchHelper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -116,6 +118,22 @@ class ConnectFragment : Fragment(),
         
         binding.btnSettings.setOnClickListener {
             SettingsBottomSheet().show(childFragmentManager, SettingsBottomSheet.TAG)
+        }
+
+        if (ArchHelper.isX86Family) {
+            binding.tvArchWarning.visibility = View.VISIBLE
+            binding.tvArchWarning.text = if (ArchHelper.isX86_64) {
+                "x86-64: Не все функции поддерживаются. Для ПК используйте версию для Windows:\nhttps://github.com/AlexeyRF/ToInet"
+            } else {
+                "x86: Данная архитектура не поддерживает 100% функций, неподдерживаемые функции убраны из списка"
+            }
+            binding.tvArchWarning.setOnClickListener {
+                if (ArchHelper.isX86_64) {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/AlexeyRF/ToInet")))
+                    } catch (_: Exception) {}
+                }
+            }
         }
         
         refreshMenuList(requireContext())

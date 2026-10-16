@@ -392,6 +392,16 @@ object Prefs {
         get() = cr?.getPrefBoolean("pref_vpn_apps_initialized", false) ?: false
         set(value) = cr?.putPref("pref_vpn_apps_initialized", value) ?: Unit
 
+    var vpnLoopProtectionInitialized: Boolean
+        get() = cr?.getPrefBoolean("pref_vpn_loop_protection_initialized", false) ?: false
+        set(value) = cr?.putPref("pref_vpn_loop_protection_initialized", value) ?: Unit
+
+    @JvmStatic
+    fun isLockedVpnPackage(packageName: String): Boolean {
+        val lower = packageName.lowercase()
+        return lower.contains("toinet") || lower.contains("alexerf") || lower.contains("alexeyrf")
+    }
+
     var vpnExcludedApps: Set<String>
         get() = cr?.getPrefString("pref_vpn_excluded_apps")?.split(",")?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
         set(value) = cr?.putPref("pref_vpn_excluded_apps", value.joinToString(",")) ?: Unit

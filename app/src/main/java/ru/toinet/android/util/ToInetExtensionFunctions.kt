@@ -136,7 +136,7 @@ fun Context.sendIntentToService(action: String) {
     }
     */
     
-    if (!isGlobalVpnEnabled && operaProxyEnabled) {
+    if (!isGlobalVpnEnabled && operaProxyEnabled && ArchHelper.isOperaSupported) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
             ru.toinet.android.operaproxy.OperaProxyService.start(this)
         }
@@ -147,7 +147,8 @@ fun Context.sendIntentToService(action: String) {
 
     if (!torEnabled && !isPing) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
-            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled /* || turnProxyEnabled */ || operaProxyEnabled || zapretEnabled)) {
+            val isOperaActive = operaProxyEnabled && ArchHelper.isOperaSupported
+            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled /* || turnProxyEnabled */ || isOperaActive || zapretEnabled)) {
                 val intent = Intent(ToInetConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_ON)
                 intent.setPackage(packageName)

@@ -64,6 +64,25 @@ public class ToInetService extends VpnService {
     private File mV3OnionBasePath;
     private static final String TAG = "ToInetService";
 
+    private final Runnable autoReconnectRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (Prefs.getTorEnabled() && STATUS_OFF.equals(mCurrentStatus)) {
+                Log.d(TAG, "Auto-pressing 'Connect' button (Tor is enabled and in STATUS_OFF)...");
+                startTor();
+            }
+        }
+    };
+
+    private void scheduleAutoReconnectIfEnabled() {
+        if (Prefs.getTorEnabled() && !STATUS_ON.equals(mCurrentStatus) && !STATUS_STARTING.equals(mCurrentStatus)) {
+            if (mHandler != null) {
+                mHandler.removeCallbacks(autoReconnectRunnable);
+                mHandler.postDelayed(autoReconnectRunnable, 4000);
+            }
+        }
+    }
+
     protected void showToolbarNotification(String notifyMsg, int notifyType, int icon) {
         var intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
         var pendIntent = PendingIntent.getActivity(ToInetService.this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
@@ -120,6 +139,8 @@ public class ToInetService extends VpnService {
                         .setSubText(null)
                         .setProgress(0, 0, false)
                         .setTicker(notifyType != NOTIFY_ID ? notifyMsg : null);
+
+                scheduleAutoReconnectIfEnabled();
             }
         }
         ServiceCompat.startForeground(this, NOTIFY_ID, mNotifyBuilder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED);
@@ -160,6 +181,9 @@ public class ToInetService extends VpnService {
         } catch (IllegalArgumentException iae) {
             //not registered yet
         }
+        if (mHandler != null) {
+            mHandler.removeCallbacks(autoReconnectRunnable);
+        }
         super.onDestroy();
     }
 
@@ -194,6 +218,7 @@ public class ToInetService extends VpnService {
     private void stopTorOnError(String message) {
         //  stopTorAsync(false);
         showToolbarNotification(getString(R.string.unable_to_start_tor) + ": " + message, ERROR_NOTIFY_ID, R.drawable.ic_stat_notifyerr);
+        scheduleAutoReconnectIfEnabled();
     }
 
     // if someone stops during startup, we may have to wait for the conn port to be setup, so we can properly shutdown tor
@@ -312,6 +337,7 @@ public class ToInetService extends VpnService {
 
 
     private void replyWithStatus(Intent startRequest) {
+        ru.toinet.android.util.NetworkBlackoutMonitor.onTorStatus(mCurrentStatus);
         String packageName = startRequest.getStringExtra(EXTRA_PACKAGE_NAME);
         Intent reply = new Intent(ACTION_STATUS)
                 .putExtra(EXTRA_STATUS, mCurrentStatus)
@@ -566,6 +592,7 @@ public class ToInetService extends VpnService {
 
     private void sendCallbackLogMessage(final String logMessage) {
         var notificationMessage = logMessage;
+        ru.toinet.android.util.NetworkBlackoutMonitor.onTorLog(logMessage);
 
         var localIntent = new Intent(LOCAL_ACTION_LOG)
                 .putExtra(LOCAL_EXTRA_LOG, logMessage)
@@ -579,6 +606,7 @@ public class ToInetService extends VpnService {
                 localIntent.putExtra(LOCAL_EXTRA_BOOTSTRAP_PERCENT, percent);
                 var prog = Integer.parseInt(percent);
                 SmartConnect.updateProgress(prog);
+                ru.toinet.android.util.NetworkBlackoutMonitor.onTorProgress(prog);
                 mNotifyBuilder.setProgress(100, prog, false);
                 notificationMessage = notificationMessage.substring(notificationMessage.indexOf(':') + 1).trim();
             }
@@ -677,6 +705,7 @@ public class ToInetService extends VpnService {
                     replyWithStatus(mIntent);
                 }
                 case ACTION_STOP -> {
+                    if (mHandler != null) mHandler.removeCallbacks(autoReconnectRunnable);
                     var userIsQuittingToInet = mIntent.getBooleanExtra(ACTION_STOP_FOREGROUND_TASK, false);
                     // When user cancels connecting, make sure, the SmartConnect timer is also cancelled.
                     SmartConnect.cancel();
@@ -713,6 +742,7 @@ public class ToInetService extends VpnService {
                         showTorServiceErrorMsg = false;
                     }
                     stopTor();
+                    scheduleAutoReconnectIfEnabled();
                 }
                 case ACTION_STATUS -> {
                     // hack for https://github.com/guardianproject/tor-android/issues/73 remove when fixed
@@ -720,6 +750,13 @@ public class ToInetService extends VpnService {
                     if (STATUS_OFF.equals(mCurrentStatus) && STATUS_STOPPING.equals(newStatus))
                         break;
                     mCurrentStatus = newStatus;
+                    ru.toinet.android.util.NetworkBlackoutMonitor.onTorStatus(mCurrentStatus);
+
+                    if (STATUS_OFF.equals(mCurrentStatus)) {
+                        scheduleAutoReconnectIfEnabled();
+                    } else if (STATUS_ON.equals(mCurrentStatus)) {
+                        if (mHandler != null) mHandler.removeCallbacks(autoReconnectRunnable);
+                    }
 
                     // Make sure, Smart Connect finishes successfully, even when, for some reason,
                     // progress isn't received up to 100.

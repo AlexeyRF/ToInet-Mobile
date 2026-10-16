@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ListView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import ru.toinet.android.R
 import ru.toinet.android.ui.ToInetMenuAction
@@ -53,14 +54,35 @@ class NetworkPresetsBottomSheet : BottomSheetDialogFragment() {
             }
         )
 
+        val modeTitle = when (Prefs.networkSwitchMode) {
+            "disabled" -> "Отключено (Не менять)"
+            "restart_all" -> "Жесткий (Перезапуск)"
+            else -> "Мягкий (Умный)"
+        }
+
         actions.add(
             ToInetMenuAction(
                 0,
                 R.drawable.ic_autorenew,
-                statusString = "Режим переключения: ${if (Prefs.networkSwitchMode == "smart_switch") "Мягкий (Умный)" else "Жесткий (Перезапуск)"}\n(Нажмите для смены)"
+                statusString = "Режим переключения: $modeTitle\n(Нажмите для смены)"
             ) {
-                Prefs.networkSwitchMode = if (Prefs.networkSwitchMode == "smart_switch") "restart_all" else "smart_switch"
-                setupMenu(view)
+                val modes = arrayOf(
+                    "Отключено (Не менять профили)",
+                    "Мягкий (Умный переход)",
+                    "Жесткий (Полный перезапуск)"
+                )
+                val modeValues = arrayOf("disabled", "smart_switch", "restart_all")
+                val currentIdx = modeValues.indexOf(Prefs.networkSwitchMode).takeIf { it >= 0 } ?: 1
+
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Смена профилей при переключении сети")
+                    .setSingleChoiceItems(modes, currentIdx) { dialog, which ->
+                        Prefs.networkSwitchMode = modeValues[which]
+                        setupMenu(view)
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton("Отмена", null)
+                    .show()
             }
         )
 
