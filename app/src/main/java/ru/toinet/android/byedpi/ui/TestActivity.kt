@@ -331,11 +331,14 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
             if (workingStrats.isNotEmpty()) {
                 domainToWorkingCmds[domain] = workingStrats
-            } else {
+            }
+            /*
+            else {
                 if (prefs.getBoolean("byedpi_proxytest_tor_fallback", false)) {
                     domainToWorkingCmds[domain] = listOf("TOR")
                 }
             }
+            */
         }
 
         if (domainToWorkingCmds.isNotEmpty()) {

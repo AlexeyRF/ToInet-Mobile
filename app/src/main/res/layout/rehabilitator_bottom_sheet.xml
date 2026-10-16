@@ -79,26 +79,40 @@
                 android:inputType="textPassword" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swUseByeDpi"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Аргументы обхода блокировок для сервера"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_marginBottom="16dp">
+            android:text="Проксировать через ByeDPI"
+            android:layout_marginBottom="16dp" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etArgs"
+        <LinearLayout
+            android:id="@+id/llByeDpiArgs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_height="wrap_content"
+                android:hint="Аргументы обхода блокировок для сервера"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_marginBottom="16dp">
 
-        <Button
-            android:id="@+id/btnTestStrategy"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:text="Подобрать стратегию"
-            style="@style/Widget.Material3.Button.TonalButton" />
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etArgs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <Button
+                android:id="@+id/btnTestStrategy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:text="Подобрать стратегию"
+                style="@style/Widget.Material3.Button.TonalButton" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btnSave"

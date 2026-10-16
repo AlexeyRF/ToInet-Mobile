@@ -63,26 +63,13 @@
     <fragment
         android:id="@+id/safetyFrag"
         android:name="ru.toinet.android.ui.more.SafetyPreferenceFragment"
-        android:label="fragment_safety">
-
-        <action
-            android:id="@+id/open_camo"
-            app:destination="@id/camoFrag"
-            app:enterAnim="@anim/slide_in_right"
-            app:exitAnim="@anim/slide_out_left"
-            app:popEnterAnim="@anim/slide_in_left"
-            app:popExitAnim="@anim/slide_out_right" />
-    </fragment>
+        android:label="fragment_safety" />
 
     <fragment
         android:id="@+id/settinsgFragment"
         android:name="ru.toinet.android.ui.more.SettingsPreferenceFragment"
         android:label="fragment_settings"/>
 
-    <fragment
-        android:id="@+id/camoFrag"
-        android:name="ru.toinet.android.ui.more.camo.CamoFragment"
-        android:label="fragment camo" />
 
     <fragment
         android:id="@+id/appManager"

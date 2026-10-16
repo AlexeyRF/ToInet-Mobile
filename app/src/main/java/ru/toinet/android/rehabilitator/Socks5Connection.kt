@@ -10,7 +10,8 @@ import java.net.InetSocketAddress
 
 class Socks5Connection(
     private val clientSock: Socket,
-    private val byedpiAddr: InetSocketAddress,
+    private val byedpiAddr: InetSocketAddress?,
+    private val upstreamAddr: InetSocketAddress,
     private val username: String?,
     private val password: String?
 ) {
@@ -72,29 +73,30 @@ class Socks5Connection(
             clientIn.read(portBytes)
             val port = ((portBytes[0].toInt() and 0xFF) shl 8) or (portBytes[1].toInt() and 0xFF)
 
-            Log.d(TAG, "Client request CONNECT $hostStr:$port")
+            Log.d(TAG, "Client request CONNECT $hostStr:$port (useByeDpi=${byedpiAddr != null})")
 
-            // 3. Connect to ByeDPI
-            val byedpiSock = Socket()
+            // 3. Connect to outbound proxy (ByeDPI or direct upstream SOCKS5)
+            val outboundSock = Socket()
+            val connectAddr = byedpiAddr ?: upstreamAddr
             try {
-                byedpiSock.connect(byedpiAddr, 5000)
-                byedpiSock.soTimeout = 0
+                outboundSock.connect(connectAddr, 5000)
+                outboundSock.soTimeout = 0
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to connect to ByeDPI daemon", e)
+                Log.e(TAG, "Failed to connect to $connectAddr", e)
                 sendReply(clientOut, 0x05)
                 return@withContext
             }
 
-            val bdIn = byedpiSock.getInputStream()
-            val bdOut = byedpiSock.getOutputStream()
+            val obIn = outboundSock.getInputStream()
+            val obOut = outboundSock.getOutputStream()
 
-            // 4. Connect to upstream SOCKS5 via ByeDPI
+            // 4. Connect to upstream SOCKS5
             try {
                 if (!username.isNullOrEmpty() && !password.isNullOrEmpty()) {
-                    bdOut.write(byteArrayOf(5, 2, 0, 2))
-                    bdOut.flush()
+                    obOut.write(byteArrayOf(5, 2, 0, 2))
+                    obOut.flush()
                     val resp = ByteArray(2)
-                    bdIn.read(resp)
+                    obIn.read(resp)
                     if (resp[0] != 5.toByte()) throw RuntimeException("Upstream SOCKS5 handshake failed")
                     if (resp[1] == 2.toByte()) {
                         val uBytes = username.toByteArray()
@@ -105,10 +107,10 @@ class Socks5Connection(
                         System.arraycopy(uBytes, 0, authReq, 2, uBytes.size)
                         authReq[2 + uBytes.size] = pBytes.size.toByte()
                         System.arraycopy(pBytes, 0, authReq, 3 + uBytes.size, pBytes.size)
-                        bdOut.write(authReq)
-                        bdOut.flush()
+                        obOut.write(authReq)
+                        obOut.flush()
                         val authResp = ByteArray(2)
-                        bdIn.read(authResp)
+                        obIn.read(authResp)
                         if (authResp[0] != 1.toByte() || authResp[1] != 0.toByte()) {
                             throw RuntimeException("Upstream SOCKS5 auth failed")
                         }
@@ -116,10 +118,10 @@ class Socks5Connection(
                         throw RuntimeException("Upstream SOCKS5 requires unsupported auth method")
                     }
                 } else {
-                    bdOut.write(byteArrayOf(5, 1, 0))
-                    bdOut.flush()
+                    obOut.write(byteArrayOf(5, 1, 0))
+                    obOut.flush()
                     val resp = ByteArray(2)
-                    bdIn.read(resp)
+                    obIn.read(resp)
                     if (resp[0] != 5.toByte() || resp[1] != 0.toByte()) {
                         throw RuntimeException("Upstream SOCKS5 handshake failed (no auth)")
                     }
@@ -130,14 +132,14 @@ class Socks5Connection(
                 connReq[1] = 1
                 connReq[2] = 0
                 connReq[3] = atyp.toByte()
-                bdOut.write(connReq)
-                bdOut.write(addrBytes)
-                bdOut.write(portBytes)
-                bdOut.flush()
+                obOut.write(connReq)
+                obOut.write(addrBytes)
+                obOut.write(portBytes)
+                obOut.flush()
 
                 // Read reply
                 val upstreamReplyHeader = ByteArray(4)
-                if (bdIn.read(upstreamReplyHeader) < 4) throw RuntimeException("Upstream proxy dropped")
+                if (obIn.read(upstreamReplyHeader) < 4) throw RuntimeException("Upstream proxy dropped")
                 if (upstreamReplyHeader[1] != 0.toByte()) {
                     throw RuntimeException("Upstream proxy rejected connection")
                 }
@@ -146,20 +148,20 @@ class Socks5Connection(
                 when (rAtyp) {
                     1 -> rAddrBytes = ByteArray(4)
                     3 -> {
-                        val rLen = bdIn.read()
+                        val rLen = obIn.read()
                         rAddrBytes = ByteArray(rLen)
                     }
                     4 -> rAddrBytes = ByteArray(16)
                     else -> throw RuntimeException("Unknown atyp from upstream")
                 }
-                bdIn.read(rAddrBytes)
+                obIn.read(rAddrBytes)
                 val rPortBytes = ByteArray(2)
-                bdIn.read(rPortBytes)
+                obIn.read(rPortBytes)
 
             } catch (e: Exception) {
-                Log.e(TAG, "Failed upstream SOCKS5 via ByeDPI", e)
+                Log.e(TAG, "Failed upstream SOCKS5 via $connectAddr", e)
                 sendReply(clientOut, 0x05)
-                byedpiSock.close()
+                outboundSock.close()
                 return@withContext
             }
 
@@ -169,12 +171,12 @@ class Socks5Connection(
             clientOut.flush()
 
             // 6. Pipe
-            val p1 = launch { pipe(clientIn, bdOut) }
-            val p2 = launch { pipe(bdIn, clientOut) }
+            val p1 = launch { pipe(clientIn, obOut) }
+            val p2 = launch { pipe(obIn, clientOut) }
             p1.join()
             p2.join()
 
-            byedpiSock.close()
+            outboundSock.close()
 
         } catch (e: Exception) {
             // connection dropped

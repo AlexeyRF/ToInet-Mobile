@@ -53,7 +53,6 @@ class ToInetActivity : BaseActivity() {
 
         previousReceivedTorStatus = savedInstanceState?.getString(KEY_TOR_STATUS)
 
-        // programmatically set title to "ToInet" since camo mode will overwrite it here from manifest
         title = getString(R.string.app_name)
 
         try {
@@ -96,8 +95,6 @@ class ToInetActivity : BaseActivity() {
             addAction(ToInetConstants.LOCAL_ACTION_STATUS)
             addAction(ToInetConstants.LOCAL_ACTION_LOG)
             addAction(ToInetConstants.LOCAL_ACTION_PORTS)
-            addAction(ru.toinet.android.turnproxy.TurnProxyService.ACTION_CAPTCHA_REQUIRED)
-            addAction(ru.toinet.android.turnproxy.TurnProxyService.ACTION_CAPTCHA_FINISHED)
         }
 
         ContextCompat.registerReceiver(this, toinetServiceBroadcastReceiver, filter,
@@ -263,77 +260,8 @@ class ToInetActivity : BaseActivity() {
                         portHttp = http
                     }
                 }
-
-                ru.toinet.android.turnproxy.TurnProxyService.ACTION_CAPTCHA_REQUIRED -> {
-                    val url = intent.getStringExtra(ru.toinet.android.turnproxy.TurnProxyService.EXTRA_URL) ?: return
-                    showCaptchaDialog(url)
-                }
-
-                ru.toinet.android.turnproxy.TurnProxyService.ACTION_CAPTCHA_FINISHED -> {
-                    captchaDialog?.dismiss()
-                    captchaDialog = null
-                }
             }
         }
-    }
-
-    private var captchaDialog: androidx.appcompat.app.AlertDialog? = null
-
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun showCaptchaDialog(url: String) {
-        if (captchaDialog?.isShowing == true) return
-
-        val webView = android.webkit.WebView(this).apply {
-            layoutParams = android.view.ViewGroup.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                useWideViewPort = true
-                loadWithOverviewMode = true
-                setSupportZoom(true)
-                builtInZoomControls = true
-                displayZoomControls = false
-                mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-                userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
-            }
-            webViewClient = object : android.webkit.WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: android.webkit.WebView?, request: android.webkit.WebResourceRequest?): Boolean {
-                    val scheme = request?.url?.scheme?.lowercase()
-                    return scheme != "http" && scheme != "https"
-                }
-            }
-            loadUrl(url)
-        }
-
-        val title = "Требуется капча"
-        val subtitle = "Пожалуйста, решите капчу для продолжения"
-
-        val container = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            val titleView = android.widget.TextView(this@ToInetActivity).apply {
-                text = "$title\n$subtitle"
-                setPadding(48, 48, 48, 24)
-                textSize = 16f
-                setTextColor(android.graphics.Color.BLACK)
-            }
-            addView(titleView)
-            addView(webView)
-        }
-
-        captchaDialog = androidx.appcompat.app.AlertDialog.Builder(this)
-            .setView(container)
-            .setPositiveButton("Закрыть") { dialog, _ ->
-                dialog.dismiss()
-                captchaDialog = null
-            }
-            .setOnDismissListener {
-                webView.destroy()
-            }
-            .setCancelable(false)
-            .show()
     }
 
     private fun promptDeviceAuthenticationIfRequired() {

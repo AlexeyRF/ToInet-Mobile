@@ -49,12 +49,14 @@
         app:fragment="ru.toinet.android.byedpi.fragments.DomainListsFragment"
         app:iconSpaceReserved="false" />
 
+    <!--
     <SwitchPreference
         android:key="byedpi_proxytest_tor_fallback"
         android:title="Использовать Tor для недоступных доменов"
         android:summary="Если стратегия не найдена для домена, перенаправлять его через Tor."
         android:defaultValue="false"
         app:iconSpaceReserved="false" />
+    -->
 
     <SwitchPreference
         android:key="byedpi_proxytest_usercommands"

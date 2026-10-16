@@ -50,12 +50,44 @@
                 android:text="ByeDPI (порт 1080)" />
 
             <RadioButton
+                android:id="@+id/rbEasyVpn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
+                android:text="Easy-VPN" />
+
+            <RadioButton
+                android:id="@+id/rbOperaProxy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
+                android:text="Opera Proxy" />
+
+            <RadioButton
                 android:id="@+id/rbTor"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
                 android:text="TOR (порт 5242)" />
+
+            <RadioButton
+                android:id="@+id/rbZapret"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
+                android:text="Zapret (порт 1081)" />
+
+            <RadioButton
+                android:id="@+id/rbRehab"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
+                android:text="Socks Rehab (порт 1788)" />
 
             <RadioButton
                 android:id="@+id/rbTgws"
@@ -66,97 +98,13 @@
                 android:text="TGWS (порт 1480)" />
 
             <RadioButton
-                android:id="@+id/rbRehab"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="Socks Rehab (порт 1788)" />
-
-            <!--
-            <RadioButton
-                android:id="@+id/rbTurnProxy"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="vk-turn" />
-            -->
-                
-            <RadioButton
                 android:id="@+id/rbFakeVpn"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
                 android:text="FakeVPN (Напрямую)" />
-                
-            <RadioButton
-                android:id="@+id/rbOperaProxy"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="Opera Proxy" />
-                
-            <RadioButton
-                android:id="@+id/rbZapret"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="Zapret (порт 1081)" />
-                
-            <RadioButton
-                android:id="@+id/rbCustom"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="Свой SOCKS5 прокси" />
-                
-            <RadioButton
-                android:id="@+id/rbEasyVpn"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="Easy-VPN" />
         </RadioGroup>
-
-        <LinearLayout
-            android:id="@+id/llCustomSocks"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginBottom="16dp">
-            
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="SOCKS IP"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etCustomIp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="textUri" />
-            </com.google.android.material.textfield.TextInputLayout>
-            
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="SOCKS Port"
-                android:layout_marginTop="8dp"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etCustomPort"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number" />
-            </com.google.android.material.textfield.TextInputLayout>
-        </LinearLayout>
 
         <!--
         <LinearLayout
@@ -188,11 +136,20 @@
             android:orientation="vertical"
             android:visibility="gone"
             android:layout_marginBottom="16dp">
+
+            <TextView
+                android:id="@+id/tvEasyVpnSubsHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ссылки на подписки"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                android:layout_marginBottom="6dp" />
             
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilEasyVpnSubs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Ссылки на подписки/узлы Easy-VPN (через перенос)"
+                android:hint="Ссылки на подписки через новую строку"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etEasyVpnSubs"
@@ -201,6 +158,44 @@
                     android:gravity="top|start"
                     android:minLines="3"
                     android:inputType="textMultiLine" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llFakeVpnSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FakeVPN Настройки"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                android:layout_marginBottom="6dp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/swFakeTlsEnabled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Режим FakeTLS (подмена SNI)"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilFakeVpnDomains"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Домены (через пробел, например: web.max.ru vk.com sber.ru)"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etFakeVpnDomains"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textMultiLine"
+                    android:minLines="3" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 

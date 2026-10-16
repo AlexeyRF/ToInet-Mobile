@@ -28,7 +28,7 @@ class ByeDpiProxyService : LifecycleService() {
 
     companion object {
         private val TAG: String = ByeDpiProxyService::class.java.simpleName
-        private const val FOREGROUND_SERVICE_ID: Int = 1
+        private const val FOREGROUND_SERVICE_ID: Int = 3
         private const val NOTIFICATION_CHANNEL_ID: String = "ByeDPI Proxy"
 
         private var status: ServiceStatus = ServiceStatus.Disconnected

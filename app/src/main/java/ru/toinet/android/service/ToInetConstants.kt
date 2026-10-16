@@ -49,8 +49,6 @@ object ToInetConstants {
 
     const val ACTION_LOCAL_LOCALE_SET = "ru.toinet.android.intent.LOCAL_LOCALE_SET"
 
-    const val ACTION_UPDATE_ONION_NAMES = "ru.toinet.android.intent.action.UPDATE_ONION_NAMES"
-
 
     /**
      * The SOCKS proxy settings in URL form.
@@ -81,17 +79,12 @@ object ToInetConstants {
     const val LOCAL_EXTRA_LOG = "log"
     const val LOCAL_EXTRA_BOOTSTRAP_PERCENT = "percent"
     const val LOCAL_ACTION_PORTS = "ports"
-    const val LOCAL_ACTION_V3_NAMES_UPDATED = "V3_NAMES_UPDATED"
-
-
-
 
     const val STATUS_STARTS_DISABLED = "STARTS_DISABLED"
 
     const val CMD_SET_EXIT = "setexit"
     const val CMD_ACTIVE = "ACTIVE"
 
-    const val ONION_SERVICES_DIR = "v3_onion_services"
     const val V3_CLIENT_AUTH_DIR = "v3_client_auth"
 
     const val PREFS_DNS_PORT: String = "PREFS_DNS_PORT"

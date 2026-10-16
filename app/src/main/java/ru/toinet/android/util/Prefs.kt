@@ -24,14 +24,11 @@ object Prefs {
     private const val PREF_USE_SMART_CONNECT = "pref_use_smart_connect"
     private const val PREF_SMART_CONNECT_TIMEOUT = "pref_smart_connect_timeout"
 
-    private const val PREF_HOST_ONION_SERVICES = "pref_host_onionservices"
-
     private const val PREF_SNOWFLAKES_SERVED_COUNT = "pref_snowflakes_served"
     private const val PREF_SNOWFLAKES_SERVED_COUNT_WEEKLY = "pref_snowflakes_served_weekly"
 
     private const val PREF_CURRENT_VERSION = "pref_current_version"
 
-    private const val PREF_CAMO_APP_DISPLAY_NAME = "pref_key_camo_app_display_name"
     private const val PREF_REQUIRE_PASSWORD = "pref_require_password"
     private const val PREF_DISALLOW_BIOMETRIC_AUTH = "pref_auth_no_biometrics"
 
@@ -72,11 +69,6 @@ object Prefs {
         WorkManager.getInstance(context)
             .enqueueUniquePeriodicWork("prefsWeeklyWorker", ExistingPeriodicWorkPolicy.KEEP, myWork)
     }
-
-    @JvmStatic
-    var hostOnionServicesEnabled: Boolean
-        get() = cr?.getPrefBoolean(PREF_HOST_ONION_SERVICES, false) ?: false
-        set(value) = cr?.putPref(PREF_HOST_ONION_SERVICES, value) ?: Unit
 
     @JvmStatic
     var bridgesList: List<String>
@@ -148,89 +140,6 @@ object Prefs {
         get() = cr?.getPrefInt(PREF_SMART_CONNECT_TIMEOUT) ?: 30
         set(value) = cr?.putPref(PREF_SMART_CONNECT_TIMEOUT, value) ?: Unit
 
-    var turnProxyEnabled: Boolean
-        get() = cr?.getPrefBoolean("pref_turn_proxy_enabled") ?: false
-        set(value) = cr?.putPref("pref_turn_proxy_enabled", value) ?: Unit
-
-    var turnProxyProvider: String
-        get() = cr?.getPrefString("pref_turn_proxy_provider") ?: "vk"
-        set(value) = cr?.putPref("pref_turn_proxy_provider", value) ?: Unit
-
-    var turnProxyVkLink: String
-        get() = cr?.getPrefString("pref_turn_proxy_vk_link") ?: ""
-        set(value) = cr?.putPref("pref_turn_proxy_vk_link", value) ?: Unit
-
-    var turnProxyServerAddr: String
-        get() = cr?.getPrefString("pref_turn_proxy_server_addr") ?: ""
-        set(value) = cr?.putPref("pref_turn_proxy_server_addr", value) ?: Unit
-
-    var turnProxyLocalPort: Int
-        get() = cr?.getPrefInt("pref_turn_proxy_local_port") ?: 9000
-        set(value) = cr?.putPref("pref_turn_proxy_local_port", value) ?: Unit
-
-    var turnProxyUseUdp: Boolean
-        get() = cr?.getPrefBoolean("pref_turn_proxy_use_udp") ?: true
-        set(value) = cr?.putPref("pref_turn_proxy_use_udp", value) ?: Unit
-
-    var turnProxyObfKey: String
-        get() = cr?.getPrefString("pref_turn_proxy_obf_key") ?: ""
-        set(value) = cr?.putPref("pref_turn_proxy_obf_key", value) ?: Unit
-
-
-    var turnProxyThreads: Int
-        get() = cr?.getPrefInt("pref_turn_proxy_threads") ?: 12
-        set(value) = cr?.putPref("pref_turn_proxy_threads", value) ?: Unit
-
-    var turnProxyStreamsPerCred: Int
-        get() = cr?.getPrefInt("pref_turn_proxy_streams_per_cred") ?: 6
-        set(value) = cr?.putPref("pref_turn_proxy_streams_per_cred", value) ?: Unit
-
-    var turnProxyBond: Boolean
-        get() = cr?.getPrefBoolean("pref_turn_proxy_bond") ?: false
-        set(value) = cr?.putPref("pref_turn_proxy_bond", value) ?: Unit
-
-    var turnProxyManualCaptcha: Boolean
-        get() = cr?.getPrefBoolean("pref_turn_proxy_manual_captcha") ?: false
-        set(value) = cr?.putPref("pref_turn_proxy_manual_captcha", value) ?: Unit
-
-    var turnProxyBrowser: String
-        get() = cr?.getPrefString("pref_turn_proxy_browser") ?: "firefox"
-        set(value) = cr?.putPref("pref_turn_proxy_browser", value) ?: Unit
-
-    var turnProxyDnsServers: String
-        get() = cr?.getPrefString("pref_turn_proxy_dns_servers") ?: ""
-        set(value) = cr?.putPref("pref_turn_proxy_dns_servers", value) ?: Unit
-
-    var turnProxyDnsMode: String
-        get() = cr?.getPrefString("pref_turn_proxy_dns_mode") ?: "auto"
-        set(value) = cr?.putPref("pref_turn_proxy_dns_mode", value) ?: Unit
-
-    var turnProxyMagicTurn: String
-        get() = cr?.getPrefString("pref_turn_proxy_magic_turn") ?: ""
-        set(value) = cr?.putPref("pref_turn_proxy_magic_turn", value) ?: Unit
-
-    var turnProxyClientId: String
-        get() = cr?.getPrefString("pref_turn_proxy_client_id") ?: ""
-        set(value) = cr?.putPref("pref_turn_proxy_client_id", value) ?: Unit
-
-    var turnProxyRawMode: Boolean
-        get() = cr?.getPrefBoolean("pref_turn_proxy_raw_mode") ?: false
-        set(value) = cr?.putPref("pref_turn_proxy_raw_mode", value) ?: Unit
-
-    var turnProxyRawCommand: String
-        get() = cr?.getPrefString("pref_turn_proxy_raw_command") ?: ""
-        set(value) = cr?.putPref("pref_turn_proxy_raw_command", value) ?: Unit
-
-    var turnProxyTcpForward: Boolean
-        get() = cr?.getPrefBoolean("pref_turn_proxy_tcp_forward") ?: false
-        set(value) = cr?.putPref("pref_turn_proxy_tcp_forward", value) ?: Unit
-
-    var turnProxyObfProfile: String
-        get() = cr?.getPrefString("pref_turn_proxy_obf_profile") ?: "rtpopus"
-        set(value) = cr?.putPref("pref_turn_proxy_obf_profile", value) ?: Unit
-
-
-
     @JvmStatic
     var proxyEnabled: Boolean
         get() = cr?.getPrefBoolean("pref_proxy_enabled") ?: false
@@ -294,10 +203,6 @@ object Prefs {
     var isSecureWindow: Boolean
         get() = cr?.getPrefBoolean(PREF_SECURE_WINDOW_FLAG, false) ?: false
         set(isFlagSecure) = cr?.putPref(PREF_SECURE_WINDOW_FLAG, isFlagSecure) ?: Unit
-
-    var camoAppDisplayName: String?
-        get() = cr?.getPrefString(PREF_CAMO_APP_DISPLAY_NAME) ?: "Android"
-        set(name) = cr?.putPref(PREF_CAMO_APP_DISPLAY_NAME, name) ?: Unit
 
     val requireDeviceAuthentication: Boolean
         get() = cr?.getPrefBoolean(PREF_REQUIRE_PASSWORD) ?: false
@@ -399,7 +304,7 @@ object Prefs {
     @JvmStatic
     fun isLockedVpnPackage(packageName: String): Boolean {
         val lower = packageName.lowercase()
-        return lower.contains("toinet") || lower.contains("alexerf") || lower.contains("alexeyrf")
+        return lower.contains("toinet") || lower.contains("alexeyrf")
     }
 
     var vpnExcludedApps: Set<String>
@@ -565,13 +470,27 @@ object Prefs {
 
     @JvmStatic
     var rehabilitatorUpstreamHost: String
-        get() = cr?.getPrefString("rehabilitator_upstream_host") ?: ""
-        set(value) = cr?.putPref("rehabilitator_upstream_host", value) ?: Unit
+        get() {
+            val s = cr?.getPrefString("rehabilitator_upstream_host")
+            if (!s.isNullOrEmpty()) return s
+            return cr?.getPrefString("custom_socks_ip") ?: ""
+        }
+        set(value) {
+            cr?.putPref("rehabilitator_upstream_host", value)
+            cr?.putPref("custom_socks_ip", value)
+        }
 
     @JvmStatic
     var rehabilitatorUpstreamPort: Int
-        get() = cr?.getPrefInt("rehabilitator_upstream_port") ?: 1080
-        set(value) = cr?.putPref("rehabilitator_upstream_port", value) ?: Unit
+        get() {
+            val p = cr?.getPrefInt("rehabilitator_upstream_port") ?: 0
+            if (p != 0) return p
+            return cr?.getPrefInt("custom_socks_port", 1080) ?: 1080
+        }
+        set(value) {
+            cr?.putPref("rehabilitator_upstream_port", value)
+            cr?.putPref("custom_socks_port", value)
+        }
 
     @JvmStatic
     var rehabilitatorUsername: String
@@ -587,6 +506,11 @@ object Prefs {
     var rehabilitatorArgs: String
         get() = cr?.getPrefString("rehabilitator_args") ?: "--disorder 1"
         set(value) = cr?.putPref("rehabilitator_args", value) ?: Unit
+
+    @JvmStatic
+    var rehabilitatorUseByeDpi: Boolean
+        get() = cr?.getPrefBoolean("rehabilitator_use_byedpi", true) ?: true
+        set(value) = cr?.putPref("rehabilitator_use_byedpi", value) ?: Unit
 
     @JvmStatic
     var useDynamicColors: Boolean
@@ -634,13 +558,26 @@ object Prefs {
         set(value) = cr?.putPref("last_strategies_update", value) ?: Unit
 
     @JvmStatic
+    var lastEasyVpnUpdate: Long
+        get() = cr?.getPrefLong("last_easy_vpn_update", 0L) ?: 0L
+        set(value) = cr?.putPref("last_easy_vpn_update", value) ?: Unit
+
+    @JvmStatic
     var easyVpnSubs: String
         get() {
-            val s = cr?.getPrefString("pref_easy_vpn_subs")
-            if (s.isNullOrEmpty()) {
-                return "https://gitverse.ru/api/repos/zieng2/wl/raw/branch/master/list_universal.txt\nhttps://gitverse.ru/api/repos/zieng2/wl/raw/branch/master/list_lite.txt\nhttps://raw.githubusercontent.com/solovyov-jenya2004/all_subs/refs/heads/main/final_sorted\nhttps://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_universal.txt\nhttps://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_lite.txt"
-            }
-            return s
+            val s = cr?.getPrefString("pref_easy_vpn_subs") ?: return ""
+            val defaultUrls = ru.toinet.android.easyvpn.EasyVpnUpdater.DEFAULT_SUBS
+            val userLines = s.lines()
+                .map { it.trim() }
+                .filter { line -> line.isNotEmpty() && defaultUrls.none { def -> line.equals(def, ignoreCase = true) } }
+            return userLines.joinToString("\n")
         }
-        set(value) = cr?.putPref("pref_easy_vpn_subs", value) ?: Unit
+        set(value) {
+            val defaultUrls = ru.toinet.android.easyvpn.EasyVpnUpdater.DEFAULT_SUBS
+            val cleaned = value.lines()
+                .map { it.trim() }
+                .filter { line -> line.isNotEmpty() && defaultUrls.none { def -> line.equals(def, ignoreCase = true) } }
+                .joinToString("\n")
+            cr?.putPref("pref_easy_vpn_subs", cleaned) ?: Unit
+        }
 }

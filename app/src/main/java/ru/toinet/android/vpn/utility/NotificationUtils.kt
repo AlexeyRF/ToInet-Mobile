@@ -13,25 +13,36 @@ import ru.toinet.android.R
 import ru.toinet.android.ToInetActivity
 import ru.toinet.android.vpn.data.STOP_ACTION
 
-fun registerNotificationChannel(context: Context, id: String, @StringRes name: Int) {
+fun registerNotificationChannel(context: Context, id: String, channelName: String) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
 
-        val isNone = ru.toinet.android.util.Prefs.notificationLogProvider == "none"
-        val actualId = if (isNone) "${id}_min" else "${id}_low"
-        val importance = if (isNone) NotificationManager.IMPORTANCE_MIN else NotificationManager.IMPORTANCE_LOW
+        val channelMin = NotificationChannel(
+            "${id}_min",
+            channelName,
+            NotificationManager.IMPORTANCE_MIN
+        ).apply {
+            enableLights(false)
+            enableVibration(false)
+            setShowBadge(false)
+        }
+        val channelLow = NotificationChannel(
+            "${id}_low",
+            channelName,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            enableLights(false)
+            enableVibration(false)
+            setShowBadge(false)
+        }
 
-        val channel = NotificationChannel(
-            actualId,
-            context.getString(name),
-            importance
-        )
-        channel.enableLights(false)
-        channel.enableVibration(false)
-        channel.setShowBadge(false)
-
-        manager.createNotificationChannel(channel)
+        manager.createNotificationChannel(channelMin)
+        manager.createNotificationChannel(channelLow)
     }
+}
+
+fun registerNotificationChannel(context: Context, id: String, @StringRes name: Int) {
+    registerNotificationChannel(context, id, context.getString(name))
 }
 
 fun createConnectionNotification(
@@ -41,6 +52,8 @@ fun createConnectionNotification(
     @StringRes content: Int,
     service: Class<*>,
 ): Notification {
+    registerNotificationChannel(context, channelId, title)
+
     val isNone = ru.toinet.android.util.Prefs.notificationLogProvider == "none"
     val actualId = if (isNone) "${channelId}_min" else "${channelId}_low"
 
@@ -60,17 +73,11 @@ fun createConnectionNotification(
 
     if (isNone) {
         builder.setContentTitle("ToInet")
+            .setContentText(null)
+            .setSubText(null)
     } else {
         builder.setContentTitle(context.getString(title))
             .setContentText(context.getString(content))
-            .addAction(0, context.getString(R.string.disable),
-                PendingIntent.getService(
-                    context,
-                    0,
-                    Intent(context, service).setAction(STOP_ACTION),
-                    PendingIntent.FLAG_IMMUTABLE,
-                )
-            )
     }
 
     return builder.build()
@@ -82,7 +89,10 @@ fun createConnectionNotificationString(
     title: String,
     content: String,
     service: Class<*>,
+    switchServerIntent: PendingIntent? = null,
 ): Notification {
+    registerNotificationChannel(context, channelId, title)
+
     val isNone = ru.toinet.android.util.Prefs.notificationLogProvider == "none"
     val actualId = if (isNone) "${channelId}_min" else "${channelId}_low"
 
@@ -102,17 +112,28 @@ fun createConnectionNotificationString(
 
     if (isNone) {
         builder.setContentTitle("ToInet")
+            .setContentText(null)
+            .setSubText(null)
     } else {
         builder.setContentTitle(title)
             .setContentText(content)
-            .addAction(0, context.getString(R.string.disable),
-                PendingIntent.getService(
-                    context,
-                    0,
-                    Intent(context, service).setAction(STOP_ACTION),
-                    PendingIntent.FLAG_IMMUTABLE,
-                )
+
+        if (switchServerIntent != null) {
+            builder.addAction(
+                0,
+                context.getString(R.string.easyvpn_switch_server),
+                switchServerIntent
             )
+        }
+
+        builder.addAction(0, context.getString(R.string.disable),
+            PendingIntent.getService(
+                context,
+                0,
+                Intent(context, service).setAction(STOP_ACTION),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+        )
     }
 
     return builder.build()

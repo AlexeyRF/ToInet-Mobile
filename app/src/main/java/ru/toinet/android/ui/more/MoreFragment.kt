@@ -19,7 +19,6 @@ import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.service.ToInetService
 import ru.toinet.android.ui.ToInetMenuAction
-import ru.toinet.android.ui.v3onionservice.OnionServiceActivity
 import ru.toinet.android.ui.v3onionservice.clientauth.ClientAuthActivity
 import ru.toinet.android.util.StringUtils
 import org.torproject.jni.TorService
@@ -106,9 +105,6 @@ class MoreFragment : Fragment() {
                 findNavController().navigate(R.id.more_to_settings)
             },
             ToInetMenuAction(R.string.menu_log, R.drawable.ic_log) { showLog() },
-            ToInetMenuAction(R.string.v3_hosted_services, R.drawable.ic_menu_onion) {
-                startActivity(Intent(requireActivity(), OnionServiceActivity::class.java))
-            },
             ToInetMenuAction(R.string.v3_client_auth_activity_title, R.drawable.ic_shield) {
                 startActivity(Intent(requireActivity(), ClientAuthActivity::class.java))
             },

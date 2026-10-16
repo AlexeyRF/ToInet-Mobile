@@ -8,7 +8,6 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import ru.toinet.android.R
-import ru.toinet.android.util.Prefs
 import org.torproject.jni.TorService
 
 object Notifications {
@@ -25,24 +24,29 @@ object Notifications {
                 appName,
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-            description = channelDescription
-            enableLights(false)
-            enableVibration(false)
-            setShowBadge(false)
-            lockscreenVisibility = Notification.VISIBILITY_SECRET
-        })
+                description = channelDescription
+                enableLights(false)
+                enableVibration(false)
+                setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
+            }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                TOINET_SERVICE_NOTIFICATION_CHANNEL_MIN,
+                appName,
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
+                description = channelDescription
+                enableLights(false)
+                enableVibration(false)
+                setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
+            }
+        )
     }
 
-    @JvmStatic
-    fun configureCamoNotification(notifyBuilder: NotificationCompat.Builder) {
-        notifyBuilder
-            .setContentTitle(Prefs.camoAppDisplayName)
-            .setContentText(null)
-            .setSubText(null)
-            .setSmallIcon(R.drawable.ic_generic_info)
-            .setProgress(0, 0, false)
-            .setContentIntent(null)
-    }
 
     @JvmStatic
     fun getNotificationTitleForStatus(context: Context, torStatus: String) : String {
@@ -54,4 +58,5 @@ object Notifications {
     }
 
     const val TOINET_SERVICE_NOTIFICATION_CHANNEL = "toinet_channel_1"
+    const val TOINET_SERVICE_NOTIFICATION_CHANNEL_MIN = "toinet_channel_1_min"
 }

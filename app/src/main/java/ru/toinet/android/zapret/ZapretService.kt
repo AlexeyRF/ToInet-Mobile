@@ -92,7 +92,7 @@ class ZapretService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        ru.toinet.android.vpn.utility.registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "Zapret Proxy Service")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -100,6 +100,12 @@ class ZapretService : Service() {
             ACTION_START -> {
                 startForegroundNotification()
                 startInternal()
+                return START_STICKY
+            }
+            "ACTIVE" -> {
+                if (isRunning) {
+                    startForegroundNotification()
+                }
                 return START_STICKY
             }
             ACTION_STOP -> {
@@ -120,30 +126,33 @@ class ZapretService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
         )
 
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle(getString(R.string.zapret_notification_title))
-            .setContentText("SOCKS5: ${Prefs.zapretHost}:${Prefs.zapretPort}")
+        ru.toinet.android.vpn.utility.registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "Zapret Proxy Service")
+
+        val isNone = Prefs.notificationLogProvider == "none"
+        val actualId = if (isNone) "${NOTIFICATION_CHANNEL_ID}_min" else "${NOTIFICATION_CHANNEL_ID}_low"
+
+        val builder = NotificationCompat.Builder(this, actualId)
             .setSmallIcon(R.drawable.ic_stat_tor)
+            .setSilent(true)
+            .setGroup("toinet_services")
             .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setPriority(if (isNone) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
+
+        if (isNone) {
+            builder.setContentTitle("ToInet")
+                .setContentText(null)
+                .setSubText(null)
+        } else {
+            builder.setContentTitle(getString(R.string.zapret_notification_title))
+                .setContentText("SOCKS5: ${Prefs.zapretHost}:${Prefs.zapretPort}")
+        }
+
+        val notification = builder.build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(NOTIFICATION_ID, notification)
-        }
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                "Zapret Proxy Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
         }
     }
 

@@ -310,18 +310,15 @@ class TgwsCore(
                 "byedpi" -> 1080
                 "tor" -> 5242
                 "tgws" -> 1480
-                "rehab" -> 1788
-                // "turnproxy" -> Prefs.turnProxyLocalPort
+                "rehab", "custom" -> 1788
                 "fakevpn" -> 1790
                 "operaproxy" -> Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1888
                 "easyvpn" -> 1791
                 "zapret" -> Prefs.zapretPort
-                "custom" -> Prefs.customSocksPort
                 else -> 1080
             }
             val targetHost = when (provider) {
                 "operaproxy" -> Prefs.operaProxyBindAddress.split(":").first()
-                "custom" -> Prefs.customSocksIp
                 else -> "127.0.0.1"
             }
             if (targetPort == this.port && targetHost == "127.0.0.1") {

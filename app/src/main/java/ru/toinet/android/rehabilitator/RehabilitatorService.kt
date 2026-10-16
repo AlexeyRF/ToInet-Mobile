@@ -56,21 +56,26 @@ class RehabilitatorService : Service() {
     private fun startInternal() {
         stopInternal()
 
+        val useByeDpi = Prefs.rehabilitatorUseByeDpi
         val byedpiPort = 10810
-        val preferences = ByeDpiProxyCmdPreferences("-i 127.0.0.1 -p $byedpiPort " + Prefs.rehabilitatorArgs)
 
-        proxy = ByeDpiProxy()
-        byedpiJob = scope.launch {
-            try {
-                proxy?.startProxy(preferences)
-            } catch (e: Exception) {
-                Log.e(TAG, "ByeDPI failed", e)
+        if (useByeDpi) {
+            val preferences = ByeDpiProxyCmdPreferences("-i 127.0.0.1 -p $byedpiPort " + Prefs.rehabilitatorArgs)
+
+            proxy = ByeDpiProxy()
+            byedpiJob = scope.launch {
+                try {
+                    proxy?.startProxy(preferences)
+                } catch (e: Exception) {
+                    Log.e(TAG, "ByeDPI failed", e)
+                }
             }
         }
 
-        val upstreamAddr = InetSocketAddress(Prefs.rehabilitatorUpstreamHost, Prefs.rehabilitatorUpstreamPort)
+        val upstreamHost = Prefs.rehabilitatorUpstreamHost.takeIf { it.isNotBlank() } ?: "127.0.0.1"
+        val upstreamAddr = InetSocketAddress(upstreamHost, Prefs.rehabilitatorUpstreamPort)
         val listenAddr = InetSocketAddress(Prefs.rehabilitatorHost, 1788)
-        val byedpiAddr = InetSocketAddress("127.0.0.1", byedpiPort)
+        val byedpiAddr = if (useByeDpi) InetSocketAddress("127.0.0.1", byedpiPort) else null
 
         socksServer = Socks5Server(
             listenAddr = listenAddr,

@@ -32,8 +32,8 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
         val listItems = arrayListOf(
             ToInetMenuAction(
                 0,
-                R.drawable.ic_settings_gear,
-                statusString = if (Prefs.torEnabled) "Конфигурация Tor (мосты и прокси)" else "Конфигурация Tor: ВЫКЛ"
+                R.drawable.ic_tor,
+                statusString = if (Prefs.torEnabled) "Tor (мосты и прокси)" else "Tor: ВЫКЛ"
             ) {
                 TorConfigBottomSheet().show(
                     requireActivity().supportFragmentManager,
@@ -77,35 +77,11 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             ToInetMenuAction(
                 0,
                 R.drawable.ic_add_plus,
-                statusString = "SocksRehabilitator: ${if (Prefs.rehabilitatorEnabled) "Вкл" else "Выкл"}\n(SOCKS5 через ByeDPI)"
+                statusString = "SocksRehabilitator: ${if (Prefs.rehabilitatorEnabled) "Вкл" else "Выкл"}\n(${if (Prefs.rehabilitatorUseByeDpi) "SOCKS5 через ByeDPI" else "Прямой SOCKS5"})"
             ) {
                 RehabilitatorBottomSheet().show(
                     requireActivity().supportFragmentManager,
                     RehabilitatorBottomSheet.TAG
-                )
-                dismiss()
-            },
-            /*
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_flight_off,
-                statusString = "TurnProxy: ${if (Prefs.turnProxyEnabled) "Вкл" else "Выкл"}\n(Обход по TURN)"
-            ) {
-                TurnProxyBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    TurnProxyBottomSheet.TAG
-                )
-                dismiss()
-            },
-            */
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_settings_gear,
-                statusString = "FakeVPN: ${if (Prefs.fakeVpnFakeTlsEnabled) "FakeTLS Вкл" else "Обычный"}"
-            ) {
-                FakeVpnBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    FakeVpnBottomSheet.TAG
                 )
                 dismiss()
             }
@@ -115,7 +91,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             listItems.add(
                 ToInetMenuAction(
                     0,
-                    R.drawable.ic_settings_gear,
+                    R.drawable.ic_opera,
                     statusString = "Opera Proxy: ${if (Prefs.operaProxyEnabled) "Вкл" else "Выкл"}"
                 ) {
                     OperaProxyBottomSheet().show(
@@ -130,24 +106,36 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
         listItems.add(
             ToInetMenuAction(
                 0,
-                R.drawable.ic_settings_gear,
+                R.drawable.ic_send_airplane,
                 statusString = "Добавить прокси в Telegram"
             ) {
                 val ctx = requireContext()
                 val proxies = arrayListOf(
-                    "TOR (SOCKS5)",
-                    "SR (SOCKS5)"
+                    "ByeDPI (порт 1080)",
+                    "Easy-VPN (порт 1791)"
                 )
                 val proxyLinks = arrayListOf(
-                    "tg://socks?server=127.0.0.1&port=5242",
-                    "tg://socks?server=127.0.0.1&port=1788"
+                    "tg://socks?server=127.0.0.1&port=1080",
+                    "tg://socks?server=127.0.0.1&port=1791"
                 )
                 if (ArchHelper.isOperaSupported) {
-                    proxies.add("OP (SOCKS5)")
+                    proxies.add("Opera Proxy (порт 1888)")
                     proxyLinks.add("tg://socks?server=127.0.0.1&port=1888")
                 }
-                proxies.add("TGWS (SOCKS5)")
+                proxies.add("TOR (порт 5242)")
+                proxyLinks.add("tg://socks?server=127.0.0.1&port=5242")
+
+                proxies.add("Zapret (порт 1081)")
+                proxyLinks.add("tg://socks?server=127.0.0.1&port=1081")
+
+                proxies.add("Socks Rehab (порт 1788)")
+                proxyLinks.add("tg://socks?server=127.0.0.1&port=1788")
+
+                proxies.add("TGWS (порт 1480)")
                 proxyLinks.add("tg://socks?server=127.0.0.1&port=1480")
+
+                proxies.add("FakeVPN (порт 1790)")
+                proxyLinks.add("tg://socks?server=127.0.0.1&port=1790")
 
                 AlertDialog.Builder(ctx)
                     .setTitle("Выберите прокси для добавления")

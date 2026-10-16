@@ -37,8 +37,9 @@ class AppVpnService : LifecycleVpnService() {
 
     companion object {
         private val TAG: String = AppVpnService::class.java.simpleName
-        private const val FOREGROUND_SERVICE_ID: Int = 1
+        private const val FOREGROUND_SERVICE_ID: Int = 2
         private const val NOTIFICATION_CHANNEL_ID: String = "ByeDPIVpn"
+        const val ACTION_SWITCH_SERVER: String = "ru.toinet.android.vpn.SWITCH_SERVER"
 
         private var status: ServiceStatus = ServiceStatus.Disconnected
     }
@@ -77,6 +78,15 @@ class AppVpnService : LifecycleVpnService() {
             }
 
             "ACTIVE" -> {
+                START_STICKY
+            }
+
+            ACTION_SWITCH_SERVER -> {
+                lifecycleScope.launch {
+                    easyVpnServer?.switchToNextServer()
+                    val nm = getSystemService(android.app.NotificationManager::class.java)
+                    nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                }
                 START_STICKY
             }
 
@@ -168,8 +178,7 @@ class AppVpnService : LifecycleVpnService() {
             "byedpi" -> actualPort = getByeDpiPreferences().port
             "tor" -> actualPort = 5242
             "tgws" -> actualPort = ru.toinet.android.util.Prefs.tgwsPort
-            "rehab" -> actualPort = 1788
-            // "turnproxy" -> actualPort = ru.toinet.android.util.Prefs.turnProxyLocalPort
+            "rehab", "custom" -> actualPort = 1788
             "fakevpn" -> actualPort = 1790
             "operaproxy" -> {
                 actualHost = "127.0.0.1"
@@ -177,16 +186,21 @@ class AppVpnService : LifecycleVpnService() {
             }
             "easyvpn" -> actualPort = 1791
             "zapret" -> actualPort = ru.toinet.android.util.Prefs.zapretPort
-            "custom" -> {
-                actualHost = ru.toinet.android.util.Prefs.customSocksIp
-                actualPort = ru.toinet.android.util.Prefs.customSocksPort
-            }
             else -> actualPort = getByeDpiPreferences().port
         }
         var socksAddr = "$actualHost:$actualPort"
 
+        if (provider == "rehab" || provider == "custom") {
+            ru.toinet.android.rehabilitator.RehabilitatorService.start(this)
+        }
+
         if (provider == "easyvpn") {
-            easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope)
+            easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
+                onServerChanged = {
+                    val nm = getSystemService(android.app.NotificationManager::class.java)
+                    nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                }
+            }
             easyVpnServer?.start()
         }
 
@@ -307,6 +321,11 @@ class AppVpnService : LifecycleVpnService() {
             ru.toinet.android.zapret.ZapretService.stop(this)
         }
 
+        val provider = ru.toinet.android.util.Prefs.vpnProvider
+        if ((provider == "rehab" || provider == "custom") && !ru.toinet.android.util.Prefs.rehabilitatorEnabled) {
+            ru.toinet.android.rehabilitator.RehabilitatorService.stop(this)
+        }
+
         Log.i(TAG, "Tun2socks stopped")
     }
 
@@ -359,15 +378,35 @@ class AppVpnService : LifecycleVpnService() {
             "easyvpn" -> "EasyVPN"
             "zapret" -> "Zapret"
             "operaproxy" -> "Opera Proxy"
+            "rehab", "custom" -> "Socks Rehab"
+            "fakevpn" -> "FakeVPN"
             else -> getString(R.string.byedpi_notification_title)
         }
         
+        val content = if (provider == "easyvpn") {
+            easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
+        } else {
+            getString(R.string.vpn_notification_content)
+        }
+
+        val switchIntent = if (provider == "easyvpn") {
+            PendingIntent.getService(
+                this,
+                101,
+                Intent(this, AppVpnService::class.java).setAction(ACTION_SWITCH_SERVER),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        } else {
+            null
+        }
+
         return createConnectionNotificationString(
             this,
             NOTIFICATION_CHANNEL_ID,
             title,
-            getString(R.string.vpn_notification_content),
+            content,
             AppVpnService::class.java,
+            switchIntent,
         )
     }
 
@@ -379,6 +418,8 @@ class AppVpnService : LifecycleVpnService() {
             "easyvpn" -> "EasyVPN"
             "zapret" -> "Zapret"
             "operaproxy" -> "Opera Proxy"
+            "rehab", "custom" -> "Socks Rehab"
+            "fakevpn" -> "FakeVPN"
             else -> "ByeDPI"
         }
         builder.setSession(sessionName)

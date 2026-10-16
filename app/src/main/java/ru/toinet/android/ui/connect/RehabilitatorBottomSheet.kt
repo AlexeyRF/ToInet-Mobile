@@ -22,6 +22,13 @@ class RehabilitatorBottomSheet : ToInetBottomSheetDialogFragment() {
         binding = RehabilitatorBottomSheetBinding.inflate(inflater, container, false)
 
         binding.swEnabled.isChecked = Prefs.rehabilitatorEnabled
+        binding.swUseByeDpi.isChecked = Prefs.rehabilitatorUseByeDpi
+        binding.llByeDpiArgs.visibility = if (binding.swUseByeDpi.isChecked) View.VISIBLE else View.GONE
+
+        binding.swUseByeDpi.setOnCheckedChangeListener { _, isChecked ->
+            binding.llByeDpiArgs.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
         binding.etUpstreamHost.setText(Prefs.rehabilitatorUpstreamHost)
         binding.etUpstreamPort.setText(Prefs.rehabilitatorUpstreamPort.toString())
         binding.etUsername.setText(Prefs.rehabilitatorUsername)
@@ -30,11 +37,12 @@ class RehabilitatorBottomSheet : ToInetBottomSheetDialogFragment() {
 
         binding.btnSave.setOnClickListener {
             Prefs.rehabilitatorEnabled = binding.swEnabled.isChecked
-            Prefs.rehabilitatorUpstreamHost = binding.etUpstreamHost.text.toString()
-            Prefs.rehabilitatorUpstreamPort = binding.etUpstreamPort.text.toString().toIntOrNull() ?: 1080
-            Prefs.rehabilitatorUsername = binding.etUsername.text.toString()
-            Prefs.rehabilitatorPassword = binding.etPassword.text.toString()
-            Prefs.rehabilitatorArgs = binding.etArgs.text.toString()
+            Prefs.rehabilitatorUseByeDpi = binding.swUseByeDpi.isChecked
+            Prefs.rehabilitatorUpstreamHost = binding.etUpstreamHost.text.toString().trim()
+            Prefs.rehabilitatorUpstreamPort = binding.etUpstreamPort.text.toString().trim().toIntOrNull() ?: 1080
+            Prefs.rehabilitatorUsername = binding.etUsername.text.toString().trim()
+            Prefs.rehabilitatorPassword = binding.etPassword.text.toString().trim()
+            Prefs.rehabilitatorArgs = binding.etArgs.text.toString().trim()
             
             viewModel.triggerRefreshMenuList()
             dismiss()

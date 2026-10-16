@@ -47,6 +47,7 @@ class ToInetApp : Application() {
         
         NetworkSwitchListener.register(this)
         NetworkBlackoutMonitor.start(this)
+        ru.toinet.android.easyvpn.EasyVpnUpdateWorker.schedule(this)
         
 
         // set state dir for IPtProxy

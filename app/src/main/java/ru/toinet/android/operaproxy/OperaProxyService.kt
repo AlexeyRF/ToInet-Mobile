@@ -56,7 +56,7 @@ class OperaProxyService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        ru.toinet.android.vpn.utility.registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "Opera Proxy Service")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -67,6 +67,12 @@ class OperaProxyService : Service() {
                     server = OperaProxyServer(this, scope)
                 }
                 server?.start()
+                return START_STICKY
+            }
+            "ACTIVE" -> {
+                if (server != null) {
+                    startForegroundNotification()
+                }
                 return START_STICKY
             }
             ACTION_STOP -> {
@@ -95,30 +101,33 @@ class OperaProxyService : Service() {
 
         val bindAddress = Prefs.operaProxyBindAddress.takeIf { it.isNotBlank() } ?: "127.0.0.1:1888"
 
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle(getString(R.string.opera_proxy_notification_title))
-            .setContentText("SOCKS5: $bindAddress")
+        ru.toinet.android.vpn.utility.registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "Opera Proxy Service")
+
+        val isNone = Prefs.notificationLogProvider == "none"
+        val actualId = if (isNone) "${NOTIFICATION_CHANNEL_ID}_min" else "${NOTIFICATION_CHANNEL_ID}_low"
+
+        val builder = NotificationCompat.Builder(this, actualId)
             .setSmallIcon(R.drawable.ic_stat_tor)
+            .setSilent(true)
+            .setGroup("toinet_services")
             .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setPriority(if (isNone) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
+
+        if (isNone) {
+            builder.setContentTitle("ToInet")
+                .setContentText(null)
+                .setSubText(null)
+        } else {
+            builder.setContentTitle(getString(R.string.opera_proxy_notification_title))
+                .setContentText("SOCKS5: $bindAddress")
+        }
+
+        val notification = builder.build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(NOTIFICATION_ID, notification)
-        }
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                "Opera Proxy Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
         }
     }
 

@@ -7,7 +7,7 @@ import java.net.ServerSocket
 
 class Socks5Server(
     private val listenAddr: InetSocketAddress,
-    private val byedpiAddr: InetSocketAddress,
+    private val byedpiAddr: InetSocketAddress?,
     private val upstreamAddr: InetSocketAddress,
     private val username: String? = null,
     private val password: String? = null
@@ -31,7 +31,7 @@ class Socks5Server(
                     Log.d(TAG, "Incoming connection from ${client.remoteSocketAddress}")
                     
                     launch {
-                        Socks5Connection(client, byedpiAddr, username, password).handle()
+                        Socks5Connection(client, byedpiAddr, upstreamAddr, username, password).handle()
                     }
                 }
             } catch (e: Exception) {

@@ -26,7 +26,6 @@ import net.freehaven.tor.control.TorControlConnection;
 
 import ru.toinet.android.R;
 import ru.toinet.android.service.circumvention.SmartConnect;
-import ru.toinet.android.service.db.OnionServiceColumns;
 import ru.toinet.android.service.tor.CustomTorResourceInstaller;
 import ru.toinet.android.util.*;
 import ru.toinet.android.service.tor.TorConfig;
@@ -61,7 +60,6 @@ public class ToInetService extends VpnService {
     private boolean shouldUnbindTorService;
     private NotificationManager mNotificationManager = null;
     private NotificationCompat.Builder mNotifyBuilder;
-    private File mV3OnionBasePath;
     private static final String TAG = "ToInetService";
 
     private final Runnable autoReconnectRunnable = new Runnable() {
@@ -87,25 +85,30 @@ public class ToInetService extends VpnService {
         var intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
         var pendIntent = PendingIntent.getActivity(ToInetService.this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
-        if (mNotifyBuilder == null) {
-            mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            mNotifyBuilder = new NotificationCompat
-                    .Builder(this, Notifications.TOINET_SERVICE_NOTIFICATION_CHANNEL)
-                    .setCategory(Notification.CATEGORY_SERVICE)
-                    .setGroup("toinet_services")
-                    .setSmallIcon(R.drawable.ic_stat_tor);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notifications.createNotificationChannel(this);
         }
 
-        mNotifyBuilder.setOngoing(true);
-        mNotifyBuilder.clearActions(); // clear out any notification actions, if any
+        boolean isNone = "none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider());
+        String channelId = isNone ? Notifications.TOINET_SERVICE_NOTIFICATION_CHANNEL_MIN : Notifications.TOINET_SERVICE_NOTIFICATION_CHANNEL;
 
-        if ("none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) {
+        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotifyBuilder = new NotificationCompat
+                .Builder(this, channelId)
+                .setCategory(Notification.CATEGORY_SERVICE)
+                .setGroup("toinet_services")
+                .setSmallIcon(R.drawable.ic_stat_tor)
+                .setSilent(true)
+                .setOngoing(true);
+
+        if (isNone) {
             mNotifyBuilder
-                    .setSmallIcon(icon)
+                    .setSmallIcon(R.drawable.ic_stat_tor)
                     .setContentTitle("ToInet")
                     .setContentText(null)
                     .setSubText(null)
                     .setProgress(0, 0, false)
+                    .setPriority(NotificationCompat.PRIORITY_MIN)
                     .setContentIntent(pendIntent);
         }
         else {
@@ -113,7 +116,8 @@ public class ToInetService extends VpnService {
                     .setSmallIcon(icon)
                     .setContentText(notifyMsg)
                     .setContentIntent(pendIntent)
-                    .setContentTitle(Notifications.getNotificationTitleForStatus(this, mCurrentStatus));
+                    .setContentTitle(Notifications.getNotificationTitleForStatus(this, mCurrentStatus))
+                    .setPriority(NotificationCompat.PRIORITY_LOW);
             // Tor connection is active
             if (conn != null && mCurrentStatus.equals(STATUS_ON)) { // only add new identity action when there is a connection
                 mNotifyBuilder.setProgress(0, 0, false); // removes progress bar
@@ -143,7 +147,11 @@ public class ToInetService extends VpnService {
                 scheduleAutoReconnectIfEnabled();
             }
         }
-        ServiceCompat.startForeground(this, NOTIFY_ID, mNotifyBuilder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED);
+        var notification = mNotifyBuilder.build();
+        ServiceCompat.startForeground(this, NOTIFY_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED);
+        if (mNotificationManager != null) {
+            mNotificationManager.notify(NOTIFY_ID, notification);
+        }
     }
 
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -275,7 +283,6 @@ public class ToInetService extends VpnService {
 
                 if (!appCacheHome.exists()) appCacheHome.mkdirs();
 
-                mV3OnionBasePath = OnionServiceColumns.createV3OnionDir(this);
 
                 if (mNotificationManager == null)
                     mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -410,29 +417,9 @@ public class ToInetService extends VpnService {
                     return Unit.INSTANCE;
                 },
                 /* completed: () -> Unit)  */
-                () -> {
-                    if (Prefs.getHostOnionServicesEnabled()) {
-                        try {
-                            updateV3OnionNames();
-                        } catch (SecurityException se) {
-                            logNotice(getString(R.string.log_notice_unable_to_update_onions));
-                        }
-                    }
-
-                    return Unit.INSTANCE;
-                });
+                () -> Unit.INSTANCE);
     }
 
-    private void updateV3OnionNames() {
-        OnionServiceColumns.updateV3OnionNames(this, mV3OnionBasePath);
-
-        var oldStatus = mCurrentStatus;
-
-        sendBroadcast(new Intent(LOCAL_ACTION_V3_NAMES_UPDATED)
-                .setPackage(getPackageName()));
-
-        mCurrentStatus = oldStatus;
-    }
 
     private synchronized void startTorService() throws Exception {
         DiskUtils.flushTextToFile(TorService.getDefaultsTorrc(this), """
@@ -607,11 +594,15 @@ public class ToInetService extends VpnService {
                 var prog = Integer.parseInt(percent);
                 SmartConnect.updateProgress(prog);
                 ru.toinet.android.util.NetworkBlackoutMonitor.onTorProgress(prog);
-                mNotifyBuilder.setProgress(100, prog, false);
+                if (mNotifyBuilder != null && !"none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) {
+                    mNotifyBuilder.setProgress(100, prog, false);
+                }
                 notificationMessage = notificationMessage.substring(notificationMessage.indexOf(':') + 1).trim();
             }
         }
-        showToolbarNotification(notificationMessage, NOTIFY_ID, R.drawable.ic_stat_tor);
+        if (!"none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) {
+            showToolbarNotification(notificationMessage, NOTIFY_ID, R.drawable.ic_stat_tor);
+        }
         mHandler.post(() -> sendBroadcast(localIntent));
     }
 
@@ -629,11 +620,13 @@ public class ToInetService extends VpnService {
 
     void showBandwidthNotification(String message, boolean isActiveTransfer) {
         if (!mCurrentStatus.equals(STATUS_ON)) return;
+        if ("none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) return;
         var icon = !isActiveTransfer ? R.drawable.ic_stat_tor : R.drawable.ic_stat_tor_xfer;
         showToolbarNotification(message, NOTIFY_ID, icon);
     }
 
     public void setNotificationSubtext(String message) {
+        if ("none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) return;
         if (mNotifyBuilder != null)
             mNotifyBuilder.setSubText(message);
     }
@@ -711,7 +704,6 @@ public class ToInetService extends VpnService {
                     SmartConnect.cancel();
                     stopTorAsync(!userIsQuittingToInet);
                 }
-                case ACTION_UPDATE_ONION_NAMES -> updateV3OnionNames();
                 case ACTION_STOP_FOREGROUND_TASK -> stopForeground(true);
                 case ACTION_STATUS -> {
                     replyWithStatus(mIntent);

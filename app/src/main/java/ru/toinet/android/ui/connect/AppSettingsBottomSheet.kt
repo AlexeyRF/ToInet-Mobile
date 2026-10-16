@@ -9,10 +9,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import ru.toinet.android.R
+import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.ui.ToInetMenuAction
 import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.sendIntentToService
 
 class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
 
@@ -145,6 +147,7 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             .setTitle("Провайдер логов в уведомлении")
             .setSingleChoiceItems(allProviders.toTypedArray(), checkedItem) { dialog, which ->
                 Prefs.notificationLogProvider = allValues[which]
+                requireContext().sendIntentToService(ToInetConstants.CMD_ACTIVE)
                 onUpdated()
                 dialog.dismiss()
             }

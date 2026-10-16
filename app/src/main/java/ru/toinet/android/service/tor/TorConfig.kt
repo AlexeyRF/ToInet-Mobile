@@ -2,7 +2,6 @@ package ru.toinet.android.service.tor
 
 import android.content.ContextWrapper
 import ru.toinet.android.service.ToInetConstants
-import ru.toinet.android.service.db.OnionServiceColumns
 import ru.toinet.android.service.db.V3ClientAuthColumns
 import ru.toinet.android.util.NetworkUtils
 import ru.toinet.android.util.Prefs
@@ -103,13 +102,6 @@ object TorConfig {
         V3ClientAuthColumns.addClientAuthToTorrc(clientAuthLines, context,
             V3ClientAuthColumns.createV3AuthDir(context))
         conf.addAll(clientAuthLines.split("\n"))
-
-        if (Prefs.hostOnionServicesEnabled) {
-            val extraLines = StringBuffer()
-            OnionServiceColumns.addV3OnionServicesToTorrc(extraLines, context,
-                OnionServiceColumns.createV3OnionDir(context))
-            conf.addAll(extraLines.split("\n"))
-        }
 
         val custom = Prefs.customTorRc
         if (!custom.isNullOrEmpty()) conf.add(custom)

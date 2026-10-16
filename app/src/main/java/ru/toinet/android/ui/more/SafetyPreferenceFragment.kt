@@ -1,12 +1,10 @@
 package ru.toinet.android.ui.more
 
 import android.os.Build
-import androidx.navigation.fragment.findNavController
 import androidx.preference.CheckBoxPreference
 import androidx.preference.Preference
 import androidx.preference.Preference.OnPreferenceChangeListener
 import ru.toinet.android.R
-import ru.toinet.android.ui.core.BaseActivity
 import ru.toinet.android.util.Prefs
 
 class SafetyPreferenceFragment : AbstractPreferenceFragment() {
@@ -40,12 +38,5 @@ class SafetyPreferenceFragment : AbstractPreferenceFragment() {
                 }
 
         }
-        val prefCamoDialog = findPreference<Preference>("pref_key_camo_dialog")
-        prefCamoDialog?.onPreferenceClickListener = Preference.OnPreferenceClickListener {
-            onBackPressedCallback.isEnabled = false
-            findNavController().navigate(R.id.open_camo)
-            true
-        }
-
     }
 }
