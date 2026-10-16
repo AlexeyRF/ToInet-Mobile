@@ -28,9 +28,10 @@ import ru.toinet.android.vpn.utility.*
 class AppVpnService : LifecycleVpnService() {
     private var tunFd: ParcelFileDescriptor? = null
     private var fakeVpnServer: ru.toinet.android.fakevpn.DirectSocks5Server? = null
-    private var socksToHttpProxy: ru.toinet.android.operaproxy.SocksToHttpProxy? = null
     private var dnsProxyServer: ru.toinet.android.dns.DnsProxyServer? = null
     private var easyVpnServer: ru.toinet.android.easyvpn.EasyVpnServer? = null
+    private var zapretServer: ru.toinet.android.zapret.ZapretServer? = null
+    private var operaProxyServer: ru.toinet.android.operaproxy.OperaProxyServer? = null
     private val mutex = Mutex()
     private var stopping: Boolean = false
 
@@ -168,9 +169,12 @@ class AppVpnService : LifecycleVpnService() {
             "tor" -> actualPort = 5242
             "tgws" -> actualPort = ru.toinet.android.util.Prefs.tgwsPort
             "rehab" -> actualPort = 1788
-            "turnproxy" -> actualPort = ru.toinet.android.util.Prefs.turnProxyLocalPort
+            // "turnproxy" -> actualPort = ru.toinet.android.util.Prefs.turnProxyLocalPort
             "fakevpn" -> actualPort = 1790
-            "operaproxy" -> actualPort = 1889
+            "operaproxy" -> {
+                actualHost = "127.0.0.1"
+                actualPort = ru.toinet.android.util.Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1888
+            }
             "easyvpn" -> actualPort = 1791
             "zapret" -> actualPort = ru.toinet.android.util.Prefs.zapretPort
             "custom" -> {
@@ -194,21 +198,20 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         if (provider == "operaproxy") {
-            val bindAddress = ru.toinet.android.util.Prefs.operaProxyBindAddress
-            val host = bindAddress.split(":").first()
-            val port = bindAddress.split(":").last().toIntOrNull() ?: 1888
-            socksToHttpProxy = ru.toinet.android.operaproxy.SocksToHttpProxy(1889, host, port)
-            socksToHttpProxy?.start(lifecycleScope)
+            operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this, lifecycleScope)
+            operaProxyServer?.start()
         }
 
         if (provider == "zapret") {
-            ru.toinet.android.zapret.ZapretService.start(this)
+            zapretServer = ru.toinet.android.zapret.ZapretServer(this, lifecycleScope)
+            zapretServer?.start()
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
-        if ((provider == "fakevpn" || provider == "byedpi" || provider == "zapret") && ru.toinet.android.util.Prefs.customVpnDns.isNotBlank()) {
-            dns = ru.toinet.android.util.Prefs.customVpnDns
-        }
+        // Custom VPN DNS commented out to avoid breaking pdnsd tcp queries:
+        // if ((provider == "fakevpn" || provider == "byedpi" || provider == "zapret") && ru.toinet.android.util.Prefs.customVpnDns.isNotBlank()) {
+        //     dns = ru.toinet.android.util.Prefs.customVpnDns
+        // }
 
         val ipv6 = false
 
@@ -287,13 +290,20 @@ class AppVpnService : LifecycleVpnService() {
         fakeVpnServer?.stop()
         fakeVpnServer = null
         
-        socksToHttpProxy?.stop()
-        socksToHttpProxy = null
+        operaProxyServer?.stop()
+        operaProxyServer = null
+
+        if (ru.toinet.android.operaproxy.OperaProxyService.isRunning) {
+            ru.toinet.android.operaproxy.OperaProxyService.stop(this)
+        }
         
         dnsProxyServer?.stop()
         dnsProxyServer = null
 
-        if (ru.toinet.android.util.Prefs.vpnProvider == "zapret" && !ru.toinet.android.util.Prefs.zapretEnabled) {
+        zapretServer?.stop()
+        zapretServer = null
+
+        if (ru.toinet.android.zapret.ZapretService.isRunning) {
             ru.toinet.android.zapret.ZapretService.stop(this)
         }
 
@@ -348,6 +358,7 @@ class AppVpnService : LifecycleVpnService() {
         val title = when (provider) {
             "easyvpn" -> "EasyVPN"
             "zapret" -> "Zapret"
+            "operaproxy" -> "Opera Proxy"
             else -> getString(R.string.byedpi_notification_title)
         }
         
@@ -367,6 +378,7 @@ class AppVpnService : LifecycleVpnService() {
         val sessionName = when (provider) {
             "easyvpn" -> "EasyVPN"
             "zapret" -> "Zapret"
+            "operaproxy" -> "Opera Proxy"
             else -> "ByeDPI"
         }
         builder.setSession(sessionName)
@@ -428,8 +440,11 @@ class AppVpnService : LifecycleVpnService() {
         }
 
 
-        builder.addDisallowedApplication(applicationContext.packageName)
-
+        try {
+            builder.addDisallowedApplication(applicationContext.packageName)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to disallow self: ${applicationContext.packageName}", e)
+        }
 
         return builder
     }

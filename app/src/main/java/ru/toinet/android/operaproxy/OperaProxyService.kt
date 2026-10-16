@@ -1,35 +1,47 @@
 package ru.toinet.android.operaproxy
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
-import android.util.Log
-import android.widget.Toast
+import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import ru.toinet.android.R
+import ru.toinet.android.ToInetActivity
 import ru.toinet.android.util.Prefs
-import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
-import kotlin.concurrent.thread
 
 class OperaProxyService : Service() {
-    private var process: Process? = null
-
-    override fun onBind(intent: Intent?): IBinder? = null
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var server: OperaProxyServer? = null
 
     companion object {
         private const val TAG = "OperaProxyService"
+        private const val NOTIFICATION_CHANNEL_ID = "operaproxy_channel"
+        private const val NOTIFICATION_ID = 1888
+
         const val ACTION_START = "ru.toinet.android.operaproxy.START"
         const val ACTION_STOP = "ru.toinet.android.operaproxy.STOP"
+
+        val isRunning: Boolean
+            get() = OperaProxyServer.isRunning
 
         fun start(context: Context) {
             val intent = Intent(context, OperaProxyService::class.java).apply {
                 action = ACTION_START
             }
-            context.startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
 
         fun stop(context: Context) {
@@ -40,115 +52,80 @@ class OperaProxyService : Service() {
         }
     }
 
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startInternal()
+            ACTION_START -> {
+                startForegroundNotification()
+                if (server == null) {
+                    server = OperaProxyServer(this, scope)
+                }
+                server?.start()
+                return START_STICKY
+            }
             ACTION_STOP -> {
-                stopInternal()
+                server?.stop()
+                server = null
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                } else {
+                    stopForeground(true)
+                }
                 stopSelf()
+                return START_NOT_STICKY
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun extractBinary(): String? {
-        val supportedAbis = Build.SUPPORTED_ABIS
-        val isArm64 = supportedAbis.contains("arm64-v8a")
-        val isArm = supportedAbis.contains("armeabi-v7a") || supportedAbis.contains("armeabi")
+    private fun startForegroundNotification() {
+        val notificationIntent = Intent(this, ToInetActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+        )
 
-        val assetName = when {
-            isArm64 -> "opera-proxy/opera-proxy.arm64"
-            isArm -> "opera-proxy/opera-proxy.arm"
-            else -> {
-                val currentArch = supportedAbis.firstOrNull() ?: "unknown"
-                val msg = "Ошибка: opera-proxy скомпилирован только для arm. Ваша архитектура: $currentArch."
-                Log.e(TAG, msg)
-                Handler(Looper.getMainLooper()).post {
-                    Toast.makeText(applicationContext, msg, Toast.LENGTH_LONG).show()
-                }
-                return null
-            }
-        }
-
-        val destFile = File(filesDir, "opera-proxy")
-        try {
-            assets.open(assetName).use { inputStream ->
-                FileOutputStream(destFile).use { outputStream ->
-                    inputStream.copyTo(outputStream)
-                }
-            }
-            destFile.setExecutable(true, false)
-            return destFile.absolutePath
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to extract opera-proxy", e)
-            return null
-        }
-    }
-
-    private fun startInternal() {
-        stopInternal()
-
-        val executable = extractBinary() ?: run {
-            stopSelf()
-            return
-        }
-
-        val cmdArgs = mutableListOf<String>()
-        cmdArgs.add(executable)
-        
         val bindAddress = Prefs.operaProxyBindAddress.takeIf { it.isNotBlank() } ?: "127.0.0.1:1888"
-        cmdArgs.add("-bind-address")
-        cmdArgs.add(bindAddress)
-        
-        val upstream = Prefs.operaProxyUpstream.takeIf { it.isNotBlank() }
-        if (upstream != null) {
-            cmdArgs.add("-upstream")
-            cmdArgs.add(upstream)
-        }
 
-        if (Prefs.operaProxyVerbose) {
-            cmdArgs.add("-v")
-        }
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle(getString(R.string.opera_proxy_notification_title))
+            .setContentText("SOCKS5: $bindAddress")
+            .setSmallIcon(R.drawable.ic_stat_tor)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
 
-        try {
-            val pb = ProcessBuilder(cmdArgs)
-            if (false) /* Disabled */ {
-                pb.environment()["ALL_PROXY"] = "socks5://127.0.0.1:1080"
-                pb.environment()["all_proxy"] = "socks5://127.0.0.1:1080"
-                Log.i(TAG, "OperaProxy using ByeDpi proxy on 127.0.0.1:1080")
-            }
-            pb.directory(filesDir)
-            pb.redirectErrorStream(true)
-            val proc = pb.start()
-            process = proc
-            Log.i(TAG, "opera-proxy started with args: $cmdArgs")
-
-            thread {
-                try {
-                    proc.inputStream.bufferedReader().use { reader ->
-                        var line: String?
-                        while (reader.readLine().also { line = it } != null) {
-                            Log.d(TAG, "opera-proxy: $line")
-                            ru.toinet.android.util.NotificationLogger.log(this@OperaProxyService, "operaproxy", line ?: "")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error reading opera-proxy output", e)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start opera-proxy", e)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
         }
     }
 
-    private fun stopInternal() {
-        process?.destroy()
-        process = null
-        Log.i(TAG, "opera-proxy stopped")
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "Opera Proxy Service",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
     }
 
     override fun onDestroy() {
-        stopInternal()
+        server?.stop()
+        server = null
+        scope.cancel()
         super.onDestroy()
     }
 }

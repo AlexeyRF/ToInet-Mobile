@@ -70,12 +70,13 @@ fun Context.sendIntentToService(action: String) {
         )
     }
 
-    if (zapretEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+    if (!isGlobalVpnEnabled && zapretEnabled) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
             ru.toinet.android.zapret.ZapretService.start(this)
-        } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
-            ru.toinet.android.zapret.ZapretService.stop(this)
         }
+    }
+    if (action == org.torproject.jni.TorService.ACTION_STOP) {
+        ru.toinet.android.zapret.ZapretService.stop(this)
     }
 
     if (isGlobalVpnEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
@@ -125,6 +126,7 @@ fun Context.sendIntentToService(action: String) {
         }
     }
 
+    /*
     if (turnProxyEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
             ru.toinet.android.turnproxy.TurnProxyService.start(this)
@@ -132,23 +134,25 @@ fun Context.sendIntentToService(action: String) {
             ru.toinet.android.turnproxy.TurnProxyService.stop(this)
         }
     }
+    */
     
-    if (operaProxyEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+    if (!isGlobalVpnEnabled && operaProxyEnabled) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
             ru.toinet.android.operaproxy.OperaProxyService.start(this)
-        } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
-            ru.toinet.android.operaproxy.OperaProxyService.stop(this)
         }
+    }
+    if (action == org.torproject.jni.TorService.ACTION_STOP) {
+        ru.toinet.android.operaproxy.OperaProxyService.stop(this)
     }
 
     if (!torEnabled && !isPing) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
-            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled || turnProxyEnabled || operaProxyEnabled || zapretEnabled)) {
+            if (!byedpiEnabled && (tgwsEnabled || rehabilitatorEnabled /* || turnProxyEnabled */ || operaProxyEnabled || zapretEnabled)) {
                 val intent = Intent(ToInetConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_ON)
                 intent.setPackage(packageName)
                 sendBroadcast(intent)
-            } else if (!byedpiEnabled && !tgwsEnabled && !rehabilitatorEnabled && !turnProxyEnabled && !operaProxyEnabled && !zapretEnabled) {
+            } else if (!byedpiEnabled && !tgwsEnabled && !rehabilitatorEnabled /* && !turnProxyEnabled */ && !operaProxyEnabled && !zapretEnabled) {
                 val intent = Intent(ToInetConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_OFF)
                 intent.setPackage(packageName)

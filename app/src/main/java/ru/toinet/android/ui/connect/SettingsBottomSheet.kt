@@ -1,19 +1,21 @@
 package ru.toinet.android.ui.connect
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ListView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import ru.toinet.android.R
 import ru.toinet.android.ui.ToInetMenuAction
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.tgws.UniversalTgProxy
-import android.content.ClipboardManager
-import android.content.ClipData
-import android.content.Context
-import android.widget.Toast
 
 class SettingsBottomSheet : BottomSheetDialogFragment() {
 
@@ -80,6 +82,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
+            /*
             ToInetMenuAction(
                 0,
                 R.drawable.ic_flight_off,
@@ -91,6 +94,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 )
                 dismiss()
             },
+            */
             ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
@@ -116,46 +120,6 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
-                statusString = "Тема: ${getThemeString()}"
-            ) {
-                showThemeSettings()
-                dismiss()
-            },
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_settings_gear,
-                statusString = "Цвета Material You: ${if (Prefs.useDynamicColors) "Вкл" else "Выкл"}"
-            ) {
-                Prefs.useDynamicColors = !Prefs.useDynamicColors
-                requireActivity().recreate()
-                dismiss()
-            },
-            /*
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_settings_gear,
-                statusString = "Universal TG Proxy: ${if (Prefs.universalTgProxyEnabled) "Вкл" else "Выкл"}"
-            ) {
-                Prefs.universalTgProxyEnabled = !Prefs.universalTgProxyEnabled
-                if (Prefs.universalTgProxyEnabled) {
-                    // UniversalTgProxy.start()
-                } else {
-                    // UniversalTgProxy.stop()
-                }
-                dismiss()
-            },
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_settings_gear,
-                statusString = "Universal TG Proxy провайдер: ${Prefs.universalTgProxyProvider}"
-            ) {
-                showUniversalTgProxyProviderSettings()
-                dismiss()
-            },
-            */
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_settings_gear,
                 statusString = "Добавить прокси в Telegram"
             ) {
                 val ctx = requireContext()
@@ -175,19 +139,18 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                     "tg://socks?server=127.0.0.1&port=1480"
                     //"tg://socks?server=127.0.0.1&port=1777"
                 )
-                androidx.appcompat.app.AlertDialog.Builder(ctx)
+                AlertDialog.Builder(ctx)
                     .setTitle("Выберите прокси для добавления")
                     .setItems(proxies) { _, which ->
                         val link = proxyLinks[which]
-                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link))
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         try {
                             ctx.startActivity(intent)
                         } catch (e: Exception) {
-                            // fallback to copy if Telegram not installed
-                            val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("TG Proxy", link))
-                            android.widget.Toast.makeText(ctx, "Telegram не найден. Ссылка скопирована.", android.widget.Toast.LENGTH_SHORT).show()
+                            val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("TG Proxy", link))
+                            Toast.makeText(ctx, "Telegram не найден. Ссылка скопирована.", Toast.LENGTH_SHORT).show()
                         }
                     }
                     .show()
@@ -195,100 +158,18 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             },
             ToInetMenuAction(
                 0,
-                R.drawable.ic_menu_onion, // proxy/share icon
-                statusString = "Раздавать все прокси на локальную сеть: " + if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"
-            ) {
-                Prefs.openProxyOnAllInterfaces = !Prefs.openProxyOnAllInterfaces
-                android.widget.Toast.makeText(
-                    requireContext(),
-                    "Раздача прокси: ${if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"}. Перезапустите прокси для применения.",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-                dismiss()
-            },
-            ToInetMenuAction(
-                0,
                 R.drawable.ic_settings_gear,
-                statusString = "Настройки уведомлений"
+                statusString = "Настройки приложения\n(тема, оформление, уведомления, сценарии)"
             ) {
-                showNotificationSettings()
-                dismiss()
-            },
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_settings_gear,
-                statusString = "Сценарии сети (Wi-Fi / Мобильная)"
-            ) {
-                NetworkPresetsBottomSheet().show(parentFragmentManager, "presets")
+                AppSettingsBottomSheet().show(
+                    parentFragmentManager,
+                    AppSettingsBottomSheet.TAG
+                )
                 dismiss()
             }
         )
         lvSettings.adapter = ConnectMenuActionAdapter(requireContext(), listItems)
         return view
-    }
-
-    private fun getThemeString(): String {
-        return when (Prefs.themeMode) {
-            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO -> "Светлая"
-            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES -> "Тёмная"
-            else -> "Системная"
-        }
-    }
-
-    private fun showThemeSettings() {
-        val themes = arrayOf("Системная", "Светлая", "Тёмная")
-        val themeValues = arrayOf(
-            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
-            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO,
-            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
-        )
-        val currentTheme = Prefs.themeMode
-        val checkedItem = themeValues.indexOf(currentTheme).takeIf { it >= 0 } ?: 0
-        
-        androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Тема оформления")
-            .setSingleChoiceItems(themes, checkedItem) { dialog, which ->
-                Prefs.themeMode = themeValues[which]
-                androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(themeValues[which])
-                dialog.dismiss()
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
-    }
-
-    private fun showNotificationSettings() {
-        val providers = resources.getStringArray(R.array.log_providers)
-        val providerValues = resources.getStringArray(R.array.log_providers_values)
-        val currentProvider = Prefs.notificationLogProvider
-        val checkedItem = providerValues.indexOf(currentProvider).takeIf { it >= 0 } ?: 0
-        
-        androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Провайдер логов в уведомлении")
-            .setSingleChoiceItems(providers, checkedItem) { dialog, which ->
-                Prefs.notificationLogProvider = providerValues[which]
-                dialog.dismiss()
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
-    }
-
-    private fun showUniversalTgProxyProviderSettings() {
-        val providers = arrayOf("tor", "tgws", "byedpi", "turnproxy", "fakevpn", "operaproxy", "custom")
-        val currentProvider = Prefs.universalTgProxyProvider
-        val checkedItem = providers.indexOf(currentProvider).takeIf { it >= 0 } ?: 0
-
-        androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Провайдер для Universal TG Proxy")
-            .setSingleChoiceItems(providers, checkedItem) { dialog, which ->
-                Prefs.universalTgProxyProvider = providers[which]
-                if (Prefs.universalTgProxyEnabled) {
-                    ru.toinet.android.tgws.UniversalTgProxy.stop()
-                    ru.toinet.android.tgws.UniversalTgProxy.start()
-                }
-                dialog.dismiss()
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
     }
 
     companion object {

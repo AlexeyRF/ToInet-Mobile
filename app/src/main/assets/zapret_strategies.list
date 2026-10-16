@@ -1,0 +1,17 @@
+--split-pos=1
+--split-pos=1 --disorder
+--split-pos=2
+--split-pos=2 --hostcase --domcase
+--split-pos=1 --disorder --oob
+--split-pos=2 --disorder
+--split-pos=1 --hostcase
+--split-pos=2,sniext+1
+--split-pos=2 --oob
+--split-pos=sni --hostcase
+--split-pos=sni --disorder
+--split-pos=1 --tlsrec=sni
+--split-pos=1 --tlsrec=sni --hostcase
+--split-pos=2 --tlsrec=sni --hostcase
+--split-pos=midsld --disorder
+--split-pos=1,midsld --disorder
+--split-pos=1 --oob

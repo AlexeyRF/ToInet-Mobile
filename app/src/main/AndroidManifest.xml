@@ -343,6 +343,9 @@
         <activity
             android:name=".byedpi.ui.TestSettingsActivity"
             android:label="@string/title_settings" />
+        <activity
+            android:name=".zapret.ui.ZapretTestActivity"
+            android:label="Тестирование Zapret" />
 
         <service
             android:name=".rehabilitator.RehabilitatorService"
@@ -354,7 +357,10 @@
 
         <service
             android:name=".operaproxy.OperaProxyService"
-            android:exported="false" />
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false" />
 
         <service
             android:name=".zapret.ZapretService"

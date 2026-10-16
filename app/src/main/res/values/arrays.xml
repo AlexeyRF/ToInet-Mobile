@@ -12,7 +12,7 @@
         <item>ByeDPI</item>
         <item>TGWS</item>
         <item>Socks Rehab</item>
-        <item>vk-turn</item>
+        <!-- <item>vk-turn</item> -->
         <item>Opera Proxy</item>
         <item>Zapret</item>
     </array>
@@ -23,7 +23,7 @@
         <item>byedpi</item>
         <item>tgws</item>
         <item>rehab</item>
-        <item>turnproxy</item>
+        <!-- <item>turnproxy</item> -->
         <item>operaproxy</item>
         <item>zapret</item>
     </array>

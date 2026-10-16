@@ -308,6 +308,7 @@
     <string name="byedpi_app_name">ByeDPI</string>
     <string name="failed_to_start">Ошибка запуска</string>
 
+    <string name="opera_proxy_notification_title">Opera Proxy</string>
     <string name="zapret_notification_title">Zapret</string>
     <string name="zapret_app_name">Zapret</string>
     <string name="pref_zapret_enabled_title">Включить Zapret (tpws)</string>
@@ -315,6 +316,7 @@
     <string name="pref_zapret_port_title">Порт SOCKS5 (по умолчанию 1081)</string>
     <string name="pref_zapret_args_title">Аргументы Zapret (tpws)</string>
     <string name="pref_zapret_args_summary">Например: --split-pos=2</string>
+    <string name="pref_zapret_flowseal_title">Стратегии от flowseal</string>
 
     <string name="pref_byedpi_enabled_title">Включить ByeDPI</string>
     <string name="pref_byedpi_enabled_summary">Запускать ByeDPI параллельно с Tor</string>

@@ -23,13 +23,11 @@ class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
 
         binding.swEnabled.isChecked = Prefs.byedpiEnabled
         binding.etArgs.setText(Prefs.byedpiArgs)
-        binding.etSubscriptionUrl.setText(Prefs.byedpiSubscriptionUrl)
         configureMultilineEditTextScrollEvent(binding.etArgs)
 
         binding.btnSave.setOnClickListener {
             Prefs.byedpiEnabled = binding.swEnabled.isChecked
             Prefs.byedpiArgs = binding.etArgs.text.toString().trim()
-            Prefs.byedpiSubscriptionUrl = binding.etSubscriptionUrl.text.toString().trim()
             Prefs.byedpiEnableCmdSettings = true
             viewModel.triggerRefreshMenuList()
             dismiss()

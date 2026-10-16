@@ -58,6 +58,34 @@ class ZapretService : Service() {
             }
             context.startService(intent)
         }
+
+        fun getExecutable(context: Context): String? {
+            val libDir = File(context.applicationInfo.nativeLibraryDir)
+            var executable = libDir.listFiles { f ->
+                f.name == "libtpws.so" || (f.name.startsWith("libtpws") && f.name.endsWith(".so"))
+            }?.firstOrNull()
+
+            if (executable != null && executable.canExecute()) {
+                return executable.absolutePath
+            }
+
+            try {
+                val fallbackFile = File(context.filesDir, "libtpws.so")
+                if (executable != null && executable.exists()) {
+                    executable.inputStream().use { input ->
+                        FileOutputStream(fallbackFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    fallbackFile.setExecutable(true, false)
+                    return fallbackFile.absolutePath
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to copy tpws binary to filesDir", e)
+            }
+
+            return executable?.absolutePath
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -119,39 +147,10 @@ class ZapretService : Service() {
         }
     }
 
-    private fun getExecutable(): String? {
-        val libDir = File(applicationInfo.nativeLibraryDir)
-        var executable = libDir.listFiles { f ->
-            f.name == "libtpws.so" || (f.name.startsWith("libtpws") && f.name.endsWith(".so"))
-        }?.firstOrNull()
-
-        if (executable != null && executable.canExecute()) {
-            return executable.absolutePath
-        }
-
-        // If native library cannot be executed directly from libDir, copy to filesDir
-        try {
-            val fallbackFile = File(filesDir, "libtpws.so")
-            if (executable != null && executable.exists()) {
-                executable.inputStream().use { input ->
-                    FileOutputStream(fallbackFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                fallbackFile.setExecutable(true, false)
-                return fallbackFile.absolutePath
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to copy tpws binary to filesDir", e)
-        }
-
-        return executable?.absolutePath
-    }
-
     private fun startInternal() {
         stopInternal()
 
-        val executablePath = getExecutable()
+        val executablePath = getExecutable(this)
         if (executablePath == null) {
             val msg = "Ошибка: Исполняемый файл Zapret (libtpws.so) не найден."
             Log.e(TAG, msg)

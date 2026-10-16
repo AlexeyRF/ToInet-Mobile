@@ -62,11 +62,13 @@
                 android:layout_height="wrap_content"
                 android:text="Socks Rehab (порт 1788)" />
 
+            <!--
             <RadioButton
                 android:id="@+id/rbTurnProxy"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="vk-turn" />
+            -->
                 
             <RadioButton
                 android:id="@+id/rbFakeVpn"
@@ -133,6 +135,7 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
+        <!--
         <LinearLayout
             android:id="@+id/llCustomVpnDns"
             android:layout_width="match_parent"
@@ -153,6 +156,7 @@
                     android:inputType="textUri" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
+        -->
         
         <LinearLayout
             android:id="@+id/llEasyVpnSettings"

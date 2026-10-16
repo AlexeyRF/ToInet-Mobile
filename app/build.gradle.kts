@@ -129,7 +129,7 @@ configure<ApplicationExtension> {
 
     sourceSets {
         getByName("main") {
-            jniLibs.setSrcDirs(listOf("src/main/jniLibs", "src/main/xrayLibs"))
+            jniLibs.setSrcDirs(listOf("src/main/jniLibs", "src/main/xrayLibs", "src/main/operaLibs"))
         }
     }
 

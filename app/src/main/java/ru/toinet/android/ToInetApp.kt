@@ -44,6 +44,8 @@ class ToInetApp : Application() {
         }
         */
         
+        NetworkSwitchListener.register(this)
+        
 
         // set state dir for IPtProxy
         try {

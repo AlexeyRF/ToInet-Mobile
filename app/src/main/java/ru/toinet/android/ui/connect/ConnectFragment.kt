@@ -169,7 +169,7 @@ class ConnectFragment : Fragment(),
             "tor" -> Prefs.torEnabled
             "tgws" -> Prefs.tgwsEnabled
             "rehab" -> Prefs.rehabilitatorEnabled
-            "turnproxy" -> Prefs.turnProxyEnabled
+            // "turnproxy" -> Prefs.turnProxyEnabled
             "fakevpn" -> true
             "operaproxy" -> Prefs.operaProxyEnabled
             "easyvpn" -> true

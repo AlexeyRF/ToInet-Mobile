@@ -30,7 +30,7 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
             "tor" -> binding.rbTor.isChecked = true
             "tgws" -> binding.rbTgws.isChecked = true
             "rehab" -> binding.rbRehab.isChecked = true
-            "turnproxy" -> binding.rbTurnProxy.isChecked = true
+            // "turnproxy" -> binding.rbTurnProxy.isChecked = true
             "fakevpn" -> binding.rbFakeVpn.isChecked = true
             "operaproxy" -> binding.rbOperaProxy.isChecked = true
             "zapret" -> binding.rbZapret.isChecked = true
@@ -47,16 +47,16 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
 
         binding.etCustomIp.setText(Prefs.customSocksIp)
         binding.etCustomPort.setText(Prefs.customSocksPort.toString())
-        binding.etCustomVpnDns.setText(Prefs.customVpnDns)
+        // binding.etCustomVpnDns.setText(Prefs.customVpnDns)
         binding.etEasyVpnSubs.setText(Prefs.easyVpnSubs)
 
-        if (binding.rbFakeVpn.isChecked || binding.rbByedpi.isChecked || binding.rbZapret.isChecked) {
-            binding.llCustomVpnDns.visibility = View.VISIBLE
-        }
+        // if (binding.rbFakeVpn.isChecked || binding.rbByedpi.isChecked || binding.rbZapret.isChecked) {
+        //     binding.llCustomVpnDns.visibility = View.VISIBLE
+        // }
 
         binding.rgVpnProvider.setOnCheckedChangeListener { _, checkedId ->
             binding.llCustomSocks.visibility = if (checkedId == binding.rbCustom.id) View.VISIBLE else View.GONE
-            binding.llCustomVpnDns.visibility = if (checkedId == binding.rbFakeVpn.id || checkedId == binding.rbByedpi.id || checkedId == binding.rbZapret.id) View.VISIBLE else View.GONE
+            // binding.llCustomVpnDns.visibility = if (checkedId == binding.rbFakeVpn.id || checkedId == binding.rbByedpi.id || checkedId == binding.rbZapret.id) View.VISIBLE else View.GONE
             binding.llEasyVpnSettings.visibility = if (checkedId == binding.rbEasyVpn.id) View.VISIBLE else View.GONE
             
             if (checkedId == binding.rbTgws.id) {
@@ -65,12 +65,14 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                     .setMessage("Это прокси только для Telegram. С остальным трафиком никаких манипуляций проводиться не будет!")
                     .setPositiveButton("ОК", null)
                     .show()
+            /*
             } else if (checkedId == binding.rbTurnProxy.id) {
                 AlertDialog.Builder(requireContext())
                     .setTitle("Уведомление vk-turn")
                     .setMessage("На удалённом сервере должен быть запущен socks.")
                     .setPositiveButton("ОК", null)
                     .show()
+            */
             }
         }
 
@@ -86,7 +88,7 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 binding.rbTor.id -> "tor"
                 binding.rbTgws.id -> "tgws"
                 binding.rbRehab.id -> "rehab"
-                binding.rbTurnProxy.id -> "turnproxy"
+                // binding.rbTurnProxy.id -> "turnproxy"
                 binding.rbFakeVpn.id -> "fakevpn"
                 binding.rbOperaProxy.id -> "operaproxy"
                 binding.rbZapret.id -> "zapret"
@@ -99,9 +101,9 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 Prefs.customSocksIp = binding.etCustomIp.text.toString().trim().takeIf { it.isNotBlank() } ?: "127.0.0.1"
                 Prefs.customSocksPort = binding.etCustomPort.text.toString().trim().toIntOrNull() ?: 1080
             }
-            if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbFakeVpn.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbByedpi.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbZapret.id) {
-                Prefs.customVpnDns = binding.etCustomVpnDns.text.toString().trim()
-            }
+            // if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbFakeVpn.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbByedpi.id || binding.rgVpnProvider.checkedRadioButtonId == binding.rbZapret.id) {
+            //     Prefs.customVpnDns = binding.etCustomVpnDns.text.toString().trim()
+            // }
             if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbEasyVpn.id) {
                 Prefs.easyVpnSubs = binding.etEasyVpnSubs.text.toString().trim()
             }

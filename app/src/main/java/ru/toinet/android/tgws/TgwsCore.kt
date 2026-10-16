@@ -311,9 +311,10 @@ class TgwsCore(
                 "tor" -> 5242
                 "tgws" -> 1480
                 "rehab" -> 1788
-                "turnproxy" -> Prefs.turnProxyLocalPort
+                // "turnproxy" -> Prefs.turnProxyLocalPort
                 "fakevpn" -> 1790
                 "operaproxy" -> Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1888
+                "easyvpn" -> 1791
                 "zapret" -> Prefs.zapretPort
                 "custom" -> Prefs.customSocksPort
                 else -> 1080
@@ -330,30 +331,11 @@ class TgwsCore(
                 return socket
             }
             
-            if (provider == "operaproxy") {
-                val socket = Socket()
-                socket.connect(InetSocketAddress(targetHost, targetPort), 5000)
-                val out = socket.getOutputStream()
-                out.write("CONNECT $host:$port HTTP/1.1\r\nHost: $host:$port\r\n\r\n".toByteArray())
-                out.flush()
-                val input = socket.getInputStream()
-                val sb = StringBuilder()
-                while (true) {
-                    val b = input.read()
-                    if (b == -1) throw IOException("Proxy closed")
-                    sb.append(b.toChar())
-                    if (sb.endsWith("\r\n\r\n")) break
-                }
-                if (!sb.toString().contains(" 200 ")) throw IOException("Proxy failed")
-                socket.soTimeout = 0
-                socket
-            } else {
-                val proxy = java.net.Proxy(java.net.Proxy.Type.SOCKS, InetSocketAddress(targetHost, targetPort))
-                val socket = Socket(proxy)
-                socket.connect(InetSocketAddress(host, port), 10000)
-                socket.soTimeout = 0
-                socket
-            }
+            val proxy = java.net.Proxy(java.net.Proxy.Type.SOCKS, InetSocketAddress(targetHost, targetPort))
+            val socket = Socket(proxy)
+            socket.connect(InetSocketAddress(host, port), 10000)
+            socket.soTimeout = 0
+            socket
         } else {
             val socket = Socket()
             socket.connect(InetSocketAddress(host, port), 5000)

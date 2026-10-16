@@ -628,7 +628,7 @@ object Prefs {
         get() {
             val s = cr?.getPrefString("pref_easy_vpn_subs")
             if (s.isNullOrEmpty()) {
-                return "https://raw.githubusercontent.com/solovyov-jenya2004/all_subs/refs/heads/main/final_sorted\nhttps://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_universal.txt\nhttps://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_lite.txt"
+                return "https://gitverse.ru/api/repos/zieng2/wl/raw/branch/master/list_universal.txt\nhttps://gitverse.ru/api/repos/zieng2/wl/raw/branch/master/list_lite.txt\nhttps://raw.githubusercontent.com/solovyov-jenya2004/all_subs/refs/heads/main/final_sorted\nhttps://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_universal.txt\nhttps://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_lite.txt"
             }
             return s
         }

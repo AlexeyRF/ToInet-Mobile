@@ -368,7 +368,7 @@ static bool parse_tlspos(const char *s, struct proto_pos *sp)
 
 static bool parse_int16(const char *p, int16_t *v)
 {
-	if (*p=='+' || *p=='-' || *p>='0' && *p<='9')
+	if (*p=='+' || *p=='-' || (*p>='0' && *p<='9'))
 	{
 		int i = atoi(p);
 		*v = (int16_t)i;
@@ -378,7 +378,7 @@ static bool parse_int16(const char *p, int16_t *v)
 }
 static bool parse_posmarker(const char *opt, uint8_t *posmarker)
 {
-	if (!strcmp(opt,"host"))
+	if (!strcmp(opt,"host") || !strcmp(opt,"sni"))
 		*posmarker = PM_HOST;
 	else if (!strcmp(opt,"endhost"))
 		*posmarker = PM_HOST_END;
