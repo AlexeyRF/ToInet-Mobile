@@ -165,7 +165,16 @@ public class ToInetService extends VpnService {
             }
         }
         var notification = mNotifyBuilder.build();
-        ServiceCompat.startForeground(this, NOTIFY_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED);
+        try {
+            ServiceCompat.startForeground(this, NOTIFY_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to startForeground with specialUse, fallback to standard", e);
+            try {
+                ServiceCompat.startForeground(this, NOTIFY_ID, notification, 0);
+            } catch (Exception e2) {
+                Log.e(TAG, "Failed fallback startForeground", e2);
+            }
+        }
         if (mNotificationManager != null) {
             mNotificationManager.notify(NOTIFY_ID, notification);
         }

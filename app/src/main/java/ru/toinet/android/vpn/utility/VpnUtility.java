@@ -19,11 +19,25 @@ public class VpnUtility {
             Log.d(TAG, "Executing: " + java.util.Arrays.toString(cmd));
             Process p = Runtime.getRuntime().exec(cmd);
             
-            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(p.getErrorStream()));
-            String line;
-            while ((line = br.readLine()) != null) {
-                Log.e(TAG, "STDERR: " + line);
-            }
+            Thread errThread = new Thread(() -> {
+                try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(p.getErrorStream()))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        Log.e(TAG, "STDERR: " + line);
+                    }
+                } catch (Exception ignored) {}
+            });
+            errThread.start();
+
+            Thread outThread = new Thread(() -> {
+                try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        Log.d(TAG, "STDOUT: " + line);
+                    }
+                } catch (Exception ignored) {}
+            });
+            outThread.start();
             
             int ret = p.waitFor();
             Log.d(TAG, "Process exited with: " + ret);
@@ -46,7 +60,11 @@ public class VpnUtility {
                 str.append(new String(buf, 0, len));
             }
             int pid = Integer.parseInt(str.toString().trim().replace("\n", ""));
-            Runtime.getRuntime().exec("kill " + pid).waitFor();
+            try {
+                android.os.Process.killProcess(pid);
+            } catch (Exception e) {
+                Runtime.getRuntime().exec("kill " + pid).waitFor();
+            }
             file.delete();
         } catch (Exception e) {
             Log.e(TAG, "Failed to kill pid file: " + f, e);

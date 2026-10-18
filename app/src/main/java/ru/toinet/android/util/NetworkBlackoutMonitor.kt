@@ -144,61 +144,65 @@ object NetworkBlackoutMonitor {
     }
 
     private fun sendAlertNotification(context: Context) {
-        val now = System.currentTimeMillis()
-        if (now - lastAlertTime < ALERT_COOLDOWN_MS) {
-            Log.d(TAG, "Alert cooldown active, skipping notification.")
-            return
-        }
-        lastAlertTime = now
-
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Оповещения связи",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Предупреждения об ограничении мобильной связи"
-                enableLights(true)
-                enableVibration(true)
+        try {
+            val now = System.currentTimeMillis()
+            if (now - lastAlertTime < ALERT_COOLDOWN_MS) {
+                Log.d(TAG, "Alert cooldown active, skipping notification.")
+                return
             }
-            nm.createNotificationChannel(channel)
-        }
+            lastAlertTime = now
 
-        val contentIntent = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(context, ToInetActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
-        val connectIntent = PendingIntent.getBroadcast(
-            context,
-            0,
-            Intent(context, EasyVpnActionReceiver::class.java).apply {
-                action = EasyVpnActionReceiver.ACTION_CONNECT_EASYVPN
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    "Оповещения связи",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Предупреждения об ограничении мобильной связи"
+                    enableLights(true)
+                    enableVibration(true)
+                }
+                nm.createNotificationChannel(channel)
+            }
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_generic_info)
-            .setContentTitle("ToInet")
-            .setContentText("Похоже в вашем регионе ограничена мобильная связь, включить обход через EasyVPN")
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText("Похоже в вашем регионе ограничена мобильная связь, включить обход через EasyVPN")
+            val contentIntent = PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, ToInetActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(contentIntent)
-            .addAction(R.drawable.ic_power, "Подключиться", connectIntent)
-            .build()
 
-        nm.notify(NOTIFICATION_ID, notification)
-        Log.i(TAG, "Sent blackout alert notification with Connect button.")
+            val connectIntent = PendingIntent.getBroadcast(
+                context,
+                0,
+                Intent(context, EasyVpnActionReceiver::class.java).apply {
+                    action = EasyVpnActionReceiver.ACTION_CONNECT_EASYVPN
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_generic_info)
+                .setContentTitle("ToInet")
+                .setContentText("Похоже в вашем регионе ограничена мобильная связь, включить обход через EasyVPN")
+                .setStyle(
+                    NotificationCompat.BigTextStyle()
+                        .bigText("Похоже в вашем регионе ограничена мобильная связь, включить обход через EasyVPN")
+                )
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(contentIntent)
+                .addAction(R.drawable.ic_power, "Подключиться", connectIntent)
+                .build()
+
+            nm.notify(NOTIFICATION_ID, notification)
+            Log.i(TAG, "Sent blackout alert notification with Connect button.")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to send blackout alert notification", e)
+        }
     }
 }

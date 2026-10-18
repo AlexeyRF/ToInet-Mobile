@@ -139,19 +139,14 @@ class AppVpnService : LifecycleVpnService() {
                 startForeground(
                     FOREGROUND_SERVICE_ID,
                     notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
                 )
             } catch (e: Exception) {
-                Log.w(TAG, "Failed systemExempted startForeground, trying specialUse", e)
+                Log.w(TAG, "Failed specialUse startForeground, fallback to standard", e)
                 try {
-                    startForeground(
-                        FOREGROUND_SERVICE_ID,
-                        notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-                    )
-                } catch (e2: Exception) {
-                    Log.e(TAG, "Failed specialUse startForeground, fallback to standard", e2)
                     startForeground(FOREGROUND_SERVICE_ID, notification)
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Failed fallback startForeground", e2)
                 }
             }
         } else {
@@ -224,7 +219,7 @@ class AppVpnService : LifecycleVpnService() {
             val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 action = ru.toinet.android.vpn.data.START_ACTION
             }
-            sendIntentToService(byedpiIntent)
+            sendIntentToService(byedpiIntent, isForeground = ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi"))
         }
 
         /*
@@ -441,13 +436,20 @@ class AppVpnService : LifecycleVpnService() {
             "operaproxy" -> "Opera Proxy"
             "rehab", "custom" -> "Socks Rehab"
             "fakevpn" -> "FakeVPN"
-            else -> getString(R.string.byedpi_notification_title)
+            "tor" -> "TOR"
+            "byedpi" -> getString(R.string.byedpi_notification_title)
+            else -> "VPN"
         }
         
-        val content = if (provider == "easyvpn") {
-            easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
-        } else {
-            getString(R.string.vpn_notification_content)
+        val content = when (provider) {
+            "easyvpn" -> easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
+            "tor" -> "Tor VPN запущен"
+            "zapret" -> "Zapret VPN запущен"
+            "operaproxy" -> "Opera Proxy VPN запущен"
+            "byedpi" -> "ByeDPI VPN запущен"
+            "rehab", "custom" -> "Socks Rehab VPN запущен"
+            "fakevpn" -> "FakeVPN запущен"
+            else -> getString(R.string.vpn_notification_content)
         }
 
         val switchIntent = if (provider == "easyvpn") {
@@ -481,7 +483,9 @@ class AppVpnService : LifecycleVpnService() {
             "operaproxy" -> "Opera Proxy"
             "rehab", "custom" -> "Socks Rehab"
             "fakevpn" -> "FakeVPN"
-            else -> "ByeDPI"
+            "tor" -> "TOR"
+            "byedpi" -> "ByeDPI"
+            else -> "VPN"
         }
         builder.setSession(sessionName)
         builder.setConfigureIntent(

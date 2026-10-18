@@ -126,19 +126,22 @@
             android:name=".service.ToInetService"
             android:enabled="true"
             android:exported="true"
-            android:foregroundServiceType="systemExempted"
+            android:foregroundServiceType="specialUse"
             android:process=":tor"
             android:stopWithTask="false">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Tor VPN service" />
         </service>
 
         <service
             android:name=".vpn.services.AppVpnService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="specialUse|systemExempted"
+            android:foregroundServiceType="specialUse"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:stopWithTask="false">
             <intent-filter>

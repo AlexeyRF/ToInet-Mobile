@@ -97,7 +97,8 @@ fun Context.sendIntentToService(action: String) {
         )
     }
 
-    if (torEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
+    val isTorActive = torEnabled || (isGlobalVpnEnabled && Prefs.vpnProvider == "tor")
+    if (isTorActive || action == org.torproject.jni.TorService.ACTION_STOP) {
         sendIntentToService(
             Intent(this, ToInetService::class.java).apply {
                 this.action = action

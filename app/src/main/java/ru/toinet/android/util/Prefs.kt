@@ -610,7 +610,7 @@ object Prefs {
     fun isProviderActive(provider: String): Boolean {
         return when (provider) {
             "vpn" -> isGlobalVpnEnabled
-            "tor" -> torEnabled
+            "tor" -> torEnabled || (isGlobalVpnEnabled && vpnProvider == "tor")
             "byedpi" -> byedpiEnabled || (isGlobalVpnEnabled && vpnProvider == "byedpi")
             // "tgws" -> tgwsEnabled || (isGlobalVpnEnabled && vpnProvider == "tgws")
             "rehab" -> rehabilitatorEnabled || (isGlobalVpnEnabled && (vpnProvider == "rehab" || vpnProvider == "custom"))
@@ -654,10 +654,7 @@ object Prefs {
         val current = notificationLogProvider
         if (current == "all") return true
         if (isGlobalVpnEnabled) {
-            if (serviceKey == "vpn") return true
-            if (current != "tor" || serviceKey != "tor") {
-                return false
-            }
+            return serviceKey == "vpn"
         }
         if (current == "none") {
             return isPrimaryNotificationService(serviceKey)

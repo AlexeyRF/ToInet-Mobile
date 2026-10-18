@@ -17,10 +17,6 @@ fun registerNotificationChannel(context: Context, id: String, channelName: Strin
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
 
-        try {
-            manager.deleteNotificationChannel("${id}_min")
-        } catch (_: Exception) {}
-
         val channelSilent = NotificationChannel(
             "${id}_silent",
             channelName,
@@ -108,7 +104,7 @@ fun createConnectionNotification(
 
     if (!isDetailed) {
         builder.setContentTitle("ToInet")
-            .setContentText(context.getString(title))
+            .setContentText(context.getString(content))
             .setSubText(null)
     } else {
         builder.setContentTitle(context.getString(title))
@@ -160,7 +156,7 @@ fun createConnectionNotificationString(
 
     if (!isDetailed) {
         builder.setContentTitle("ToInet")
-            .setContentText(title)
+            .setContentText(content)
             .setSubText(null)
     } else {
         builder.setContentTitle(title)
