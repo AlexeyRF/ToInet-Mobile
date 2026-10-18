@@ -36,7 +36,7 @@ class EasyVpnService : Service() {
             val intent = Intent(context, EasyVpnService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Prefs.shouldServiceShowNotification("easyvpn")) {
                 context.startForegroundService(intent)
             } else {
                 context.startService(intent)

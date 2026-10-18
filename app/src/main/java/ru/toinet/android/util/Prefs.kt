@@ -460,7 +460,7 @@ object Prefs {
 
     @JvmStatic
     var notificationLogProvider: String
-        get() = cr?.getPrefString("notification_log_provider") ?: "tor"
+        get() = cr?.getPrefString("notification_log_provider") ?: "none"
         set(value) = cr?.putPref("notification_log_provider", value) ?: Unit
 
     @JvmStatic
@@ -653,6 +653,12 @@ object Prefs {
     fun shouldServiceShowNotification(serviceKey: String): Boolean {
         val current = notificationLogProvider
         if (current == "all") return true
+        if (isGlobalVpnEnabled) {
+            if (serviceKey == "vpn") return true
+            if (current != "tor" || serviceKey != "tor") {
+                return false
+            }
+        }
         if (current == "none") {
             return isPrimaryNotificationService(serviceKey)
         }

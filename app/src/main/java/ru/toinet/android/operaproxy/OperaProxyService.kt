@@ -37,7 +37,7 @@ class OperaProxyService : Service() {
             val intent = Intent(context, OperaProxyService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Prefs.shouldServiceShowNotification("operaproxy")) {
                 context.startForegroundService(intent)
             } else {
                 context.startService(intent)
@@ -128,7 +128,7 @@ class OperaProxyService : Service() {
 
         if (!isDetailed) {
             builder.setContentTitle("ToInet")
-                .setContentText(null)
+                .setContentText(getString(R.string.opera_proxy_notification_title))
                 .setSubText(null)
         } else {
             builder.setContentTitle(getString(R.string.opera_proxy_notification_title))

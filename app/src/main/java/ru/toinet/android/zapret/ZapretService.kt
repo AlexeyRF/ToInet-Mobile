@@ -45,7 +45,7 @@ class ZapretService : Service() {
             val intent = Intent(context, ZapretService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Prefs.shouldServiceShowNotification("zapret")) {
                 context.startForegroundService(intent)
             } else {
                 context.startService(intent)
@@ -153,7 +153,7 @@ class ZapretService : Service() {
 
         if (!isDetailed) {
             builder.setContentTitle("ToInet")
-                .setContentText(null)
+                .setContentText(getString(R.string.zapret_notification_title))
                 .setSubText(null)
         } else {
             builder.setContentTitle(getString(R.string.zapret_notification_title))

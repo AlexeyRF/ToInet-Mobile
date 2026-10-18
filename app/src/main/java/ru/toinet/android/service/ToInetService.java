@@ -118,10 +118,11 @@ public class ToInetService extends VpnService {
                 .setOngoing(true);
 
         if (!isDetailed) {
+            String title = Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
             mNotifyBuilder
                     .setSmallIcon(R.drawable.ic_stat_tor)
                     .setContentTitle("ToInet")
-                    .setContentText(null)
+                    .setContentText(title != null ? title : notifyMsg)
                     .setSubText(null)
                     .setProgress(0, 0, false)
                     .setPriority(priority)
@@ -218,7 +219,17 @@ public class ToInetService extends VpnService {
         stopTor();
 
         //stop the foreground priority and remove the persistent notification
-        stopForeground(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE);
+        } else {
+            stopForeground(true);
+        }
+        if (mNotificationManager == null) {
+            mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        }
+        if (mNotificationManager != null) {
+            mNotificationManager.cancel(NOTIFY_ID);
+        }
         if (showNotification) sendCallbackLogMessage(getString(R.string.status_disabled));
 
         mPortDns = -1;
@@ -226,14 +237,7 @@ public class ToInetService extends VpnService {
         mPortHTTP = -1;
         mPortTrans = -1;
 
-        if (!showNotification) { // clear notifications and stopSelf
-            if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
-                if (mNotificationManager != null) {
-                    mNotificationManager.notify(NOTIFY_ID, mNotifyBuilder.build());
-                }
-            }
-            if (mToInetRawEventListener != null) mToInetRawEventListener.getNodes().clear();
-        }
+        if (mToInetRawEventListener != null) mToInetRawEventListener.getNodes().clear();
 
         //ensure service is destroyed and we get a clean instance of TorService
         stopSelf();

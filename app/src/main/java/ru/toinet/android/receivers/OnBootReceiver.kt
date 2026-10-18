@@ -7,6 +7,7 @@ import android.os.Build
 import ru.toinet.android.service.ToInetService
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.putNotSystem
+import ru.toinet.android.util.sendIntentToService
 import org.torproject.jni.TorService.ACTION_START
 import java.lang.RuntimeException
 
@@ -34,14 +35,7 @@ class OnBootReceiver : BroadcastReceiver() {
 
     private fun startService(context: Context) {
         try {
-            val intent = Intent(context, ToInetService::class.java).apply {
-                this.action = ACTION_START
-            }.putNotSystem()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                context.startForegroundService(intent)
-            else {
-                context.startService(intent)
-            }
+            context.sendIntentToService(ACTION_START)
         } catch (_: RuntimeException) {
             //catch this to avoid malicious launches as document Cure53 Audit: ORB-01-009 WP1/2: ToInet DoS via exported activity (High)
         }

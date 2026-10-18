@@ -1,7 +1,7 @@
 # ToInet-Mobile
 **Версия для ПК:** [ToInet](https://github.com/AlexeyRF/ToInet)
 
-**ToInet-Mobile** - приложение для Android, объединяющее в себе инструменты обхода блокировок: **Zapret (tpws)** со стратегиями Flowseal, **ByeDPI**, **Tor (ЛМ)**, **TGWS**, **Opera Proxy**. 
+**ToInet-Mobile** - приложение для Android, объединяющее в себе инструменты обхода блокировок: **Zapret (tpws)** со стратегиями Flowseal, **ByeDPI**, **Tor (ЛМ)**, **Opera Proxy**. 
 
 ## Основные возможности
 *   **Easy-VPN**:
@@ -13,8 +13,6 @@
     *   Раздельное туннелирование, можно маршрутизировать трафик всего устройства или выбранных приложений
 *   **Tor (ЛМ)**:
     *   Встроенный луковый маршрутизатор.
-*   **TGWS**:
-    *   Переписанный на Kotlin инструмент для получения быстрого доступа к Telegram посредствам WebSocket-прокси.
 *   **Socks-Reabilitator**:
     *   Восстановления работоспособности SOCKS5-прокси через десинхронизацию, доступен так же режим без десинка.
 *   **FakeVPN**:
@@ -35,7 +33,6 @@
 | **Easy-VPN (Xray)**    | `1791` | SOCKS5     |
 | **Tor Socks5**         | `5242` | SOCKS5     |
 | **Tor HTTP**           | `5267` | HTTP       |
-| **TGWS Proxy**         | `1480` | SOCKS5     |
 | **Socks-Reabilitator** | `1788` | SOCKS5     |
 | **Opera-Proxy**        | `1888` | SOCKS5     | 
 | **FakeVPN**            | `1790` | SOCKS5     |

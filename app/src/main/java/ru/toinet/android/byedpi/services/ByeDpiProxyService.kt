@@ -48,8 +48,10 @@ class ByeDpiProxyService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         val action = intent?.action
 
-        if (action == START_ACTION || (action == "ACTIVE" && status == ServiceStatus.Connected)) {
-            startForeground()
+        if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
+            if (action == START_ACTION || (action == "ACTIVE" && status == ServiceStatus.Connected)) {
+                startForeground()
+            }
         }
 
         return when (action) {
@@ -64,7 +66,7 @@ class ByeDpiProxyService : LifecycleService() {
             }
 
             "ACTIVE" -> {
-                if (status == ServiceStatus.Connected) {
+                if (status == ServiceStatus.Connected && ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
                     startForeground()
                 }
                 START_STICKY
@@ -82,12 +84,16 @@ class ByeDpiProxyService : LifecycleService() {
 
         if (status == ServiceStatus.Connected) {
             Log.w(TAG, "Proxy already connected")
-            startForeground()
+            if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
+                startForeground()
+            }
             return
         }
 
         try {
-            startForeground()
+            if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
+                startForeground()
+            }
             mutex.withLock {
                 startProxy()
             }
@@ -100,6 +106,18 @@ class ByeDpiProxyService : LifecycleService() {
     }
 
     private fun startForeground() {
+        if (!ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+            val nm = getSystemService(NotificationManager::class.java)
+            nm?.cancel(FOREGROUND_SERVICE_ID)
+            return
+        }
+
         val notification: Notification = createNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -126,6 +144,14 @@ class ByeDpiProxyService : LifecycleService() {
             stopProxy()
         }
         updateStatus(ServiceStatus.Disconnected)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+        val nm = getSystemService(NotificationManager::class.java)
+        nm?.cancel(FOREGROUND_SERVICE_ID)
         stopSelf()
     }
 

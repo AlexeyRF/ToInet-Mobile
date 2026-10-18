@@ -108,12 +108,23 @@ fun createConnectionNotification(
 
     if (!isDetailed) {
         builder.setContentTitle("ToInet")
-            .setContentText(null)
+            .setContentText(context.getString(title))
             .setSubText(null)
     } else {
         builder.setContentTitle(context.getString(title))
             .setContentText(context.getString(content))
     }
+
+    builder.addAction(
+        0,
+        context.getString(R.string.disable),
+        PendingIntent.getService(
+            context,
+            0,
+            Intent(context, service).setAction(STOP_ACTION),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+    )
 
     return builder.build()
 }
@@ -149,7 +160,7 @@ fun createConnectionNotificationString(
 
     if (!isDetailed) {
         builder.setContentTitle("ToInet")
-            .setContentText(null)
+            .setContentText(title)
             .setSubText(null)
     } else {
         builder.setContentTitle(title)
@@ -162,16 +173,16 @@ fun createConnectionNotificationString(
                 switchServerIntent
             )
         }
-
-        builder.addAction(0, context.getString(R.string.disable),
-            PendingIntent.getService(
-                context,
-                0,
-                Intent(context, service).setAction(STOP_ACTION),
-                PendingIntent.FLAG_IMMUTABLE,
-            )
-        )
     }
+
+    builder.addAction(0, context.getString(R.string.disable),
+        PendingIntent.getService(
+            context,
+            0,
+            Intent(context, service).setAction(STOP_ACTION),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+    )
 
     return builder.build()
 }

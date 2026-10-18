@@ -66,7 +66,7 @@ fun Context.sendIntentToService(action: String) {
             Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 this.action = byedpiAction
             },
-            isForeground = !isPing && !isStop
+            isForeground = Prefs.shouldServiceShowNotification("byedpi") && !isPing && !isStop
         )
     }
 
