@@ -22,25 +22,10 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
     private lateinit var binding: TgwsBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
 
-    private fun getLocalIpAddress(): String {
-        try {
-            val interfaces = NetworkInterface.getNetworkInterfaces()
-            while (interfaces.hasMoreElements()) {
-                val intf = interfaces.nextElement()
-                val addrs = intf.inetAddresses
-                while (addrs.hasMoreElements()) {
-                    val addr = addrs.nextElement()
-                    if (!addr.isLoopbackAddress && addr is java.net.Inet4Address) {
-                        return addr.hostAddress ?: "127.0.0.1"
-                    }
-                }
-            }
-        } catch (ex: Exception) { }
-        return "127.0.0.1"
-    }
+    private fun getLocalIpAddress(): String = ru.toinet.android.util.NetworkUtils.getLocalIpAddress()
 
     private val PRESETS = listOf(
-        "Официальные IP" to "1:149.154.175.50\n2:149.154.167.51\n3:149.154.175.100\n4:149.154.167.91\n5:91.108.56.100\n203:91.105.192.100",
+        "Официальные IP" to "1:149.154.175.50\n2:149.154.167.51\n3:149.154.175.100\n4:149.154.167.91\n5:149.154.171.5\n203:91.105.192.100",
         "Альтернативные IP 1" to "1:149.154.175.53\n2:149.154.167.50\n3:149.154.175.101\n4:149.154.167.92\n5:91.108.56.116\n203:91.105.192.100",
         "Альтернативные IP 2" to "1:185.76.151.1\n2:185.76.151.2\n3:185.76.151.3\n4:185.76.151.4\n5:185.76.151.5\n203:185.76.151.203",
         "Ростелеком" to "2:149.154.167.220\n4:149.154.167.220",
@@ -157,12 +142,36 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         binding.tvLogs.movementMethod = android.text.method.ScrollingMovementMethod()
+        val existingLogs = synchronized(ru.toinet.android.tgws.TgwsService.logHistory) {
+            ru.toinet.android.tgws.TgwsService.logHistory.toList()
+        }
+        if (existingLogs.isNotEmpty()) {
+            binding.tvLogs.text = existingLogs.joinToString("\n") + "\n"
+            binding.tvLogs.post {
+                val layout = binding.tvLogs.layout
+                if (layout != null) {
+                    val scrollAmount = layout.getLineTop(binding.tvLogs.lineCount) - binding.tvLogs.height
+                    if (scrollAmount > 0) {
+                        binding.tvLogs.scrollTo(0, scrollAmount)
+                    }
+                }
+            }
+        }
+
         lifecycleScope.launchWhenStarted {
             ru.toinet.android.tgws.TgwsService.logs.collect { logMsg ->
+                if (binding.tvLogs.text.toString().trim() == "Ожидание логов...") {
+                    binding.tvLogs.text = ""
+                }
                 binding.tvLogs.append("$logMsg\n")
-                val scrollAmount = binding.tvLogs.layout.getLineTop(binding.tvLogs.lineCount) - binding.tvLogs.height
-                if (scrollAmount > 0) {
-                    binding.tvLogs.scrollTo(0, scrollAmount)
+                binding.tvLogs.post {
+                    val layout = binding.tvLogs.layout
+                    if (layout != null) {
+                        val scrollAmount = layout.getLineTop(binding.tvLogs.lineCount) - binding.tvLogs.height
+                        if (scrollAmount > 0) {
+                            binding.tvLogs.scrollTo(0, scrollAmount)
+                        }
+                    }
                 }
             }
         }

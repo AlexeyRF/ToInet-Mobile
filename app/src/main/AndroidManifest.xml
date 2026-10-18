@@ -138,7 +138,7 @@
             android:name=".vpn.services.AppVpnService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="specialUse"
+            android:foregroundServiceType="specialUse|systemExempted"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:stopWithTask="false">
             <intent-filter>
@@ -167,6 +167,7 @@
         <service android:name=".byedpi.services.ByeDpiInstance5Service" android:process=":proxy5" android:exported="false" />
 
 
+        <!--
         <service
             android:name=".tgws.TgwsService"
             android:enabled="true"
@@ -177,6 +178,7 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="TGWS Proxy functionality" />
         </service>
+        -->
 
         <service
             android:name="org.torproject.jni.TorService"
@@ -231,6 +233,17 @@
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:stopWithTask="false" />
+
+        <service
+            android:name=".easyvpn.EasyVpnService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="EasyVPN Proxy functionality" />
+        </service>
     </application>
 </manifest>
 

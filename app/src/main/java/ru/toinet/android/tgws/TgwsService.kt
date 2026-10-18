@@ -19,11 +19,13 @@ class TgwsService : Service() {
         const val ACTION_STOP = "ru.toinet.android.tgws.STOP"
         private val _logs = MutableSharedFlow<String>(extraBufferCapacity = 100)
         val logs = _logs.asSharedFlow()
+        val logHistory: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf<String>())
 
         var isRunning = false
             private set
 
         fun start(context: Context, host: String, port: Int, dcMappings: Map<Int, String>, secret: String = "", fakeTls: String = "", useByeDpi: Boolean = false, cfWorkerDomains: List<String> = emptyList(), cfProxyDomains: List<String> = emptyList()) {
+            /*
             val intent = Intent(context, TgwsService::class.java).apply {
                 putExtra("host", host)
                 putExtra("port", port)
@@ -36,14 +38,18 @@ class TgwsService : Service() {
                 putExtra("cfProxyDomains", cfProxyDomains.toTypedArray())
             }
             context.startService(intent)
+            */
         }
 
         fun stop(context: Context) {
-            context.stopService(Intent(context, TgwsService::class.java))
+            // context.stopService(Intent(context, TgwsService::class.java))
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        stopSelf()
+        return START_NOT_STICKY
+        /*
         if (intent?.action == ACTION_STOP) {
             stopSelf()
             return START_NOT_STICKY
@@ -65,6 +71,12 @@ class TgwsService : Service() {
 
         tgwsCore?.stop()
         tgwsCore = TgwsCore(host, port, dcMappings, secret, fakeTls, useByeDpi, false, cfWorkerDomains, cfProxyDomains) { msg ->
+            synchronized(logHistory) {
+                if (logHistory.size >= 200) {
+                    logHistory.removeAt(0)
+                }
+                logHistory.add(msg)
+            }
             _logs.tryEmit(msg)
             ru.toinet.android.util.NotificationLogger.log(this, "tgws", msg)
         }
@@ -72,6 +84,7 @@ class TgwsService : Service() {
         isRunning = true
 
         return START_STICKY
+        */
     }
 
     override fun onDestroy() {

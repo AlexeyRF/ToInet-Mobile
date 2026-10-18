@@ -82,6 +82,21 @@ public class ToInetService extends VpnService {
     }
 
     protected void showToolbarNotification(String notifyMsg, int notifyType, int icon) {
+        if (!ru.toinet.android.util.Prefs.shouldServiceShowNotification("tor")) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE);
+            } else {
+                stopForeground(true);
+            }
+            if (mNotificationManager == null) {
+                mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            }
+            if (mNotificationManager != null) {
+                mNotificationManager.cancel(NOTIFY_ID);
+            }
+            return;
+        }
+
         var intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
         var pendIntent = PendingIntent.getActivity(ToInetService.this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
@@ -89,8 +104,9 @@ public class ToInetService extends VpnService {
             Notifications.createNotificationChannel(this);
         }
 
-        boolean isNone = "none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider());
-        String channelId = isNone ? Notifications.TOINET_SERVICE_NOTIFICATION_CHANNEL_MIN : Notifications.TOINET_SERVICE_NOTIFICATION_CHANNEL;
+        boolean isDetailed = ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor");
+        String channelId = Notifications.resolveTorNotificationChannel();
+        int priority = Notifications.resolveTorNotificationPriority();
 
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mNotifyBuilder = new NotificationCompat
@@ -101,14 +117,14 @@ public class ToInetService extends VpnService {
                 .setSilent(true)
                 .setOngoing(true);
 
-        if (isNone) {
+        if (!isDetailed) {
             mNotifyBuilder
                     .setSmallIcon(R.drawable.ic_stat_tor)
                     .setContentTitle("ToInet")
                     .setContentText(null)
                     .setSubText(null)
                     .setProgress(0, 0, false)
-                    .setPriority(NotificationCompat.PRIORITY_MIN)
+                    .setPriority(priority)
                     .setContentIntent(pendIntent);
         }
         else {
@@ -211,7 +227,7 @@ public class ToInetService extends VpnService {
         mPortTrans = -1;
 
         if (!showNotification) { // clear notifications and stopSelf
-            if (ru.toinet.android.util.Prefs.getNotificationLogProvider().equals("tor")) {
+            if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
                 if (mNotificationManager != null) {
                     mNotificationManager.notify(NOTIFY_ID, mNotifyBuilder.build());
                 }
@@ -375,7 +391,9 @@ public class ToInetService extends VpnService {
             showToolbarNotification(getString(R.string.status_activated), NOTIFY_ID, R.drawable.ic_stat_tor);
             return;
         }
-        mNotifyBuilder.setProgress(100, 0, false);
+        if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
+            mNotifyBuilder.setProgress(100, 0, false);
+        }
         showToolbarNotification("", NOTIFY_ID, R.drawable.ic_stat_tor);
 
         SmartConnect.handle(this,
@@ -594,13 +612,13 @@ public class ToInetService extends VpnService {
                 var prog = Integer.parseInt(percent);
                 SmartConnect.updateProgress(prog);
                 ru.toinet.android.util.NetworkBlackoutMonitor.onTorProgress(prog);
-                if (mNotifyBuilder != null && !"none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) {
+                if (mNotifyBuilder != null && ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
                     mNotifyBuilder.setProgress(100, prog, false);
                 }
                 notificationMessage = notificationMessage.substring(notificationMessage.indexOf(':') + 1).trim();
             }
         }
-        if (!"none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) {
+        if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
             showToolbarNotification(notificationMessage, NOTIFY_ID, R.drawable.ic_stat_tor);
         }
         mHandler.post(() -> sendBroadcast(localIntent));
@@ -620,13 +638,13 @@ public class ToInetService extends VpnService {
 
     void showBandwidthNotification(String message, boolean isActiveTransfer) {
         if (!mCurrentStatus.equals(STATUS_ON)) return;
-        if ("none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) return;
+        if (!ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) return;
         var icon = !isActiveTransfer ? R.drawable.ic_stat_tor : R.drawable.ic_stat_tor_xfer;
         showToolbarNotification(message, NOTIFY_ID, icon);
     }
 
     public void setNotificationSubtext(String message) {
-        if ("none".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) return;
+        if (!ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) return;
         if (mNotifyBuilder != null)
             mNotifyBuilder.setSubText(message);
     }
@@ -712,6 +730,9 @@ public class ToInetService extends VpnService {
                 case TorControlCommands.SIGNAL_NEWNYM -> newIdentity();
                 case CMD_ACTIVE -> {
                     sendSignalActive();
+                    if (!STATUS_OFF.equals(mCurrentStatus)) {
+                        showToolbarNotification("", NOTIFY_ID, R.drawable.ic_stat_tor);
+                    }
                     replyWithStatus(mIntent);
                 }
                 case CMD_SET_EXIT -> setExitNode(mIntent.getStringExtra("exit"));
@@ -727,7 +748,12 @@ public class ToInetService extends VpnService {
             var action = intent.getAction();
             if (action == null) return;
             switch (action) {
-                case CMD_ACTIVE -> sendSignalActive();
+                case CMD_ACTIVE -> {
+                    sendSignalActive();
+                    if (!STATUS_OFF.equals(mCurrentStatus)) {
+                        showToolbarNotification("", NOTIFY_ID, R.drawable.ic_stat_tor);
+                    }
+                }
                 case ACTION_ERROR -> {
                     if (showTorServiceErrorMsg) {
                         Toast.makeText(context, getString(R.string.toinet_config_invalid), Toast.LENGTH_LONG).show();

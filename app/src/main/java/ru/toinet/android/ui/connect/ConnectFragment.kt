@@ -172,7 +172,8 @@ class ConnectFragment : Fragment(),
     fun attemptToStartTorPowerUserMode() {
         val alarmManager =
             requireContext().getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+        val isVpnReady = Prefs.isGlobalVpnEnabled && VpnService.prepare(requireContext()) == null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms() && !isVpnReady) {
             PowerUserForegroundPermDialog().createTransactionAndShow(requireActivity())
             return // user can try again after granting permission
         }
@@ -182,19 +183,9 @@ class ConnectFragment : Fragment(),
 
     fun attemptToStartTor() {
         val provider = Prefs.vpnProvider
-        val isProviderActive = when(provider) {
-            "byedpi" -> Prefs.byedpiEnabled
-            "tor" -> Prefs.torEnabled
-            "tgws" -> Prefs.tgwsEnabled
-            "rehab" -> Prefs.rehabilitatorEnabled || Prefs.isGlobalVpnEnabled
-            "fakevpn" -> true
-            "operaproxy" -> Prefs.operaProxyEnabled
-            "easyvpn" -> true
-            "zapret" -> Prefs.zapretEnabled
-            "custom" -> true
-            else -> false
-        }
+        val isProviderActive = Prefs.isProviderActive(provider)
 
+        /*
         if (provider == "tgws") {
             android.app.AlertDialog.Builder(requireContext())
                 .setTitle("Внимание")
@@ -206,6 +197,7 @@ class ConnectFragment : Fragment(),
                 .show()
             return
         }
+        */
 
         continueStartTor(provider, isProviderActive)
     }

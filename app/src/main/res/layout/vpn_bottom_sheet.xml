@@ -128,38 +128,6 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
         -->
-        
-        <LinearLayout
-            android:id="@+id/llEasyVpnSettings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:id="@+id/tvEasyVpnSubsHeader"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Ссылки на подписки"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-                android:layout_marginBottom="6dp" />
-            
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilEasyVpnSubs"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Ссылки на подписки через новую строку"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etEasyVpnSubs"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="top|start"
-                    android:minLines="3"
-                    android:inputType="textMultiLine" />
-            </com.google.android.material.textfield.TextInputLayout>
-        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/llFakeVpnSettings"
@@ -187,7 +155,7 @@
                 android:id="@+id/tilFakeVpnDomains"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Домены (через пробел, например: web.max.ru vk.com sber.ru)"
+                android:hint="Домены (через пробел, например: web.max.ru sber.ru)"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
                 <com.google.android.material.textfield.TextInputEditText

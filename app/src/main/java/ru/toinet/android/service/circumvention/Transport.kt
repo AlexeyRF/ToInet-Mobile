@@ -121,16 +121,17 @@ enum class Transport(val id: String) {
         )
 
         private val HARDCODED_OBFS4 = listOf(
-            "obfs4 84.22.108.82:9202 38D749F6FA80488329EDB1233B8FF8D229A1C57A cert=HX55aw36yJCnQu+1hSAg4pc7VhzE/6pgv9XlMf1AuCRPg8UlanGvfQiILqiGpLoXW4RiVA iat-mode=0",
-            "obfs4 109.235.37.47:8443 CC3D4004181ACADE02AA19229777153F8C685684 cert=hbfGbCsbMFuZbTllS4H3JkOaXBpNNlA2Z32+hgy7JZum9DRAPAdZFZxIikof5qhu6SdyYw iat-mode=0",
-            "obfs4 57.128.45.196:18384 E30D5552BEE79C5E8C61A943E9B3D2949F227C41 cert=boaTbcdp+rFHgUvweiAg60UUUpLZWecGl0uXRU358L/a7ZMrAnS/BodUKM3eyfWC+UVXTg iat-mode=0",
+            "obfs4 79.117.42.31:8080 4E44AFB28CB25243B9D073C0EEF68BDC3ABB4144 cert=Yi3hC0pj0N7fsKQ/aR8ueEcoGN/jBDqRTrP8Ct/x/buBjMLnm/1VuNzSZUMn9cha2g87BA iat-mode=0",
+            "obfs4 152.70.97.163:9001 0AC23CAF18BA8E14FACA96E551C52B24C65E184F cert=SNQ4M4gkTKdvgbbGOB62o9su72UmVRPff09dddqEdJpi77TuES40Vukgwmt4Z3McGGmpQw iat-mode=0",
+            "obfs4 51.89.231.85:24526 A44162645CEAA39C7106C49A3F36FD99FF8D8A00 cert=cVNRBh1enpvEGxA0ouu568EDFhWPl9taldydYgiJk77OX4MzoYIRz3qx4q7yHL5bRN60Gg iat-mode=0",
             "obfs4 51.89.228.250:21668 BA8BD67D8898CF378D4F73821DEB5657F4BB98DF cert=bEpLLgOwJ9fOJbeHb5r+ronUF2ck5nRd0Jl3zuy7rLoUp732QK2p/CUHjTAfBPCGfcVtSA iat-mode=0"
         )
 
         private val HARDCODED_WEBTUNNEL = listOf(
-            "webtunnel [2001:db8:b1d5:4998:8150:f75b:988f:1f48]:443 216C8BB1C44FC2BFF7AF823B55AC38F113079B93 url=https://cdn-38.triplebit.dev/Bai8aXeiPhar5gai ver=0.0.2",
-            "webtunnel [2001:db8:12ff:2d55:9130:36a7:c49b:d1f4]:443 933C998EC827D1C17CC93D1292BBC41735867CF8 url=https://x7t2qctb.xoomlia.com/qzxrtfmu/ ver=0.0.3",
-            "webtunnel [2001:db8:9830:b7ec:bb37:f12:ec5f:aace]:443 67DFB4E30EF8CC5EFD87CC066D919D12DEDB5170 url= ver=0.0.4"
+            "webtunnel [2001:db8:11d3:d5e7:2939:8453:7baf:868f]:443 531640559965FB7501EB5C006018F61D1E9FA1BB url=https://cdn-34.triplebit.dev/Aec3euCh4ux3deij ver=0.0.2",
+            "webtunnel [2001:db8:8229:577b:8f3a:bc4c:7d18:24be]:443 4C26D2BA24011E89875857BDB338969D08CAAE0B url=https://test.notalot.org/ApKhNDWZv4MCjbH05W6eQFkF ver=0.0.4",
+            "webtunnel [2001:db8:9830:b7ec:bb37:f12:ec5f:aace]:443 67DFB4E30EF8CC5EFD87CC066D919D12DEDB5170 url= ver=0.0.4",
+            "webtunnel [2001:db8:840a:a2c2:644c:3c92:be5e:7002]:443 27E99E2571072995A06118ECDA706FB695E2998D url=https://miau.sillykittens.net/4incE0XB3Pm13wHctbckvfhP ver=0.0.7"
         )
     }
 

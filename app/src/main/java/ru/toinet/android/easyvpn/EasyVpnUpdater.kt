@@ -399,8 +399,8 @@ object EasyVpnUpdater {
             put("inbounds", JSONArray().apply {
                 put(JSONObject().apply {
                     put("tag", "socks-in")
-                    put("listen", "127.0.0.1")
-                    put("port", 1791)
+                    put("listen", Prefs.easyVpnProxyHost)
+                    put("port", Prefs.easyVpnProxyPort)
                     put("protocol", "socks")
                     put("settings", JSONObject().apply {
                         put("auth", "noauth")

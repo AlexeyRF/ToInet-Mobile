@@ -12,10 +12,11 @@ object UniversalTgProxy {
         2 to "149.154.167.51",
         3 to "149.154.175.100",
         4 to "149.154.167.91",
-        5 to "91.108.56.116"
+        5 to "149.154.171.5"
     )
 
     fun start() {
+        /*
         if (core != null) return
         try {
             val listenHost = if (Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
@@ -36,6 +37,7 @@ object UniversalTgProxy {
         } catch (e: Exception) {
             Log.e(TAG, "Error starting UniversalTgProxy", e)
         }
+        */
     }
 
     fun stop() {

@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import ru.toinet.android.databinding.OperaProxyBottomSheetBinding
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
@@ -47,6 +48,41 @@ class OperaProxyBottomSheet : ToInetBottomSheetDialogFragment() {
             
             viewModel.triggerRefreshMenuList()
             dismiss()
+        }
+
+        binding.tvLogs.movementMethod = android.text.method.ScrollingMovementMethod()
+        val existingLogs = synchronized(ru.toinet.android.operaproxy.OperaProxyServer.logHistory) {
+            ru.toinet.android.operaproxy.OperaProxyServer.logHistory.toList()
+        }
+        if (existingLogs.isNotEmpty()) {
+            binding.tvLogs.text = existingLogs.joinToString("\n") + "\n"
+            binding.tvLogs.post {
+                val layout = binding.tvLogs.layout
+                if (layout != null) {
+                    val scrollAmount = layout.getLineTop(binding.tvLogs.lineCount) - binding.tvLogs.height
+                    if (scrollAmount > 0) {
+                        binding.tvLogs.scrollTo(0, scrollAmount)
+                    }
+                }
+            }
+        }
+
+        lifecycleScope.launchWhenStarted {
+            ru.toinet.android.operaproxy.OperaProxyServer.logs.collect { logMsg ->
+                if (binding.tvLogs.text.toString().trim() == "Ожидание логов...") {
+                    binding.tvLogs.text = ""
+                }
+                binding.tvLogs.append("$logMsg\n")
+                binding.tvLogs.post {
+                    val layout = binding.tvLogs.layout
+                    if (layout != null) {
+                        val scrollAmount = layout.getLineTop(binding.tvLogs.lineCount) - binding.tvLogs.height
+                        if (scrollAmount > 0) {
+                            binding.tvLogs.scrollTo(0, scrollAmount)
+                        }
+                    }
+                }
+            }
         }
 
         return binding.root

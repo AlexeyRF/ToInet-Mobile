@@ -303,9 +303,8 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 startStopButton.text = getString(R.string.test_start)
-                progressTextView.text = getString(R.string.test_complete)
-
-                suggestCombinations(strategies.filter { it.isCompleted })
+                // Fallback strategies disabled (commented out):
+                // suggestCombinations(strategies.filter { it.isCompleted })
 
                 strategyAdapter.setTestingState(false)
                 strategyAdapter.updateStrategies(strategies, sortByPercentage = true)
@@ -428,8 +427,16 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 val jsonArray = org.json.JSONArray(jsonText)
                 for (i in 0 until jsonArray.length()) {
                     val obj = jsonArray.getJSONObject(i)
+                    val cmd = obj.getString("command")
+                    // Filter out any leftover fallback/TOR combination strategies
+                    if (cmd.contains("TOR", ignoreCase = true) ||
+                        cmd.startsWith("{") ||
+                        cmd.contains("fallback", ignoreCase = true)
+                    ) {
+                        continue
+                    }
                     val res = StrategyResult(
-                        command = obj.getString("command"),
+                        command = cmd,
                         successCount = obj.getInt("successCount"),
                         totalRequests = obj.getInt("totalRequests"),
                         currentProgress = obj.getInt("currentProgress"),
@@ -461,9 +468,9 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         val userCommands = prefs.getBoolean("byedpi_proxytest_usercommands", false)
         val sniValue = prefs.getStringNotNull("byedpi_proxytest_sni", "google.com")
 
-        return if (userCommands) {
+        val rawLines = if (userCommands) {
             val content = prefs.getStringNotNull("byedpi_proxytest_commands", "")
-            content.replace("{sni}", "\"${sniValue}\"").lines().map { it.trim() }.filter { it.isNotEmpty() }
+            content.replace("{sni}", "\"${sniValue}\"").lines()
         } else {
             val file = File(filesDir, "proxytest_strategies.list")
             val content = if (file.exists()) {
@@ -471,7 +478,10 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
             } else {
                 assets.open("proxytest_strategies.list").bufferedReader().readText()
             }
-            content.replace("{sni}", "\"${sniValue}\"").lines().map { it.trim() }.filter { it.isNotEmpty() }
+            content.replace("{sni}", "\"${sniValue}\"").lines()
+        }
+        return rawLines.map { it.trim() }.filter {
+            it.isNotEmpty() && !it.contains("TOR", ignoreCase = true) && !it.contains("fallback", ignoreCase = true) && !it.startsWith("{")
         }
     }
 

@@ -5,6 +5,8 @@ import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import ru.toinet.android.util.NotificationLogger
 import ru.toinet.android.util.Prefs
@@ -21,6 +23,10 @@ class OperaProxyServer(
         private const val TAG = "OperaProxyServer"
         var isRunning: Boolean = false
             private set
+
+        private val _logs = MutableSharedFlow<String>(extraBufferCapacity = 100)
+        val logs = _logs.asSharedFlow()
+        val logHistory: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf<String>())
 
         fun getExecutable(context: Context): String? {
             val libDir = context.applicationInfo.nativeLibraryDir
@@ -93,6 +99,13 @@ class OperaProxyServer(
                     proc.inputStream.bufferedReader().useLines { lines ->
                         lines.forEach { line ->
                             Log.d(TAG, "opera-proxy: $line")
+                            synchronized(logHistory) {
+                                if (logHistory.size >= 200) {
+                                    logHistory.removeAt(0)
+                                }
+                                logHistory.add(line)
+                            }
+                            _logs.tryEmit(line)
                             NotificationLogger.log(context, "operaproxy", line)
                         }
                     }

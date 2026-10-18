@@ -46,3 +46,5 @@ app/src/main/assets/LICENSE
 /unused_files.txt
 /app/src/main/java/ru/toinet/android/tgws/TgwsCore.kt.bak
 
+*.hprof
+release_apks/

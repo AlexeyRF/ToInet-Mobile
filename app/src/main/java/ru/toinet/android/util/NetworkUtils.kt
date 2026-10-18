@@ -45,4 +45,40 @@ object NetworkUtils {
             return false
         }
     }
+
+    fun getLocalIpAddress(): String {
+        try {
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return "127.0.0.1"
+            val candidates = mutableListOf<Pair<String, java.net.InetAddress>>()
+            while (interfaces.hasMoreElements()) {
+                val intf = interfaces.nextElement()
+                val name = intf.name.lowercase()
+                if (intf.isLoopback || name.startsWith("tun") || name.startsWith("dummy") || name.startsWith("p2p")) {
+                    continue
+                }
+                val addrs = intf.inetAddresses
+                while (addrs.hasMoreElements()) {
+                    val addr = addrs.nextElement()
+                    if (!addr.isLoopbackAddress && addr is java.net.Inet4Address) {
+                        candidates.add(name to addr)
+                    }
+                }
+            }
+            val prioritized = candidates.firstOrNull { (name, _) ->
+                name.startsWith("ap") || name.startsWith("wlan") || name.startsWith("swlan") || name.startsWith("rndis") || name.startsWith("eth")
+            }
+            if (prioritized != null) {
+                return prioritized.second.hostAddress ?: "127.0.0.1"
+            }
+            val lanCandidate = candidates.firstOrNull { (_, addr) ->
+                addr.isSiteLocalAddress
+            }
+            if (lanCandidate != null) {
+                return lanCandidate.second.hostAddress ?: "127.0.0.1"
+            }
+            return candidates.firstOrNull()?.second?.hostAddress ?: "127.0.0.1"
+        } catch (_: Exception) {
+            return "127.0.0.1"
+        }
+    }
 }

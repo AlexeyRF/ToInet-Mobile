@@ -297,5 +297,9 @@
     <string name="domain_list_reset">Сбросить списки</string>
     <string name="domain_list_reset_done">Списки сброшены</string>
     <string name="toast_copied">Скопировано</string>
-        <string name="easyvpn_switch_server">Switch server</string>
+    <string name="easyvpn_switch_server">Switch server</string>
+    <string name="pref_vpn_bypass_lan_title">Пропуск локальной сети</string>
+    <string name="pref_vpn_bypass_lan_summary">Не направлять локальный трафик (192.168.*, 10.*, 172.16.*) через VPN</string>
+    <string name="easyvpn_proxy_title">EasyVPN Proxy</string>
+    <string name="easyvpn_proxy_summary">SOCKS5 прокси EasyVPN на порту 1791</string>
 </resources>

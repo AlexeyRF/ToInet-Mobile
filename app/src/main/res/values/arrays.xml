@@ -14,6 +14,9 @@
         <item>Socks Rehab</item>
         <item>Opera Proxy</item>
         <item>Zapret</item>
+        <item>EasyVPN</item>
+        <item>VPN</item>
+        <item>Все</item>
     </array>
     
     <array name="log_providers_values">
@@ -24,6 +27,9 @@
         <item>rehab</item>
         <item>operaproxy</item>
         <item>zapret</item>
+        <item>easyvpn</item>
+        <item>vpn</item>
+        <item>all</item>
     </array>
     
     <string-array name="dns_protocols">

@@ -10,7 +10,7 @@ import ru.toinet.android.localization.Languages
 import ru.toinet.android.localization.LocaleHelper
 import ru.toinet.android.service.circumvention.Transport.Companion.stateLocation
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.tgws.UniversalTgProxy
+// import ru.toinet.android.tgws.UniversalTgProxy
 import ru.toinet.android.util.NetworkSwitchListener
 import ru.toinet.android.util.NetworkBlackoutMonitor
 
@@ -34,27 +34,36 @@ class ToInetApp : Application() {
         
         // Removed revokeSelfPermissionOnKill block that was resetting notifications
 
-        AppCompatDelegate.setDefaultNightMode(Prefs.themeMode)
-        if (Prefs.useDynamicColors) {
-            DynamicColors.applyToActivitiesIfAvailable(this)
-        }
-        
-        /*
-        if (Prefs.universalTgProxyEnabled) {
-            UniversalTgProxy.start()
-        }
-        */
-        
-        NetworkSwitchListener.register(this)
-        NetworkBlackoutMonitor.start(this)
-        ru.toinet.android.easyvpn.EasyVpnUpdateWorker.schedule(this)
-        
-
         // set state dir for IPtProxy
         try {
             stateLocation = cacheDir.path
         } catch (_ : Exception) {
             Log.e("ToInetApp", "Couldn't set PT state dir")
+        }
+
+        LocaleHelper.onAttach(applicationContext)
+
+        Languages.setup(ToInetActivity::class.java, R.string.menu_settings)
+
+        setLocale()
+
+        // Only run main UI/process initialization in the main application process
+        if (!isMainProcess()) {
+            Log.d("ToInetApp", "Secondary process initialized, skipping background workers and main UI setup.")
+            return
+        }
+
+        AppCompatDelegate.setDefaultNightMode(Prefs.themeMode)
+        if (Prefs.useDynamicColors) {
+            DynamicColors.applyToActivitiesIfAvailable(this)
+        }
+        
+        NetworkSwitchListener.register(this)
+        NetworkBlackoutMonitor.start(this)
+        try {
+            ru.toinet.android.easyvpn.EasyVpnUpdateWorker.schedule(this)
+        } catch (e: Exception) {
+            Log.e("ToInetApp", "Failed to schedule EasyVpnUpdateWorker", e)
         }
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
@@ -65,12 +74,6 @@ class ToInetApp : Application() {
             }
 
         })
-
-        LocaleHelper.onAttach(applicationContext)
-
-        Languages.setup(ToInetActivity::class.java, R.string.menu_settings)
-
-        setLocale()
 
         // this code only runs on first install and app updates
         if (Prefs.currentVersionForUpdate < BuildConfig.VERSION_CODE) {
@@ -103,6 +106,16 @@ class ToInetApp : Application() {
             } catch (e: Exception) {
                 Log.e("ToInetApp", "Failed to update strategies list", e)
             }
+        }
+    }
+
+    private fun isMainProcess(): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            packageName == Application.getProcessName()
+        } else {
+            val pid = android.os.Process.myPid()
+            val am = getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+            am?.runningAppProcesses?.firstOrNull { it.pid == pid }?.processName == packageName
         }
     }
 

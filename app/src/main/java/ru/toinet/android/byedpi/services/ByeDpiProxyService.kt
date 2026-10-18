@@ -1,6 +1,7 @@
 package ru.toinet.android.byedpi.services
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
 import android.os.Build
@@ -63,6 +64,9 @@ class ByeDpiProxyService : LifecycleService() {
             }
 
             "ACTIVE" -> {
+                if (status == ServiceStatus.Connected) {
+                    startForeground()
+                }
                 START_STICKY
             }
 
@@ -97,14 +101,21 @@ class ByeDpiProxyService : LifecycleService() {
 
     private fun startForeground() {
         val notification: Notification = createNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                FOREGROUND_SERVICE_ID,
-                notification,
-                FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-            )
-        } else {
-            startForeground(FOREGROUND_SERVICE_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    FOREGROUND_SERVICE_ID,
+                    notification,
+                    FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                )
+            } else {
+                startForeground(FOREGROUND_SERVICE_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed startForeground in ByeDpiProxyService", e)
+            try {
+                startForeground(FOREGROUND_SERVICE_ID, notification)
+            } catch (_: Exception) {}
         }
     }
 

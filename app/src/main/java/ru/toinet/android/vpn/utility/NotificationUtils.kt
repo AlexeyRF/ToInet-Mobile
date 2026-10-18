@@ -17,15 +17,31 @@ fun registerNotificationChannel(context: Context, id: String, channelName: Strin
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
 
-        val channelMin = NotificationChannel(
-            "${id}_min",
+        try {
+            manager.deleteNotificationChannel("${id}_min")
+        } catch (_: Exception) {}
+
+        val channelSilent = NotificationChannel(
+            "${id}_silent",
             channelName,
             NotificationManager.IMPORTANCE_MIN
         ).apply {
             enableLights(false)
             enableVibration(false)
             setShowBadge(false)
+            lockscreenVisibility = Notification.VISIBILITY_SECRET
         }
+
+        val channelMini = NotificationChannel(
+            "${id}_mini",
+            channelName,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            enableLights(false)
+            enableVibration(false)
+            setShowBadge(false)
+        }
+
         val channelLow = NotificationChannel(
             "${id}_low",
             channelName,
@@ -36,7 +52,8 @@ fun registerNotificationChannel(context: Context, id: String, channelName: Strin
             setShowBadge(false)
         }
 
-        manager.createNotificationChannel(channelMin)
+        manager.createNotificationChannel(channelSilent)
+        manager.createNotificationChannel(channelMini)
         manager.createNotificationChannel(channelLow)
     }
 }
@@ -45,23 +62,41 @@ fun registerNotificationChannel(context: Context, id: String, @StringRes name: I
     registerNotificationChannel(context, id, context.getString(name))
 }
 
+fun resolveNotificationChannelAndPriority(serviceKey: String, baseChannelId: String): Pair<String, Int> {
+    val current = ru.toinet.android.util.Prefs.notificationLogProvider
+    if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification(serviceKey)) {
+        return Pair("${baseChannelId}_low", NotificationCompat.PRIORITY_LOW)
+    }
+    if (current == "none") {
+        if (ru.toinet.android.util.Prefs.isPrimaryNotificationService(serviceKey)) {
+            return Pair("${baseChannelId}_mini", NotificationCompat.PRIORITY_LOW)
+        } else {
+            return Pair("${baseChannelId}_silent", NotificationCompat.PRIORITY_MIN)
+        }
+    }
+    // Non-selected background service: minimize completely so it doesn't clutter shade
+    return Pair("${baseChannelId}_silent", NotificationCompat.PRIORITY_MIN)
+}
+
 fun createConnectionNotification(
     context: Context,
     channelId: String,
     @StringRes title: Int,
     @StringRes content: Int,
     service: Class<*>,
+    serviceKey: String = "byedpi",
 ): Notification {
     registerNotificationChannel(context, channelId, title)
 
-    val isNone = ru.toinet.android.util.Prefs.notificationLogProvider == "none"
-    val actualId = if (isNone) "${channelId}_min" else "${channelId}_low"
+    val (actualId, priority) = resolveNotificationChannelAndPriority(serviceKey, channelId)
+    val isDetailed = ru.toinet.android.util.Prefs.shouldShowDetailedNotification(serviceKey)
 
     val builder = NotificationCompat.Builder(context, actualId)
         .setSmallIcon(R.drawable.ic_stat_tor)
         .setSilent(true)
+        .setOngoing(true)
         .setGroup("toinet_services")
-        .setPriority(if (isNone) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
+        .setPriority(priority)
         .setContentIntent(
             PendingIntent.getActivity(
                 context,
@@ -71,7 +106,7 @@ fun createConnectionNotification(
             )
         )
 
-    if (isNone) {
+    if (!isDetailed) {
         builder.setContentTitle("ToInet")
             .setContentText(null)
             .setSubText(null)
@@ -90,17 +125,19 @@ fun createConnectionNotificationString(
     content: String,
     service: Class<*>,
     switchServerIntent: PendingIntent? = null,
+    serviceKey: String = "vpn",
 ): Notification {
     registerNotificationChannel(context, channelId, title)
 
-    val isNone = ru.toinet.android.util.Prefs.notificationLogProvider == "none"
-    val actualId = if (isNone) "${channelId}_min" else "${channelId}_low"
+    val (actualId, priority) = resolveNotificationChannelAndPriority(serviceKey, channelId)
+    val isDetailed = ru.toinet.android.util.Prefs.shouldShowDetailedNotification(serviceKey)
 
     val builder = NotificationCompat.Builder(context, actualId)
         .setSmallIcon(R.drawable.ic_stat_tor)
         .setSilent(true)
+        .setOngoing(true)
         .setGroup("toinet_services")
-        .setPriority(if (isNone) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
+        .setPriority(priority)
         .setContentIntent(
             PendingIntent.getActivity(
                 context,
@@ -110,7 +147,7 @@ fun createConnectionNotificationString(
             )
         )
 
-    if (isNone) {
+    if (!isDetailed) {
         builder.setContentTitle("ToInet")
             .setContentText(null)
             .setSubText(null)

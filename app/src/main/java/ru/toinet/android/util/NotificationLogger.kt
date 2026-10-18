@@ -11,20 +11,35 @@ import ru.toinet.android.ToInetActivity
 import ru.toinet.android.R
 
 object NotificationLogger {
-    private const val NOTIFY_ID = 1
-    private const val CHANNEL_ID = "toinet_channel_1"
-    
     fun log(context: Context, providerName: String, message: String) {
-        if (Prefs.notificationLogProvider != providerName) return
+        if (!Prefs.shouldShowDetailedNotification(providerName)) return
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        
+
+        val channelId = when (providerName) {
+            "tgws" -> "tgws_channel"
+            "operaproxy" -> "opera_proxy_channel"
+            "zapret" -> "zapret_channel"
+            else -> "toinet_log_channel"
+        }
+
+        val notifyId = when (providerName) {
+            "tgws" -> 1480
+            "operaproxy" -> 1888
+            "zapret" -> 1081
+            else -> 1999
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID,
-                "ToInet",
+                channelId,
+                "ToInet: $providerName",
                 NotificationManager.IMPORTANCE_LOW
-            )
+            ).apply {
+                enableLights(false)
+                enableVibration(false)
+                setShowBadge(false)
+            }
             manager.createNotificationChannel(channel)
         }
 
@@ -35,13 +50,23 @@ object NotificationLogger {
             context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("ToInet: $providerName")
+        val title = when (providerName) {
+            "operaproxy" -> context.getString(R.string.opera_proxy_notification_title)
+            "zapret" -> context.getString(R.string.zapret_notification_title)
+            "tgws" -> "TGWS"
+            else -> "ToInet: $providerName"
+        }
+
+        val builder = NotificationCompat.Builder(context, channelId)
+            .setContentTitle(title)
             .setContentText(message)
             .setSmallIcon(R.drawable.ic_stat_tor)
             .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setSilent(true)
+            .setGroup("toinet_services")
             .setOnlyAlertOnce(true)
 
-        manager.notify(NOTIFY_ID, builder.build())
+        manager.notify(notifyId, builder.build())
     }
 }

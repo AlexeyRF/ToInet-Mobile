@@ -82,18 +82,20 @@ object PresetManager {
         var needsDelay = false
 
         // Tor
-        if (oldJson.optBoolean("tor_enabled") && (!newJson.optBoolean("tor_enabled") || changed(oldJson, newJson, listOf("tor_bridges", "tor_transport", "pref_use_bridges")))) {
+        if (oldJson.optBoolean("tor_enabled") && (!newJson.optBoolean("tor_enabled") || changed(oldJson, newJson, listOf("tor_bridges", "tor_transport", "pref_use_bridges", "pref_open_proxy_on_all_interfaces")))) {
             context.sendIntentToService(Intent(context, ToInetService::class.java).apply {
                 action = org.torproject.jni.TorService.ACTION_STOP
             }, isForeground = false)
             needsDelay = true
         }
 
+        /*
         // TGWS
         if (oldJson.optBoolean("tgws_enabled") && (!newJson.optBoolean("tgws_enabled") || changed(oldJson, newJson, listOf("tgws_port", "tgws_secret", "tgws_fake_tls", "tgws_dc_mappings", "pref_open_proxy_on_all_interfaces")))) {
             TgwsService.stop(context)
             needsDelay = true
         }
+        */
 
         // ByeDPI
         if (oldJson.optBoolean("byedpi_enabled") && (!newJson.optBoolean("byedpi_enabled") || changed(oldJson, newJson, listOf("byedpi_cmd_args", "byedpi_enable_cmd_settings", "pref_open_proxy_on_all_interfaces")))) {
@@ -119,8 +121,14 @@ object PresetManager {
             needsDelay = true
         }
 
+        // EasyVPN (standalone proxy)
+        if (oldJson.optBoolean("easyvpn_proxy_enabled") && (!newJson.optBoolean("easyvpn_proxy_enabled") || changed(oldJson, newJson, listOf("pref_easy_vpn_subs", "pref_open_proxy_on_all_interfaces")))) {
+            ru.toinet.android.easyvpn.EasyVpnService.stop(context)
+            needsDelay = true
+        }
+
         // VPN
-        if (oldJson.optBoolean("pref_global_vpn_enabled") && (!newJson.optBoolean("pref_global_vpn_enabled") || oldJson.optString("pref_vpn_provider") != newJson.optString("pref_vpn_provider") || changed(oldJson, newJson, listOf("pref_easy_vpn_subs", "custom_socks_ip", "custom_socks_port")))) {
+        if (oldJson.optBoolean("pref_global_vpn_enabled") && (!newJson.optBoolean("pref_global_vpn_enabled") || oldJson.optString("pref_vpn_provider") != newJson.optString("pref_vpn_provider") || changed(oldJson, newJson, listOf("pref_easy_vpn_subs", "custom_socks_ip", "custom_socks_port", "pref_open_proxy_on_all_interfaces", "pref_vpn_bypass_lan")))) {
             context.sendIntentToService(Intent(context, ru.toinet.android.vpn.services.AppVpnService::class.java).apply {
                 action = ru.toinet.android.vpn.data.STOP_ACTION
             }, isForeground = false)

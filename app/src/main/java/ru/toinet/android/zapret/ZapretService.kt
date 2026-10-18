@@ -118,6 +118,18 @@ class ZapretService : Service() {
     }
 
     private fun startForegroundNotification() {
+        if (!Prefs.shouldServiceShowNotification("zapret")) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+            val nm = getSystemService(NotificationManager::class.java)
+            nm?.cancel(NOTIFICATION_ID)
+            return
+        }
+
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -128,17 +140,18 @@ class ZapretService : Service() {
 
         ru.toinet.android.vpn.utility.registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "Zapret Proxy Service")
 
-        val isNone = Prefs.notificationLogProvider == "none"
-        val actualId = if (isNone) "${NOTIFICATION_CHANNEL_ID}_min" else "${NOTIFICATION_CHANNEL_ID}_low"
+        val (actualId, priority) = ru.toinet.android.vpn.utility.resolveNotificationChannelAndPriority("zapret", NOTIFICATION_CHANNEL_ID)
+        val isDetailed = Prefs.shouldShowDetailedNotification("zapret")
 
         val builder = NotificationCompat.Builder(this, actualId)
             .setSmallIcon(R.drawable.ic_stat_tor)
             .setSilent(true)
+            .setOngoing(true)
             .setGroup("toinet_services")
             .setContentIntent(pendingIntent)
-            .setPriority(if (isNone) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
+            .setPriority(priority)
 
-        if (isNone) {
+        if (!isDetailed) {
             builder.setContentTitle("ToInet")
                 .setContentText(null)
                 .setSubText(null)

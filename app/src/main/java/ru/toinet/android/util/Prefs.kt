@@ -405,7 +405,7 @@ object Prefs {
         set(value) = cr?.putPref("tgws_cf_worker_domains", value.joinToString(",")) ?: Unit
 
     var tgwsCfProxyDomains: List<String>
-        get() = cr?.getPrefString("tgws_cf_proxy_domains")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        get() = cr?.getPrefString("tgws_cf_proxy_domains")?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = cr?.putPref("tgws_cf_proxy_domains", value.joinToString(",")) ?: Unit
 
     @JvmStatic
@@ -580,4 +580,97 @@ object Prefs {
                 .joinToString("\n")
             cr?.putPref("pref_easy_vpn_subs", cleaned) ?: Unit
         }
+
+    @JvmStatic
+    var easyVpnServerNumberOnly: Boolean
+        get() = cr?.getPrefBoolean("easyvpn_server_number_only", true) ?: true
+        set(value) = cr?.putPref("easyvpn_server_number_only", value) ?: Unit
+
+    @JvmStatic
+    var easyVpnProxyEnabled: Boolean
+        get() = cr?.getPrefBoolean("easyvpn_proxy_enabled", false) ?: false
+        set(value) = cr?.putPref("easyvpn_proxy_enabled", value) ?: Unit
+
+    @JvmStatic
+    var easyVpnProxyPort: Int
+        get() = cr?.getPrefInt("easyvpn_proxy_port", 1791) ?: 1791
+        set(value) = cr?.putPref("easyvpn_proxy_port", value) ?: Unit
+
+    @JvmStatic
+    var easyVpnProxyHost: String
+        get() = if (openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+        set(_) = Unit
+
+    @JvmStatic
+    var vpnBypassLan: Boolean
+        get() = cr?.getPrefBoolean("pref_vpn_bypass_lan", false) ?: false
+        set(value) = cr?.putPref("pref_vpn_bypass_lan", value) ?: Unit
+
+    @JvmStatic
+    fun isProviderActive(provider: String): Boolean {
+        return when (provider) {
+            "vpn" -> isGlobalVpnEnabled
+            "tor" -> torEnabled
+            "byedpi" -> byedpiEnabled || (isGlobalVpnEnabled && vpnProvider == "byedpi")
+            // "tgws" -> tgwsEnabled || (isGlobalVpnEnabled && vpnProvider == "tgws")
+            "rehab" -> rehabilitatorEnabled || (isGlobalVpnEnabled && (vpnProvider == "rehab" || vpnProvider == "custom"))
+            "operaproxy" -> (operaProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "operaproxy")) && ArchHelper.isOperaSupported
+            "zapret" -> zapretEnabled || (isGlobalVpnEnabled && vpnProvider == "zapret")
+            "easyvpn" -> easyVpnProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "easyvpn")
+            else -> false
+        }
+    }
+
+    @JvmStatic
+    fun isPrimaryNotificationService(serviceKey: String): Boolean {
+        if (isGlobalVpnEnabled) {
+            return serviceKey == "vpn"
+        }
+        if (torEnabled) {
+            return serviceKey == "tor"
+        }
+        if (byedpiEnabled) {
+            return serviceKey == "byedpi"
+        }
+        if (easyVpnProxyEnabled) {
+            return serviceKey == "easyvpn"
+        }
+        if (zapretEnabled) {
+            return serviceKey == "zapret"
+        }
+        if (operaProxyEnabled && ArchHelper.isOperaSupported) {
+            return serviceKey == "operaproxy"
+        }
+        /*
+        if (tgwsEnabled) {
+            return serviceKey == "tgws"
+        }
+        */
+        return false
+    }
+
+    @JvmStatic
+    fun shouldServiceShowNotification(serviceKey: String): Boolean {
+        val current = notificationLogProvider
+        if (current == "all") return true
+        if (current == "none") {
+            return isPrimaryNotificationService(serviceKey)
+        }
+        if (isProviderActive(current)) {
+            if (current == "vpn") {
+                return serviceKey == "vpn"
+            }
+            if (isGlobalVpnEnabled && vpnProvider == current) {
+                return serviceKey == "vpn"
+            }
+            return serviceKey == current
+        }
+        return isPrimaryNotificationService(serviceKey)
+    }
+
+    @JvmStatic
+    fun shouldShowDetailedNotification(serviceKey: String): Boolean {
+        if (!shouldServiceShowNotification(serviceKey)) return false
+        return notificationLogProvider != "none"
+    }
 }

@@ -15,10 +15,10 @@ enum class Mode {
             Sender.VPN -> VPN
         }
 
-        fun fromString(name: String): Mode = when (name) {
+        fun fromString(name: String): Mode = when (name.trim().lowercase()) {
             "proxy" -> Proxy
             "vpn" -> VPN
-            else -> throw IllegalArgumentException("Invalid mode: $name")
+            else -> VPN
         }
     }
 }

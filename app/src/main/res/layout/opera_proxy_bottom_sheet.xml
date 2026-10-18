@@ -68,5 +68,26 @@
             android:layout_marginTop="24dp"
             android:text="Сохранить" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Логи Opera Proxy:"
+            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvLogs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="100dp"
+            android:maxHeight="300dp"
+            android:scrollbars="vertical"
+            android:background="#1A000000"
+            android:padding="8dp"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:text="Ожидание логов..." />
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

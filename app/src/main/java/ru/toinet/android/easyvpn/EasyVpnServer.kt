@@ -128,7 +128,11 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         val idx = currentNodeIndex.coerceIn(0, allNodes.lastIndex)
         val node = allNodes[idx]
         val name = node.remarks.ifEmpty { node.server }
-        return "Сервер ${idx + 1}/${allNodes.size}: $name"
+        return if (ru.toinet.android.util.Prefs.easyVpnServerNumberOnly) {
+            "Сервер #${idx + 1}"
+        } else {
+            "Сервер ${idx + 1}/${allNodes.size}: $name"
+        }
     }
 
     fun switchToNextServer() {
@@ -147,8 +151,13 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         startXrayProcess(config)
 
         Handler(Looper.getMainLooper()).post {
-            val name = currentNode.remarks.ifEmpty { currentNode.server }
-            Toast.makeText(context, "EasyVPN: сервер ${currentNodeIndex + 1}/${allNodes.size} ($name)", Toast.LENGTH_SHORT).show()
+            val msg = if (ru.toinet.android.util.Prefs.easyVpnServerNumberOnly) {
+                "EasyVPN: сервер #${currentNodeIndex + 1}"
+            } else {
+                val name = currentNode.remarks.ifEmpty { currentNode.server }
+                "EasyVPN: сервер ${currentNodeIndex + 1}/${allNodes.size} ($name)"
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
         }
         onServerChanged?.invoke()
     }

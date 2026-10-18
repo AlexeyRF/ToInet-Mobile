@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="EasyVPN (Xray)"
+            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+            android:layout_marginBottom="16dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swEasyVpnProxyEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Включить EasyVPN как прокси"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swEasyVpnNumberOnly"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Только номер сервера в уведомлении"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/tvEasyVpnSubsHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ссылки на подписки"
+            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+            android:layout_marginBottom="6dp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilEasyVpnSubs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ссылки на доп. подписки, построчно"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_marginBottom="12dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEasyVpnSubs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="top|start"
+                android:inputType="textMultiLine"
+                android:minLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Button
+            android:id="@+id/btnEasyVpnUpdateNow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Обновить подписки сейчас"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Сохранить" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

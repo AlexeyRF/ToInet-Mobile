@@ -32,9 +32,27 @@ object Notifications {
             }
         )
 
+        try {
+            manager.deleteNotificationChannel("toinet_channel_1_min")
+        } catch (_: Exception) {}
+
         manager.createNotificationChannel(
             NotificationChannel(
                 TOINET_SERVICE_NOTIFICATION_CHANNEL_MIN,
+                appName,
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = channelDescription
+                enableLights(false)
+                enableVibration(false)
+                setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
+            }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                TOINET_SERVICE_NOTIFICATION_CHANNEL_SILENT,
                 appName,
                 NotificationManager.IMPORTANCE_MIN
             ).apply {
@@ -57,6 +75,31 @@ object Notifications {
         return context.getString(R.string.status_disabled)
     }
 
+    @JvmStatic
+    fun resolveTorNotificationChannel(): String {
+        val current = ru.toinet.android.util.Prefs.notificationLogProvider
+        if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
+            return TOINET_SERVICE_NOTIFICATION_CHANNEL
+        }
+        if (current == "none" && ru.toinet.android.util.Prefs.isPrimaryNotificationService("tor")) {
+            return TOINET_SERVICE_NOTIFICATION_CHANNEL_MIN
+        }
+        return TOINET_SERVICE_NOTIFICATION_CHANNEL_SILENT
+    }
+
+    @JvmStatic
+    fun resolveTorNotificationPriority(): Int {
+        val current = ru.toinet.android.util.Prefs.notificationLogProvider
+        if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
+            return NotificationCompat.PRIORITY_LOW
+        }
+        if (current == "none" && ru.toinet.android.util.Prefs.isPrimaryNotificationService("tor")) {
+            return NotificationCompat.PRIORITY_LOW
+        }
+        return NotificationCompat.PRIORITY_MIN
+    }
+
     const val TOINET_SERVICE_NOTIFICATION_CHANNEL = "toinet_channel_1"
-    const val TOINET_SERVICE_NOTIFICATION_CHANNEL_MIN = "toinet_channel_1_min"
+    const val TOINET_SERVICE_NOTIFICATION_CHANNEL_MIN = "toinet_channel_mini"
+    const val TOINET_SERVICE_NOTIFICATION_CHANNEL_SILENT = "toinet_channel_silent"
 }

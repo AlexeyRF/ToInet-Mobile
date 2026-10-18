@@ -25,6 +25,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 import ru.toinet.android.vpn.utility.*
+import ru.toinet.android.util.sendIntentToService
 class AppVpnService : LifecycleVpnService() {
     private var tunFd: ParcelFileDescriptor? = null
     private var fakeVpnServer: ru.toinet.android.fakevpn.DirectSocks5Server? = null
@@ -78,14 +79,19 @@ class AppVpnService : LifecycleVpnService() {
             }
 
             "ACTIVE" -> {
+                if (status == ServiceStatus.Connected) {
+                    startForeground()
+                }
                 START_STICKY
             }
 
             ACTION_SWITCH_SERVER -> {
                 lifecycleScope.launch {
                     easyVpnServer?.switchToNextServer()
-                    val nm = getSystemService(android.app.NotificationManager::class.java)
-                    nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                    if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
+                        val nm = getSystemService(android.app.NotificationManager::class.java)
+                        nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                    }
                 }
                 START_STICKY
             }
@@ -105,7 +111,6 @@ class AppVpnService : LifecycleVpnService() {
     private suspend fun start() {
         Log.i(TAG, "Starting")
 
-
         if (status == ServiceStatus.Connected) {
             Log.w(TAG, "VPN already connected")
             startForeground()
@@ -115,7 +120,9 @@ class AppVpnService : LifecycleVpnService() {
         try {
             startForeground()
             mutex.withLock {
-                startTun2Socks()
+                withContext(Dispatchers.IO) {
+                    startTun2Socks()
+                }
             }
             updateStatus(ServiceStatus.Connected)
         } catch (e: Exception) {
@@ -128,11 +135,25 @@ class AppVpnService : LifecycleVpnService() {
     private fun startForeground() {
         val notification: Notification = createNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                FOREGROUND_SERVICE_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-            )
+            try {
+                startForeground(
+                    FOREGROUND_SERVICE_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed systemExempted startForeground, trying specialUse", e)
+                try {
+                    startForeground(
+                        FOREGROUND_SERVICE_ID,
+                        notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                    )
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Failed specialUse startForeground, fallback to standard", e2)
+                    startForeground(FOREGROUND_SERVICE_ID, notification)
+                }
+            }
         } else {
             startForeground(FOREGROUND_SERVICE_ID, notification)
         }
@@ -144,7 +165,9 @@ class AppVpnService : LifecycleVpnService() {
         mutex.withLock {
             stopping = true
             try {
-                stopTun2Socks()
+                withContext(Dispatchers.IO) {
+                    stopTun2Socks()
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to stop VPN", e)
             } finally {
@@ -170,6 +193,13 @@ class AppVpnService : LifecycleVpnService() {
             throw IllegalStateException("VPN field not null")
         }
 
+        val dir = filesDir.absolutePath
+        val libDir = applicationInfo.nativeLibraryDir
+
+        // Clean up any stale instances before starting
+        ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/tun2socks.pid")
+        ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/pdnsd.pid")
+
         val sharedPreferences = getPreferences()
         val provider = ru.toinet.android.util.Prefs.vpnProvider
         var actualHost = "127.0.0.1"
@@ -177,18 +207,41 @@ class AppVpnService : LifecycleVpnService() {
         when (provider) {
             "byedpi" -> actualPort = getByeDpiPreferences().port
             "tor" -> actualPort = 5242
-            "tgws" -> actualPort = ru.toinet.android.util.Prefs.tgwsPort
+            // "tgws" -> actualPort = ru.toinet.android.util.Prefs.tgwsPort
             "rehab", "custom" -> actualPort = 1788
             "fakevpn" -> actualPort = 1790
             "operaproxy" -> {
                 actualHost = "127.0.0.1"
                 actualPort = ru.toinet.android.util.Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1888
             }
-            "easyvpn" -> actualPort = 1791
+            "easyvpn" -> actualPort = ru.toinet.android.util.Prefs.easyVpnProxyPort
             "zapret" -> actualPort = ru.toinet.android.util.Prefs.zapretPort
             else -> actualPort = getByeDpiPreferences().port
         }
         var socksAddr = "$actualHost:$actualPort"
+
+        if (provider == "byedpi") {
+            val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
+                action = ru.toinet.android.vpn.data.START_ACTION
+            }
+            sendIntentToService(byedpiIntent)
+        }
+
+        /*
+        if (provider == "tgws") {
+            ru.toinet.android.tgws.TgwsService.start(
+                this,
+                ru.toinet.android.util.Prefs.tgwsHost,
+                ru.toinet.android.util.Prefs.tgwsPort,
+                ru.toinet.android.util.Prefs.tgwsDcMappings,
+                ru.toinet.android.util.Prefs.tgwsSecret,
+                ru.toinet.android.util.Prefs.tgwsFakeTls,
+                false,
+                ru.toinet.android.util.Prefs.tgwsCfWorkerDomains,
+                ru.toinet.android.util.Prefs.tgwsCfProxyDomains
+            )
+        }
+        */
 
         if (provider == "rehab" || provider == "custom") {
             ru.toinet.android.rehabilitator.RehabilitatorService.start(this)
@@ -197,8 +250,10 @@ class AppVpnService : LifecycleVpnService() {
         if (provider == "easyvpn") {
             easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
                 onServerChanged = {
-                    val nm = getSystemService(android.app.NotificationManager::class.java)
-                    nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                    if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
+                        val nm = getSystemService(android.app.NotificationManager::class.java)
+                        nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                    }
                 }
             }
             easyVpnServer?.start()
@@ -222,10 +277,7 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
-        // Custom VPN DNS commented out to avoid breaking pdnsd tcp queries:
-        // if ((provider == "fakevpn" || provider == "byedpi" || provider == "zapret") && ru.toinet.android.util.Prefs.customVpnDns.isNotBlank()) {
-        //     dns = ru.toinet.android.util.Prefs.customVpnDns
-        // }
+        if (dns.isBlank()) dns = "8.8.8.8"
 
         val ipv6 = false
 
@@ -235,9 +287,6 @@ class AppVpnService : LifecycleVpnService() {
         this.tunFd = fd
 
         ru.toinet.android.vpn.utility.VpnUtility.makePdnsdConf(this, dns, 53)
-
-        val libDir = applicationInfo.nativeLibraryDir
-        val dir = filesDir.absolutePath
 
         ru.toinet.android.vpn.utility.VpnUtility.exec(arrayOf(
             "$libDir/libpdnsd.so",
@@ -292,11 +341,24 @@ class AppVpnService : LifecycleVpnService() {
 
         val dir = filesDir.absolutePath
         ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/tun2socks.pid")
-
-
+        ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/pdnsd.pid")
 
         tunFd?.close() ?: Log.w(TAG, "VPN not running")
         tunFd = null
+
+        val provider = ru.toinet.android.util.Prefs.vpnProvider
+        if (provider == "byedpi" && !ru.toinet.android.util.Prefs.byedpiEnabled) {
+            val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
+                action = ru.toinet.android.vpn.data.STOP_ACTION
+            }
+            startService(byedpiIntent)
+        }
+
+        /*
+        if (provider == "tgws" && !ru.toinet.android.util.Prefs.tgwsEnabled) {
+            ru.toinet.android.tgws.TgwsService.stop(this)
+        }
+        */
 
         easyVpnServer?.stop()
         easyVpnServer = null
@@ -321,7 +383,6 @@ class AppVpnService : LifecycleVpnService() {
             ru.toinet.android.zapret.ZapretService.stop(this)
         }
 
-        val provider = ru.toinet.android.util.Prefs.vpnProvider
         if ((provider == "rehab" || provider == "custom") && !ru.toinet.android.util.Prefs.rehabilitatorEnabled) {
             ru.toinet.android.rehabilitator.RehabilitatorService.stop(this)
         }
@@ -433,7 +494,64 @@ class AppVpnService : LifecycleVpnService() {
         )
 
         builder.addAddress("26.26.26.1", 24)
-            .addRoute("0.0.0.0", 0)
+
+        if (ru.toinet.android.util.Prefs.vpnBypassLan || ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                builder.addRoute("0.0.0.0", 0)
+                try {
+                    builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("10.0.0.0"), 8))
+                    builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("172.16.0.0"), 12))
+                    builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("192.168.0.0"), 16))
+                    builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName("169.254.0.0"), 16))
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to exclude LAN routes", e)
+                }
+            } else {
+                val nonLanRoutes = listOf(
+                    Pair("1.0.0.0", 8),
+                    Pair("2.0.0.0", 7),
+                    Pair("4.0.0.0", 6),
+                    Pair("8.0.0.0", 7),
+                    Pair("11.0.0.0", 8),
+                    Pair("12.0.0.0", 6),
+                    Pair("16.0.0.0", 4),
+                    Pair("32.0.0.0", 3),
+                    Pair("64.0.0.0", 2),
+                    Pair("128.0.0.0", 3),
+                    Pair("160.0.0.0", 5),
+                    Pair("168.0.0.0", 6),
+                    Pair("172.0.0.0", 12),
+                    Pair("172.32.0.0", 11),
+                    Pair("172.64.0.0", 10),
+                    Pair("172.128.0.0", 9),
+                    Pair("173.0.0.0", 8),
+                    Pair("174.0.0.0", 7),
+                    Pair("176.0.0.0", 4),
+                    Pair("192.0.0.0", 9),
+                    Pair("192.128.0.0", 11),
+                    Pair("192.160.0.0", 13),
+                    Pair("192.169.0.0", 16),
+                    Pair("192.170.0.0", 15),
+                    Pair("192.172.0.0", 14),
+                    Pair("192.176.0.0", 12),
+                    Pair("192.192.0.0", 10),
+                    Pair("193.0.0.0", 8),
+                    Pair("194.0.0.0", 7),
+                    Pair("196.0.0.0", 6),
+                    Pair("200.0.0.0", 5),
+                    Pair("208.0.0.0", 4)
+                )
+                for ((ip, prefix) in nonLanRoutes) {
+                    try {
+                        builder.addRoute(ip, prefix)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to add route $ip/$prefix", e)
+                    }
+                }
+            }
+        } else {
+            builder.addRoute("0.0.0.0", 0)
+        }
 
         if (ipv6) {
             builder.addAddress("fdfe:dcba:9876::1", 126)
@@ -494,9 +612,7 @@ class AppVpnService : LifecycleVpnService() {
 
 
         try {
-            if (ru.toinet.android.util.Prefs.vpnExcludedApps.contains(applicationContext.packageName)) {
-                builder.addDisallowedApplication(applicationContext.packageName)
-            }
+            builder.addDisallowedApplication(applicationContext.packageName)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to disallow self: ${applicationContext.packageName}", e)
         }

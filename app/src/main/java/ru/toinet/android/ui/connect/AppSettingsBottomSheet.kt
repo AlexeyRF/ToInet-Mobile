@@ -50,12 +50,30 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             ToInetMenuAction(
                 0,
                 R.drawable.ic_menu_onion,
-                statusString = "Раздавать все прокси на локальную сеть: ${if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"}\n(0.0.0.0 вместо 127.0.0.1)"
+                statusString = if (Prefs.openProxyOnAllInterfaces) {
+                    "Раздавать все прокси на локальную сеть: Вкл\nIP для подключения: ${ru.toinet.android.util.NetworkUtils.getLocalIpAddress()}"
+                } else {
+                    "Раздавать все прокси на локальную сеть: Выкл\n(только для этого устройства, 127.0.0.1)"
+                }
             ) {
                 Prefs.openProxyOnAllInterfaces = !Prefs.openProxyOnAllInterfaces
+                val ipInfo = if (Prefs.openProxyOnAllInterfaces) " (IP: ${ru.toinet.android.util.NetworkUtils.getLocalIpAddress()})" else ""
                 Toast.makeText(
                     requireContext(),
-                    "Раздача прокси: ${if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"}. Перезапустите прокси для применения.",
+                    "Раздача прокси: ${if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"}$ipInfo. Перезапустите прокси для применения.",
+                    Toast.LENGTH_LONG
+                ).show()
+                setupMenu(view)
+            },
+            ToInetMenuAction(
+                0,
+                R.drawable.ic_server,
+                statusString = "Пропуск локальной сети (LAN Bypass): ${if (Prefs.vpnBypassLan) "Вкл" else "Выкл"}\n(192.168.*, 10.*, 172.16.* в обход VPN)"
+            ) {
+                Prefs.vpnBypassLan = !Prefs.vpnBypassLan
+                Toast.makeText(
+                    requireContext(),
+                    "Пропуск локальной сети: ${if (Prefs.vpnBypassLan) "Вкл" else "Выкл"}. Перезапустите VPN для применения.",
                     Toast.LENGTH_LONG
                 ).show()
                 setupMenu(view)
@@ -140,11 +158,20 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             }
         }
 
+        val tgwsIdx = allValues.indexOf("tgws")
+        if (tgwsIdx != -1) {
+            allProviders.removeAt(tgwsIdx)
+            allValues.removeAt(tgwsIdx)
+        }
+        if (Prefs.notificationLogProvider == "tgws") {
+            Prefs.notificationLogProvider = "tor"
+        }
+
         val currentProvider = Prefs.notificationLogProvider
         val checkedItem = allValues.indexOf(currentProvider).takeIf { it >= 0 } ?: 0
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Провайдер логов в уведомлении")
+            .setTitle("Провайдер уведомлений")
             .setSingleChoiceItems(allProviders.toTypedArray(), checkedItem) { dialog, which ->
                 Prefs.notificationLogProvider = allValues[which]
                 requireContext().sendIntentToService(ToInetConstants.CMD_ACTIVE)

@@ -54,7 +54,7 @@ configure<ApplicationExtension> {
         abi {
             isEnable = true
             reset()
-            include("x86", "armeabi-v7a", "x86_64", "arm64-v8a")
+            include("armeabi-v7a", "x86_64", "arm64-v8a")
             isUniversalApk = false
         }
     }
@@ -164,7 +164,7 @@ configure<ApplicationExtension> {
         }
         doLast {
             val jniLibsDir = file("src/main/jniLibs")
-            listOf("x86", "armeabi-v7a", "x86_64", "arm64-v8a").forEach { abi ->
+            listOf("armeabi-v7a", "x86_64", "arm64-v8a").forEach { abi ->
                 val abiDir = File(jniLibsDir, abi)
                 listOf("pdnsd", "tun2socks").forEach { binName ->
                     val binFile = File(abiDir, binName)
@@ -189,7 +189,7 @@ androidComponents {
         variant.outputs.forEach { output ->
             // Update versionCode lazily
             if (output.versionCode.get() == ToInetBaseVersionCode) {
-                val incrementMap = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 4, "x86_64" to 5)
+                val incrementMap = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 5)
                 val abi = output.filters.find { it.filterType.name == "ABI" }?.identifier
                 val increment = incrementMap[abi] ?: 0
                 output.versionCode.set(ToInetBaseVersionCode + increment)
