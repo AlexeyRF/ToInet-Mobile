@@ -93,7 +93,7 @@ fun Context.sendIntentToService(action: String) {
             Intent(this, ru.toinet.android.vpn.services.AppVpnService::class.java).apply {
                 this.action = vpnAction
             },
-            isForeground = !isPing && !isStop
+            isForeground = Prefs.shouldServiceShowNotification("vpn") && !isPing && !isStop
         )
     }
 

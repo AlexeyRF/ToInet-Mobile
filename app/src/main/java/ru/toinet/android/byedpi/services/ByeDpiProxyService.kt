@@ -48,10 +48,8 @@ class ByeDpiProxyService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         val action = intent?.action
 
-        if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
-            if (action == START_ACTION || (action == "ACTIVE" && status == ServiceStatus.Connected)) {
-                startForeground()
-            }
+        if (action == START_ACTION || (action == "ACTIVE" && status == ServiceStatus.Connected)) {
+            startForeground()
         }
 
         return when (action) {
@@ -66,7 +64,7 @@ class ByeDpiProxyService : LifecycleService() {
             }
 
             "ACTIVE" -> {
-                if (status == ServiceStatus.Connected && ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
+                if (status == ServiceStatus.Connected) {
                     startForeground()
                 }
                 START_STICKY
@@ -84,16 +82,12 @@ class ByeDpiProxyService : LifecycleService() {
 
         if (status == ServiceStatus.Connected) {
             Log.w(TAG, "Proxy already connected")
-            if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
-                startForeground()
-            }
+            startForeground()
             return
         }
 
         try {
-            if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi")) {
-                startForeground()
-            }
+            startForeground()
             mutex.withLock {
                 startProxy()
             }

@@ -104,23 +104,23 @@ fun createConnectionNotification(
 
     if (!isDetailed) {
         builder.setContentTitle("ToInet")
-            .setContentText(context.getString(content))
+            .setContentText(null)
             .setSubText(null)
     } else {
         builder.setContentTitle(context.getString(title))
             .setContentText(context.getString(content))
-    }
 
-    builder.addAction(
-        0,
-        context.getString(R.string.disable),
-        PendingIntent.getService(
-            context,
+        builder.addAction(
             0,
-            Intent(context, service).setAction(STOP_ACTION),
-            PendingIntent.FLAG_IMMUTABLE,
+            context.getString(R.string.disable),
+            PendingIntent.getService(
+                context,
+                0,
+                Intent(context, service).setAction(STOP_ACTION),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
         )
-    )
+    }
 
     return builder.build()
 }
@@ -134,7 +134,12 @@ fun createConnectionNotificationString(
     switchServerIntent: PendingIntent? = null,
     serviceKey: String = "vpn",
 ): Notification {
-    registerNotificationChannel(context, channelId, title)
+    val channelName = if (channelId == "ToInetVpn") {
+        context.getString(R.string.vpn_channel_name)
+    } else {
+        title
+    }
+    registerNotificationChannel(context, channelId, channelName)
 
     val (actualId, priority) = resolveNotificationChannelAndPriority(serviceKey, channelId)
     val isDetailed = ru.toinet.android.util.Prefs.shouldShowDetailedNotification(serviceKey)
@@ -156,7 +161,7 @@ fun createConnectionNotificationString(
 
     if (!isDetailed) {
         builder.setContentTitle("ToInet")
-            .setContentText(content)
+            .setContentText(null)
             .setSubText(null)
     } else {
         builder.setContentTitle(title)
@@ -169,16 +174,18 @@ fun createConnectionNotificationString(
                 switchServerIntent
             )
         }
-    }
 
-    builder.addAction(0, context.getString(R.string.disable),
-        PendingIntent.getService(
-            context,
+        builder.addAction(
             0,
-            Intent(context, service).setAction(STOP_ACTION),
-            PendingIntent.FLAG_IMMUTABLE,
+            context.getString(R.string.disable),
+            PendingIntent.getService(
+                context,
+                0,
+                Intent(context, service).setAction(STOP_ACTION),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
         )
-    )
+    }
 
     return builder.build()
 }

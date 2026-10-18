@@ -39,7 +39,7 @@ class AppVpnService : LifecycleVpnService() {
     companion object {
         private val TAG: String = AppVpnService::class.java.simpleName
         private const val FOREGROUND_SERVICE_ID: Int = 2
-        private const val NOTIFICATION_CHANNEL_ID: String = "ByeDPIVpn"
+        private const val NOTIFICATION_CHANNEL_ID: String = "ToInetVpn"
         const val ACTION_SWITCH_SERVER: String = "ru.toinet.android.vpn.SWITCH_SERVER"
 
         private var status: ServiceStatus = ServiceStatus.Disconnected
@@ -133,6 +133,18 @@ class AppVpnService : LifecycleVpnService() {
     }
 
     private fun startForeground() {
+        if (!ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+            val nm = getSystemService(android.app.NotificationManager::class.java)
+            nm?.cancel(FOREGROUND_SERVICE_ID)
+            return
+        }
+
         val notification: Notification = createNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             try {
@@ -176,6 +188,8 @@ class AppVpnService : LifecycleVpnService() {
         } else {
             stopForeground(true)
         }
+        val nm = getSystemService(android.app.NotificationManager::class.java)
+        nm?.cancel(FOREGROUND_SERVICE_ID)
         stopSelf()
     }
 

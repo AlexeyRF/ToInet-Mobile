@@ -118,11 +118,10 @@ public class ToInetService extends VpnService {
                 .setOngoing(true);
 
         if (!isDetailed) {
-            String title = Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
             mNotifyBuilder
                     .setSmallIcon(R.drawable.ic_stat_tor)
                     .setContentTitle("ToInet")
-                    .setContentText(title != null ? title : notifyMsg)
+                    .setContentText(null)
                     .setSubText(null)
                     .setProgress(0, 0, false)
                     .setPriority(priority)

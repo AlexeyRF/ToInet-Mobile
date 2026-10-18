@@ -653,9 +653,6 @@ object Prefs {
     fun shouldServiceShowNotification(serviceKey: String): Boolean {
         val current = notificationLogProvider
         if (current == "all") return true
-        if (isGlobalVpnEnabled) {
-            return serviceKey == "vpn"
-        }
         if (current == "none") {
             return isPrimaryNotificationService(serviceKey)
         }
