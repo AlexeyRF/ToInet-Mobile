@@ -152,10 +152,14 @@ fun Context.sendIntentToService(action: String) {
     if ((!isGlobalVpnEnabled || Prefs.vpnProvider != "easyvpn") && easyVpnProxyEnabled) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
             ru.toinet.android.easyvpn.EasyVpnService.start(this)
-        } else if (isPing && ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
-            startService(Intent(this, ru.toinet.android.easyvpn.EasyVpnService::class.java).apply {
-                this.action = "ACTIVE"
-            })
+        } else if (isPing) {
+            if (ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
+                startService(Intent(this, ru.toinet.android.easyvpn.EasyVpnService::class.java).apply {
+                    this.action = "ACTIVE"
+                })
+            } else {
+                ru.toinet.android.easyvpn.EasyVpnService.start(this)
+            }
         }
     }
     if (action == org.torproject.jni.TorService.ACTION_STOP) {

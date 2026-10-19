@@ -69,7 +69,11 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
             Prefs.easyVpnServerNumberOnly = binding.swEasyVpnNumberOnly.isChecked
             Prefs.easyVpnSubs = binding.etEasyVpnSubs.text.toString().trim()
 
-            if (newEnabled) {
+            if (newEnabled && !wasEnabled) {
+                if (!Prefs.isGlobalVpnEnabled || Prefs.vpnProvider != "easyvpn") {
+                    ru.toinet.android.easyvpn.EasyVpnService.start(requireContext())
+                }
+            } else if (newEnabled) {
                 requireContext().sendIntentToService("ACTIVE")
             } else if (wasEnabled) {
                 ru.toinet.android.easyvpn.EasyVpnService.stop(requireContext())

@@ -53,10 +53,10 @@ object EasyVpnUpdater {
             Log.d(TAG, "Direct download of $urlStr failed: ${e.message}")
         }
 
-        // 2. Если прямой доступ не сработал, но запущен EasyVPN, скачиваем через локальный SOCKS5 (127.0.0.1:1791)
+        // 2. Если прямой доступ не сработал, но запущен EasyVPN, скачиваем через локальный SOCKS5 (127.0.0.1:easyVpnProxyPort)
         if (EasyVpnServer.isRunning) {
             try {
-                val proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", 1791))
+                val proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", Prefs.easyVpnProxyPort))
                 val url = URL(urlStr)
                 val conn = url.openConnection(proxy) as HttpURLConnection
                 conn.connectTimeout = 8000
@@ -170,16 +170,23 @@ object EasyVpnUpdater {
         val workingNodes = pingTestNodes(uniqueNodes)
         Log.i(TAG, "Working unique nodes after ping test: ${workingNodes.size}")
 
-        if (workingNodes.isNotEmpty() && isActive) {
+        val finalNodes = if (workingNodes.isNotEmpty()) {
+            workingNodes
+        } else {
+            Log.w(TAG, "Ping test returned 0 reachable nodes; using top unique parsed nodes as fallback")
+            uniqueNodes.take(50)
+        }
+
+        if (finalNodes.isNotEmpty() && isActive) {
             val subsHash = sources.joinToString("|").hashCode().toString()
-            saveUserCachedNodes(context, subsHash, workingNodes)
+            saveUserCachedNodes(context, subsHash, finalNodes)
             Prefs.lastEasyVpnUpdate = System.currentTimeMillis()
 
             // Если EasyVPN работает прямо сейчас, обновляем конфигурацию на лету
-            EasyVpnServer.activeInstance?.reloadWithNodes(workingNodes)
+            EasyVpnServer.activeInstance?.reloadWithNodes(finalNodes)
         }
 
-        workingNodes
+        finalNodes
     }
 
     fun loadUserCachedNodes(context: Context, expectedHash: String): List<VlessNode> {
@@ -322,7 +329,13 @@ object EasyVpnUpdater {
                             put("fingerprint", effectiveFp)
                             put("publicKey", node.pbk)
                             put("shortId", node.sid)
-                            put("spiderX", "")
+                            put("spiderX", if (node.spx.isNotEmpty()) node.spx else "")
+                            if (node.alpn.isNotEmpty()) {
+                                val alpnList = node.alpn.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                if (alpnList.isNotEmpty()) {
+                                    put("alpn", JSONArray(alpnList))
+                                }
+                            }
                         }
                         put("realitySettings", realityObj)
                     }
@@ -420,7 +433,7 @@ object EasyVpnUpdater {
 
             put("routing", JSONObject().apply {
                 put("domainStrategy", "AsIs")
-                if (activeNodeIndex in 0 until nodes.size) {
+                if (nodes.isNotEmpty() && activeNodeIndex in 0 until nodes.size) {
                     put("rules", JSONArray().apply {
                         put(JSONObject().apply {
                             put("type", "field")
@@ -428,7 +441,7 @@ object EasyVpnUpdater {
                             put("outboundTag", "proxy-$activeNodeIndex")
                         })
                     })
-                } else {
+                } else if (nodes.isNotEmpty()) {
                     put("balancers", JSONArray().apply {
                         put(JSONObject().apply {
                             put("tag", "balancer")
@@ -445,15 +458,25 @@ object EasyVpnUpdater {
                             put("balancerTag", "balancer")
                         })
                     })
+                } else {
+                    put("rules", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("type", "field")
+                            put("inboundTag", JSONArray().apply { put("socks-in") })
+                            put("outboundTag", "direct")
+                        })
+                    })
                 }
             })
 
-            put("observatory", JSONObject().apply {
-                put("subjectSelector", JSONArray().apply { put("proxy-") })
-                put("probeUrl", "http://cp.cloudflare.com/generate_204")
-                put("probeInterval", "3m")
-                put("enableConcurrency", true)
-            })
+            if (nodes.isNotEmpty() && activeNodeIndex !in 0 until nodes.size) {
+                put("observatory", JSONObject().apply {
+                    put("subjectSelector", JSONArray().apply { put("proxy-") })
+                    put("probeUrl", "http://cp.cloudflare.com/generate_204")
+                    put("probeInterval", "3m")
+                    put("enableConcurrency", true)
+                })
+            }
         }
     }
 }

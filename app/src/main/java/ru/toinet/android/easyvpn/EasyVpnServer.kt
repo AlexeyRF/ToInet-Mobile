@@ -29,7 +29,8 @@ data class VlessNode(
     val pbk: String,
     val sid: String,
     val type: String,
-    val serviceName: String
+    val serviceName: String,
+    val spx: String = ""
 ) {
     companion object {
         fun parse(raw: String): VlessNode? {
@@ -98,7 +99,8 @@ data class VlessNode(
                     pbk = queryParams["pbk"] ?: "",
                     sid = queryParams["sid"] ?: "",
                     type = queryParams["type"] ?: "tcp",
-                    serviceName = queryParams["servicename"] ?: ""
+                    serviceName = queryParams["servicename"] ?: "",
+                    spx = queryParams["spx"] ?: ""
                 )
             } catch (e: Exception) {
                 return null
@@ -210,10 +212,10 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
             }
         }
 
-        // 4. В фоне: если кэш пуст или прошло более 24 часов с последнего обновления, скачиваем и тестируем
+        // 4. В фоне: если кэш пуст или прошло более 2 часов с последнего обновления, скачиваем и тестируем
         val lastUpdate = Prefs.lastEasyVpnUpdate
-        val oneDayMs = 24 * 60 * 60 * 1000L
-        if (cachedUserNodes.isEmpty() || System.currentTimeMillis() - lastUpdate > oneDayMs) {
+        val updateIntervalMs = 2 * 60 * 60 * 1000L
+        if (cachedUserNodes.isEmpty() || System.currentTimeMillis() - lastUpdate > updateIntervalMs) {
             updateJob = scope.launch(Dispatchers.IO) {
                 if (startedWithUserNodes) {
                     delay(2000)
@@ -270,6 +272,11 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                         }
                     }
                 } catch (_: Exception) {}
+                val exitCode = try { proc.waitFor() } catch (_: Exception) { -1 }
+                Log.w(TAG, "xray process exited with code $exitCode")
+                if (process == proc) {
+                    isRunning = false
+                }
             }
             true
         } catch (e: Exception) {

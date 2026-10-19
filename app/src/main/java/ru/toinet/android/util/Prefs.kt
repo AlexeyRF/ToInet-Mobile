@@ -652,7 +652,12 @@ object Prefs {
     @JvmStatic
     fun shouldServiceShowNotification(serviceKey: String): Boolean {
         val current = notificationLogProvider
-        if (current == "all") return true
+        if (current == "all") {
+            if (isGlobalVpnEnabled && (serviceKey == vpnProvider || (vpnProvider in listOf("rehab", "custom") && serviceKey in listOf("rehab", "custom")))) {
+                return false
+            }
+            return true
+        }
         if (current == "none") {
             return isPrimaryNotificationService(serviceKey)
         }
@@ -660,7 +665,7 @@ object Prefs {
             if (current == "vpn") {
                 return serviceKey == "vpn"
             }
-            if (isGlobalVpnEnabled && vpnProvider == current) {
+            if (isGlobalVpnEnabled && (vpnProvider == current || (vpnProvider in listOf("rehab", "custom") && current in listOf("rehab", "custom")))) {
                 return serviceKey == "vpn"
             }
             return serviceKey == current
