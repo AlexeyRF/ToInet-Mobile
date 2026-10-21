@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 object SniSpoofer {
     fun spoofSni(clientHello: ByteArray, newDomain: String): ByteArray? {
         try {
-            if (clientHello.size < 43) return null
+            if (clientHello.size < 44) return null
             if (clientHello[0] != 0x16.toByte()) return null // Not a handshake
             if (clientHello[5] != 0x01.toByte()) return null // Not a ClientHello
 

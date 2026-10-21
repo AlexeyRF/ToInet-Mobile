@@ -57,14 +57,22 @@ data class VlessNode(
                     val q = parts[1]
                     queryParams = q.split("&").mapNotNull {
                         val kv = it.split("=", limit = 2)
-                        if (kv.size == 2) kv[0].lowercase() to URLDecoder.decode(kv[1], "UTF-8") else null
+                        if (kv.size == 2) {
+                            val key = kv[0].lowercase()
+                            val value = try {
+                                URLDecoder.decode(kv[1], "UTF-8")
+                            } catch (_: Exception) {
+                                kv[1]
+                            }
+                            key to value
+                        } else null
                     }.toMap()
                 }
 
                 if (!s.contains("@")) return null
                 val userParts = s.split("@", limit = 2)
                 val uuid = userParts[0]
-                val hostPort = userParts[1]
+                val hostPort = userParts[1].trimEnd('/')
 
                 val host: String
                 val port: Int
@@ -236,6 +244,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         onServerChanged?.invoke()
     }
 
+    @Synchronized
     private fun startXrayProcess(config: JSONObject): Boolean {
         val configFile = File(context.filesDir, "xray_config.json")
         configFile.writeText(config.toString(2))
@@ -249,8 +258,18 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         }
 
         try {
-            process?.destroy()
-            process = null
+            val oldProc = process
+            if (oldProc != null) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    oldProc.destroyForcibly()
+                } else {
+                    oldProc.destroy()
+                }
+                process = null
+                try {
+                    Thread.sleep(100)
+                } catch (_: Exception) {}
+            }
         } catch (_: Exception) {}
 
         val pb = ProcessBuilder(nativeXray.absolutePath, "run", "-c", configFile.absolutePath)
@@ -294,7 +313,14 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         allNodes.clear()
         currentNodeIndex = 0
         try {
-            process?.destroy()
+            val oldProc = process
+            if (oldProc != null) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    oldProc.destroyForcibly()
+                } else {
+                    oldProc.destroy()
+                }
+            }
         } catch (_: Exception) {}
         process = null
         isRunning = false

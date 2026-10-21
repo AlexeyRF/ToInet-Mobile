@@ -41,14 +41,16 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
         binding.btnEasyVpnUpdateNow.setOnClickListener {
             binding.btnEasyVpnUpdateNow.isEnabled = false
             binding.btnEasyVpnUpdateNow.text = "Обновление..."
+            val appContext = requireContext().applicationContext
             lifecycleScope.launch(Dispatchers.IO) {
                 val currentSubs = withContext(Dispatchers.Main) {
                     binding.etEasyVpnSubs.text.toString().trim()
                 }
                 Prefs.easyVpnSubs = currentSubs
 
-                val nodes = EasyVpnUpdater.updateAndTestConfigs(requireContext())
+                val nodes = EasyVpnUpdater.updateAndTestConfigs(appContext)
                 withContext(Dispatchers.Main) {
+                    if (!isAdded || context == null) return@withContext
                     binding.btnEasyVpnUpdateNow.isEnabled = true
                     binding.btnEasyVpnUpdateNow.text = "Обновить подписки сейчас"
                     if (nodes.isNotEmpty()) {
@@ -89,7 +91,7 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
     private fun updateTimestampHeader() {
         var lastUpdate = Prefs.lastEasyVpnUpdate
         if (lastUpdate <= 0L) {
-            val file = File(requireContext().filesDir, "easy_vpn_configs.json")
+            val file = File(requireContext().filesDir, "easyvpn_user_nodes.json")
             if (file.exists()) {
                 try {
                     val json = org.json.JSONObject(file.readText())
@@ -104,7 +106,7 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
 
         if (lastUpdate > 0L) {
             val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-            binding.tvEasyVpnSubsHeader.text = "Подписки обновлены: ${sdf.format(Date(lastUpdate))})"
+            binding.tvEasyVpnSubsHeader.text = "Подписки обновлены: ${sdf.format(Date(lastUpdate))}"
         } else {
             binding.tvEasyVpnSubsHeader.text = "Ссылки на подписки"
         }

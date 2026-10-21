@@ -257,6 +257,9 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         if (provider == "easyvpn") {
+            if (ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
+                ru.toinet.android.easyvpn.EasyVpnService.stop(this)
+            }
             easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
                 onServerChanged = {
                     if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
@@ -290,7 +293,7 @@ class AppVpnService : LifecycleVpnService() {
 
         val ipv6 = false
 
-        val fd = createBuilder("8.8.8.8", ipv6).establish()
+        val fd = createBuilder(dns, ipv6).establish()
             ?: throw IllegalStateException("VPN connection failed")
 
         this.tunFd = fd

@@ -17,6 +17,18 @@ class DirectSocks5Connection(
         private const val TAG = "FakeVpnConnection"
     }
 
+    private fun readExact(input: InputStream, buffer: ByteArray, length: Int = buffer.size): Boolean {
+        var total = 0
+        while (total < length) {
+            val r = input.read(buffer, total, length - total)
+            if (r == -1) return false
+            total += r
+        }
+        return true
+    }
+
+
+
     suspend fun handle() = withContext(Dispatchers.IO) {
         try {
             clientSock.soTimeout = 0
@@ -25,39 +37,40 @@ class DirectSocks5Connection(
 
             // 1. Greeting
             val header = ByteArray(2)
-            if (clientIn.read(header) < 2) return@withContext
+            if (!readExact(clientIn, header)) return@withContext
             if (header[0] != 5.toByte()) return@withContext
-            val nmethods = header[1].toInt()
+            val nmethods = header[1].toInt() and 0xFF
             val methods = ByteArray(nmethods)
-            if (clientIn.read(methods) < nmethods) return@withContext
+            if (!readExact(clientIn, methods)) return@withContext
 
             clientOut.write(byteArrayOf(5, 0))
             clientOut.flush()
 
             // 2. Client Request
             val req = ByteArray(4)
-            if (clientIn.read(req) < 4) return@withContext
+            if (!readExact(clientIn, req)) return@withContext
             if (req[0] != 5.toByte() || req[1] != 1.toByte()) {
                 sendReply(clientOut, 0x07)
                 return@withContext
             }
-            val atyp = req[3].toInt()
+            val atyp = req[3].toInt() and 0xFF
             val hostStr: String
             when (atyp) {
                 1 -> {
                     val addrBytes = ByteArray(4)
-                    clientIn.read(addrBytes)
+                    if (!readExact(clientIn, addrBytes)) return@withContext
                     hostStr = InetAddress.getByAddress(addrBytes).hostAddress ?: ""
                 }
                 3 -> {
                     val dlen = clientIn.read()
+                    if (dlen <= 0) return@withContext
                     val domainBytes = ByteArray(dlen)
-                    clientIn.read(domainBytes)
+                    if (!readExact(clientIn, domainBytes)) return@withContext
                     hostStr = String(domainBytes)
                 }
                 4 -> {
                     val addrBytes = ByteArray(16)
-                    clientIn.read(addrBytes)
+                    if (!readExact(clientIn, addrBytes)) return@withContext
                     hostStr = InetAddress.getByAddress(addrBytes).hostAddress ?: ""
                 }
                 else -> {
@@ -66,7 +79,7 @@ class DirectSocks5Connection(
                 }
             }
             val portBytes = ByteArray(2)
-            clientIn.read(portBytes)
+            if (!readExact(clientIn, portBytes)) return@withContext
             val port = ((portBytes[0].toInt() and 0xFF) shl 8) or (portBytes[1].toInt() and 0xFF)
 
             Log.d(TAG, "FakeVPN connecting directly to $hostStr:$port")
@@ -91,17 +104,31 @@ class DirectSocks5Connection(
             val fakeTlsEnabled = Prefs.fakeVpnFakeTlsEnabled && port == 443
             val fakeTlsDomains = Prefs.fakeVpnFakeTlsDomains.split(" ", "\n", "\r").filter { it.isNotBlank() }
 
-            val p1 = launch { 
-                if (fakeTlsEnabled && fakeTlsDomains.isNotEmpty()) {
-                    pipeWithFakeTls(clientIn, remoteSock.getOutputStream(), fakeTlsDomains)
-                } else {
-                    pipe(clientIn, remoteSock.getOutputStream())
+            var p1: Job? = null
+            var p2: Job? = null
+            p1 = launch {
+                try {
+                    if (fakeTlsEnabled && fakeTlsDomains.isNotEmpty()) {
+                        pipeWithFakeTls(clientIn, remoteSock.getOutputStream(), fakeTlsDomains)
+                    } else {
+                        pipe(clientIn, remoteSock.getOutputStream())
+                    }
+                } finally {
+                    try { remoteSock.close() } catch (_: Exception) {}
+                    p2?.cancel()
                 }
             }
-            val p2 = launch { pipe(remoteSock.getInputStream(), clientOut) }
+            p2 = launch {
+                try {
+                    pipe(remoteSock.getInputStream(), clientOut)
+                } finally {
+                    try { clientSock.close() } catch (_: Exception) {}
+                    p1?.cancel()
+                }
+            }
             p1.join()
             p2.join()
-            remoteSock.close()
+            try { remoteSock.close() } catch (_: Exception) {}
 
         } catch (e: Exception) {
             // connection dropped

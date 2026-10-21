@@ -38,37 +38,47 @@ object EasyVpnUpdater {
 
     suspend fun downloadUrlContent(urlStr: String): String? = withContext(Dispatchers.IO) {
         // 1. Попытка прямого скачивания (при наличии прямого доступа или через системный VPN)
+        var connDirect: HttpURLConnection? = null
         try {
             val url = URL(urlStr)
-            val conn = url.openConnection() as HttpURLConnection
-            conn.connectTimeout = 8000
-            conn.readTimeout = 8000
-            conn.setRequestProperty("User-Agent", "v2rayng/1.8.12 (Android; Mobile)")
-            val code = conn.responseCode
+            connDirect = (url.openConnection() as HttpURLConnection).apply {
+                connectTimeout = 8000
+                readTimeout = 8000
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", "v2rayng/1.8.12 (Android; Mobile)")
+            }
+            val code = connDirect.responseCode
             if (code in 200..299) {
-                val data = conn.inputStream.bufferedReader().readText()
+                val data = connDirect.inputStream.bufferedReader().readText()
                 if (data.isNotBlank()) return@withContext data
             }
         } catch (e: Exception) {
             Log.d(TAG, "Direct download of $urlStr failed: ${e.message}")
+        } finally {
+            try { connDirect?.disconnect() } catch (_: Exception) {}
         }
 
         // 2. Если прямой доступ не сработал, но запущен EasyVPN, скачиваем через локальный SOCKS5 (127.0.0.1:easyVpnProxyPort)
         if (EasyVpnServer.isRunning) {
+            var connProxy: HttpURLConnection? = null
             try {
                 val proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", Prefs.easyVpnProxyPort))
                 val url = URL(urlStr)
-                val conn = url.openConnection(proxy) as HttpURLConnection
-                conn.connectTimeout = 8000
-                conn.readTimeout = 8000
-                conn.setRequestProperty("User-Agent", "v2rayng/1.8.12 (Android; Mobile)")
-                val code = conn.responseCode
+                connProxy = (url.openConnection(proxy) as HttpURLConnection).apply {
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", "v2rayng/1.8.12 (Android; Mobile)")
+                }
+                val code = connProxy.responseCode
                 if (code in 200..299) {
-                    val data = conn.inputStream.bufferedReader().readText()
+                    val data = connProxy.inputStream.bufferedReader().readText()
                     if (data.isNotBlank()) return@withContext data
                 }
             } catch (e: Exception) {
                 Log.d(TAG, "Proxy download of $urlStr via EasyVpn failed: ${e.message}")
+            } finally {
+                try { connProxy?.disconnect() } catch (_: Exception) {}
             }
         }
 
@@ -108,11 +118,11 @@ object EasyVpnUpdater {
                     if (!coroutineContext.isActive) return@withPermit null
                     try {
                         val start = System.currentTimeMillis()
-                        val sock = Socket()
-                        sock.connect(InetSocketAddress(node.server, node.port), 2000)
-                        val rtt = System.currentTimeMillis() - start
-                        sock.close()
-                        Pair(node, rtt)
+                        Socket().use { sock ->
+                            sock.connect(InetSocketAddress(node.server, node.port), 2000)
+                            val rtt = System.currentTimeMillis() - start
+                            Pair(node, rtt)
+                        }
                     } catch (_: Exception) {
                         null
                     }
@@ -404,6 +414,9 @@ object EasyVpnUpdater {
             put("settings", JSONObject())
         })
 
+        val targetTag = if (activeNodeIndex in 0 until nodes.size) "proxy-$activeNodeIndex" else null
+        val hasTarget = targetTag != null && (0 until proxyTags.length()).any { proxyTags.getString(it) == targetTag }
+
         return JSONObject().apply {
             put("log", JSONObject().apply {
                 put("loglevel", "warning")
@@ -433,15 +446,15 @@ object EasyVpnUpdater {
 
             put("routing", JSONObject().apply {
                 put("domainStrategy", "AsIs")
-                if (nodes.isNotEmpty() && activeNodeIndex in 0 until nodes.size) {
+                if (hasTarget) {
                     put("rules", JSONArray().apply {
                         put(JSONObject().apply {
                             put("type", "field")
                             put("inboundTag", JSONArray().apply { put("socks-in") })
-                            put("outboundTag", "proxy-$activeNodeIndex")
+                            put("outboundTag", targetTag)
                         })
                     })
-                } else if (nodes.isNotEmpty()) {
+                } else if (proxyTags.length() > 0) {
                     put("balancers", JSONArray().apply {
                         put(JSONObject().apply {
                             put("tag", "balancer")
@@ -469,7 +482,7 @@ object EasyVpnUpdater {
                 }
             })
 
-            if (nodes.isNotEmpty() && activeNodeIndex !in 0 until nodes.size) {
+            if (proxyTags.length() > 0 && (activeNodeIndex !in 0 until nodes.size || !hasTarget)) {
                 put("observatory", JSONObject().apply {
                     put("subjectSelector", JSONArray().apply { put("proxy-") })
                     put("probeUrl", "http://cp.cloudflare.com/generate_204")
