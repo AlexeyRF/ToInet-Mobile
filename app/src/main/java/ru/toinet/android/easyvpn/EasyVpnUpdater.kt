@@ -359,6 +359,28 @@ object EasyVpnUpdater {
                                 if (effectiveHost.isNotEmpty()) {
                                     put("host", effectiveHost)
                                 }
+                                val effectiveMode = if (node.mode.isNotEmpty()) node.mode else "auto"
+                                put("mode", effectiveMode)
+
+                                if (node.extra.isNotEmpty()) {
+                                    try {
+                                        val extraObj = JSONObject(node.extra)
+                                        val keys = extraObj.keys()
+                                        while (keys.hasNext()) {
+                                            val k = keys.next()
+                                            if (!extraObj.isNull(k)) {
+                                                val v = extraObj.get(k)
+                                                if (k == "host" || k == "path" || k == "mode") {
+                                                    if (optString(k, "").isEmpty()) {
+                                                        put(k, v)
+                                                    }
+                                                } else {
+                                                    put(k, v)
+                                                }
+                                            }
+                                        }
+                                    } catch (_: Exception) {}
+                                }
                             }
                             put("splithttpSettings", shObj)
                             put("xhttpSettings", shObj)
@@ -419,7 +441,7 @@ object EasyVpnUpdater {
 
         return JSONObject().apply {
             put("log", JSONObject().apply {
-                put("loglevel", "warning")
+                put("loglevel", "info")
             })
 
             put("inbounds", JSONArray().apply {

@@ -2,6 +2,7 @@ package ru.toinet.android.vpn.services
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -43,16 +44,44 @@ class AppVpnService : LifecycleVpnService() {
         const val ACTION_SWITCH_SERVER: String = "ru.toinet.android.vpn.SWITCH_SERVER"
 
         private var status: ServiceStatus = ServiceStatus.Disconnected
+
+        @Volatile
+        var activeService: AppVpnService? = null
+            private set
+
+        @Volatile
+        var currentLogMessage: String? = null
+
+        @JvmStatic
+        fun updateLogNotification(context: Context, logMessage: String) {
+            currentLogMessage = logMessage
+            val service = activeService ?: return
+            if (status == ServiceStatus.Connected && ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
+                try {
+                    val nm = service.getSystemService(android.app.NotificationManager::class.java)
+                    nm?.notify(FOREGROUND_SERVICE_ID, service.createNotification())
+                } catch (_: Exception) {}
+            }
+        }
     }
 
 
     override fun onCreate() {
         super.onCreate()
+        activeService = this
         registerNotificationChannel(
             this,
             NOTIFICATION_CHANNEL_ID,
             R.string.vpn_channel_name,
         )
+    }
+
+    override fun onDestroy() {
+        if (activeService == this) {
+            activeService = null
+        }
+        currentLogMessage = null
+        super.onDestroy()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -69,6 +98,10 @@ class AppVpnService : LifecycleVpnService() {
 
         return when (action) {
             START_ACTION -> {
+                currentLogMessage = null
+                ru.toinet.android.util.NotificationLogger.lastActiveVpnLog = null
+                sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
+                ru.toinet.android.util.NotificationLogger.log(this, ru.toinet.android.util.Prefs.vpnProvider, "Подключение к VPN (${ru.toinet.android.util.Prefs.vpnProvider})...")
                 lifecycleScope.launch { start() }
                 START_STICKY
             }
@@ -428,10 +461,7 @@ class AppVpnService : LifecycleVpnService() {
                 ServiceStatus.Connected -> org.torproject.jni.TorService.STATUS_ON
                 ServiceStatus.Disconnected, ServiceStatus.Failed -> org.torproject.jni.TorService.STATUS_OFF
             }
-            val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS)
-            statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, toinetStatus)
-            statusIntent.setPackage(packageName)
-            sendBroadcast(statusIntent)
+            sendLocalStatus(toinetStatus)
         }
 
         val intent = Intent(
@@ -443,6 +473,16 @@ class AppVpnService : LifecycleVpnService() {
         )
         intent.putExtra(SENDER, Sender.VPN.ordinal)
         sendBroadcast(intent)
+    }
+
+    private fun sendLocalStatus(torStatus: String) {
+        if (!ru.toinet.android.util.Prefs.torEnabled) {
+            val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS).apply {
+                putExtra(org.torproject.jni.TorService.EXTRA_STATUS, torStatus)
+                setPackage(packageName)
+            }
+            sendBroadcast(statusIntent)
+        }
     }
 
     private fun createNotification(): Notification {
@@ -458,7 +498,7 @@ class AppVpnService : LifecycleVpnService() {
             else -> "VPN"
         }
         
-        val content = when (provider) {
+        val defaultDesc = when (provider) {
             "easyvpn" -> easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
             "tor" -> "Tor VPN запущен"
             "zapret" -> "Zapret VPN запущен"
@@ -467,6 +507,11 @@ class AppVpnService : LifecycleVpnService() {
             "rehab", "custom" -> "Socks Rehab VPN запущен"
             "fakevpn" -> "FakeVPN запущен"
             else -> getString(R.string.vpn_notification_content)
+        }
+        val content = if (!currentLogMessage.isNullOrBlank()) {
+            currentLogMessage!!
+        } else {
+            defaultDesc
         }
 
         val switchIntent = if (provider == "easyvpn") {

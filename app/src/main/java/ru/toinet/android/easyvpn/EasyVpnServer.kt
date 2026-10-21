@@ -30,7 +30,9 @@ data class VlessNode(
     val sid: String,
     val type: String,
     val serviceName: String,
-    val spx: String = ""
+    val spx: String = "",
+    val mode: String = "",
+    val extra: String = ""
 ) {
     companion object {
         fun parse(raw: String): VlessNode? {
@@ -108,7 +110,9 @@ data class VlessNode(
                     sid = queryParams["sid"] ?: "",
                     type = queryParams["type"] ?: "tcp",
                     serviceName = queryParams["servicename"] ?: "",
-                    spx = queryParams["spx"] ?: ""
+                    spx = queryParams["spx"] ?: "",
+                    mode = queryParams["mode"] ?: "",
+                    extra = queryParams["extra"] ?: ""
                 )
             } catch (e: Exception) {
                 return null
@@ -288,6 +292,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                     proc.inputStream.bufferedReader().useLines { lines ->
                         lines.forEach { line ->
                             Log.d(TAG, "[xray] $line")
+                            ru.toinet.android.util.NotificationLogger.log(context, "easyvpn", line)
                         }
                     }
                 } catch (_: Exception) {}

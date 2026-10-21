@@ -87,14 +87,23 @@ class ByeDpiProxyService : LifecycleService() {
         }
 
         try {
+            if (!ru.toinet.android.util.Prefs.torEnabled) {
+                val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS)
+                statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_STARTING)
+                statusIntent.setPackage(packageName)
+                sendBroadcast(statusIntent)
+            }
+            ru.toinet.android.util.NotificationLogger.log(this, "byedpi", "Запуск ByeDPI Proxy...")
             startForeground()
             mutex.withLock {
                 startProxy()
             }
             updateStatus(ServiceStatus.Connected)
+            ru.toinet.android.util.NotificationLogger.log(this, "byedpi", "ByeDPI Proxy запущен")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start proxy", e)
             updateStatus(ServiceStatus.Failed)
+            ru.toinet.android.util.NotificationLogger.log(this, "byedpi", "Ошибка запуска ByeDPI: ${e.message}")
             stop()
         }
     }

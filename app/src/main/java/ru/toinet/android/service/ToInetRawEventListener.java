@@ -27,13 +27,22 @@ public class ToInetRawEventListener implements RawEventListener {
     private final ToInetService mService;
     private long mTotalBandwidthWritten, mTotalBandwidthRead;
     private final Map<String, DebugLoggingNode> hmBuiltNodes;
-    private final Map<Integer, ExitNode> exitNodeMap;
-    private final Set<Integer> ignoredInternalCircuits;
+    private final Map<Long, ExitNode> exitNodeMap;
+    private final Set<Long> ignoredInternalCircuits;
 
     private static final String CIRCUIT_BUILD_FLAG_IS_INTERNAL = "IS_INTERNAL";
     private static final String CIRCUIT_BUILD_FLAG_ONE_HOP_TUNNEL = "ONEHOP_TUNNEL";
 
-    ToInetRawEventListener(ToInetService toinetService) {
+    private static Long parseCircuitId(String idStr) {
+        if (idStr == null) return null;
+        try {
+            return Long.parseLong(idStr);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+        ToInetRawEventListener(ToInetService toinetService) {
         mService = toinetService;
         mTotalBandwidthRead = 0;
         mTotalBandwidthWritten = 0;
@@ -46,39 +55,58 @@ public class ToInetRawEventListener implements RawEventListener {
 
     @Override
     public void onEvent(String keyword, String data) {
-        String[] payload = data.split(" ");
-        switch (keyword) {
-            case TorControlCommands.EVENT_BANDWIDTH_USED ->
-                    handleBandwidth(Long.parseLong(payload[0]), Long.parseLong(payload[1]));
-            case TorControlCommands.EVENT_NEW_DESC -> handleNewDescriptors(payload);
-            case TorControlCommands.EVENT_STREAM_STATUS -> {
-
-                handleStreamEventExpandedNotifications(payload[1], payload[3], payload[2], payload[4]);
-
-                if (Prefs.useDebugLogging()) handleStreamEventsDebugLogging(payload[1], payload[0]);
-            }
-            case TorControlCommands.EVENT_CIRCUIT_STATUS -> {
-                String status = payload[1];
-                String circuitId = payload[0];
-                String path;
-                if (payload.length < 3 || status.equals(TorControlCommands.CIRC_EVENT_LAUNCHED))
-                    path = "";
-                else path = payload[2];
-                handleCircuitStatus(status, circuitId, path);
-
-                // don't bother looking up internal circuits that ToInet clients won't directly use
-                if (data.contains(CIRCUIT_BUILD_FLAG_ONE_HOP_TUNNEL) || data.contains(CIRCUIT_BUILD_FLAG_IS_INTERNAL)) {
-                    ignoredInternalCircuits.add(Integer.parseInt(circuitId));
+        try {
+            String[] payload = data != null ? data.split(" ") : new String[0];
+            switch (keyword) {
+                case TorControlCommands.EVENT_BANDWIDTH_USED -> {
+                    if (payload.length >= 2) {
+                        try {
+                            handleBandwidth(Long.parseLong(payload[0]), Long.parseLong(payload[1]));
+                        } catch (Exception ignored) {}
+                    }
                 }
-                handleCircuitStatusExpandedNotifications(status, circuitId, path);
+                case TorControlCommands.EVENT_NEW_DESC -> handleNewDescriptors(payload);
+                case TorControlCommands.EVENT_STREAM_STATUS -> {
+                    if (payload.length >= 5) {
+                        handleStreamEventExpandedNotifications(payload[1], payload[3], payload[2], payload[4]);
+                    }
+                    if (payload.length >= 2 && Prefs.useDebugLogging()) {
+                        handleStreamEventsDebugLogging(payload[1], payload[0]);
+                    }
+                }
+                case TorControlCommands.EVENT_CIRCUIT_STATUS -> {
+                    if (payload.length >= 2) {
+                        String status = payload[1];
+                        String circuitId = payload[0];
+                        String path;
+                        if (payload.length < 3 || status.equals(TorControlCommands.CIRC_EVENT_LAUNCHED))
+                            path = "";
+                        else path = payload[2];
+                        handleCircuitStatus(status, circuitId, path);
+
+                        // don't bother looking up internal circuits that ToInet clients won't directly use
+                        if (data != null && (data.contains(CIRCUIT_BUILD_FLAG_ONE_HOP_TUNNEL) || data.contains(CIRCUIT_BUILD_FLAG_IS_INTERNAL))) {
+                            Long cId = parseCircuitId(circuitId);
+                            if (cId != null) {
+                                ignoredInternalCircuits.add(cId);
+                            }
+                        }
+                        handleCircuitStatusExpandedNotifications(status, circuitId, path);
+                    }
+                }
+                case TorControlCommands.EVENT_OR_CONN_STATUS -> {
+                    if (payload.length >= 2) {
+                        handleConnectionStatus(payload[1], payload[0]);
+                    }
+                }
+                case TorControlCommands.EVENT_DEBUG_MSG, TorControlCommands.EVENT_INFO_MSG,
+                     TorControlCommands.EVENT_NOTICE_MSG, TorControlCommands.EVENT_WARN_MSG,
+                     TorControlCommands.EVENT_ERR_MSG -> handleDebugMessage(keyword, data);
+                case null, default ->
+                        mService.logNotice("Message (" + keyword + "): " + data);
             }
-            case TorControlCommands.EVENT_OR_CONN_STATUS ->
-                    handleConnectionStatus(payload[1], payload[0]);
-            case TorControlCommands.EVENT_DEBUG_MSG, TorControlCommands.EVENT_INFO_MSG,
-                 TorControlCommands.EVENT_NOTICE_MSG, TorControlCommands.EVENT_WARN_MSG,
-                 TorControlCommands.EVENT_ERR_MSG -> handleDebugMessage(keyword, data);
-            case null, default ->  // unrecognized keyword
-                    mService.logNotice("Message (" + keyword + "): " + data);
+        } catch (Throwable t) {
+            Log.e("ToInet", "Error handling Tor event " + keyword, t);
         }
     }
 
@@ -114,7 +142,8 @@ public class ToInetRawEventListener implements RawEventListener {
     private void handleStreamEventExpandedNotifications(String status, String target, String circuitId, String clientProtocol) {
         if (!status.equals(TorControlCommands.STREAM_EVENT_SUCCEEDED)) return;
         if (!clientProtocol.contains("SOCKS5")) return;
-        var id = Integer.parseInt(circuitId);
+        var id = parseCircuitId(circuitId);
+        if (id == null) return;
         if (target.contains(".onion"))
             return; // don't display to users exit node info for onion addresses!
         var node = exitNodeMap.get(id);
@@ -149,7 +178,8 @@ public class ToInetRawEventListener implements RawEventListener {
     }
 
     private void handleCircuitStatusExpandedNotifications(String circuitStatus, String circuitId, String path) {
-        var id = Integer.parseInt(circuitId);
+        var id = parseCircuitId(circuitId);
+        if (id == null) return;
         switch (circuitStatus) {
             case TorControlCommands.CIRC_EVENT_BUILT -> {
                 if (ignoredInternalCircuits.contains(id))

@@ -19,8 +19,12 @@ object TorConfig {
             "SafeLogging 1",
             "FastFirstHopPK 1",
             "OptimisticData 1",
+            "ClientUseIPv4 1",
             "LongLivedPorts 21,22,706,1863,5050,5190,5222,5223,6667,6697,8300,443,80,8443,5228"
         )
+        if (!Prefs.preferIpv6) {
+            conf.add("ClientUseIPv6 0")
+        }
 
         val socksPortPref = getPort(Prefs.proxySocksPort ?: ToInetConstants.SOCKS_PROXY_PORT_DEFAULT)
         val httpPortPref = getPort(Prefs.proxyHttpPort ?: ToInetConstants.HTTP_PROXY_PORT_DEFAULT)

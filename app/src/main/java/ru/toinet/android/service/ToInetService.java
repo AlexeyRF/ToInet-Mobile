@@ -466,55 +466,71 @@ public class ToInetService extends VpnService {
         torServiceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                //moved torService to a local variable, since we only need it once
-                TorService torService = ((TorService.LocalBinder) iBinder).getService();
-
-                while ((conn = torService.getTorControlConnection()) == null) {
+                mExecutor.execute(() -> {
                     try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        Log.e(TAG, e.toString());
+                        TorService torService = ((TorService.LocalBinder) iBinder).getService();
+
+                        int retries = 0;
+                        while ((conn = torService.getTorControlConnection()) == null && retries < 60) {
+                            try {
+                                Thread.sleep(500);
+                                retries++;
+                            } catch (InterruptedException e) {
+                                Log.e(TAG, e.toString());
+                                break;
+                            }
+                        }
+
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            Log.e(TAG, e.toString());
+                        }
+
+                        mToInetRawEventListener = new ToInetRawEventListener(ToInetService.this);
+
+                        if (conn == null) return;
+                        try {
+                            initControlConnection();
+                            if (conn == null)
+                                return;
+
+                            conn.addRawEventListener(mToInetRawEventListener);
+                            logNotice(getString(R.string.status_connected_control_port));
+
+                            var events = new ArrayList<>(Arrays.asList(TorControlCommands.EVENT_OR_CONN_STATUS, TorControlCommands.EVENT_CIRCUIT_STATUS, TorControlCommands.EVENT_NOTICE_MSG, TorControlCommands.EVENT_WARN_MSG, TorControlCommands.EVENT_ERR_MSG, TorControlCommands.EVENT_BANDWIDTH_USED, TorControlCommands.EVENT_NEW_DESC, TorControlCommands.EVENT_ADDRMAP));
+                            if (Prefs.useDebugLogging())
+                                events.addAll(Arrays.asList(TorControlCommands.EVENT_DEBUG_MSG, TorControlCommands.EVENT_INFO_MSG, TorControlCommands.EVENT_STREAM_STATUS));
+                            conn.setEvents(events);
+                        } catch (IOException e) {
+                            Log.e(TAG, "initControlConnection error", e);
+                        }
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Error in onServiceConnected background handler", t);
                     }
-                }
-
-                try { //wait another second before we set our own event listener
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    Log.e(TAG, e.toString());
-                }
-
-                mToInetRawEventListener = new ToInetRawEventListener(ToInetService.this);
-
-                if (conn == null) return;
-                try {
-                    initControlConnection();
-                    if (conn == null)
-                        return; // maybe there was an error setting up the control connection
-
-                    //override the TorService event listener
-                    conn.addRawEventListener(mToInetRawEventListener);
-
-                    logNotice(getString(R.string.status_connected_control_port));
-
-                    var events = new ArrayList<>(Arrays.asList(TorControlCommands.EVENT_OR_CONN_STATUS, TorControlCommands.EVENT_CIRCUIT_STATUS, TorControlCommands.EVENT_NOTICE_MSG, TorControlCommands.EVENT_WARN_MSG, TorControlCommands.EVENT_ERR_MSG, TorControlCommands.EVENT_BANDWIDTH_USED, TorControlCommands.EVENT_NEW_DESC, TorControlCommands.EVENT_ADDRMAP));
-                    if (Prefs.useDebugLogging())
-                        events.addAll(Arrays.asList(TorControlCommands.EVENT_DEBUG_MSG, TorControlCommands.EVENT_INFO_MSG, TorControlCommands.EVENT_STREAM_STATUS));
-                    conn.setEvents(events);
-                } catch (IOException e) {
-                    Log.e(TAG, e.toString());
-                }
+                });
             }
 
             @Override
             public void onServiceDisconnected(ComponentName componentName) {
                 Log.d(TAG, "TorService: onServiceDisconnected");
+                conn = null;
+                torServiceConnection = null;
+                shouldUnbindTorService = false;
+                mCurrentStatus = STATUS_OFF;
                 sendLocalStatusOffBroadcast();
+                scheduleAutoReconnectIfEnabled();
             }
 
             @Override
             public void onBindingDied(ComponentName componentName) {
                 Log.w(TAG, "TorService: onBindingDied");
+                conn = null;
+                torServiceConnection = null;
+                shouldUnbindTorService = false;
+                mCurrentStatus = STATUS_OFF;
                 sendLocalStatusOffBroadcast();
+                scheduleAutoReconnectIfEnabled();
             }
         };
 
