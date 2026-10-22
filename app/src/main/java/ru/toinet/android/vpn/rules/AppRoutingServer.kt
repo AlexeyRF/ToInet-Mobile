@@ -9,6 +9,7 @@ import kotlinx.coroutines.*
 import ru.toinet.android.util.Prefs
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetAddress
@@ -75,6 +76,7 @@ class AppRoutingServer(
         var upstreamSocket: Socket? = null
         try {
             clientSocket.tcpNoDelay = true
+            clientSocket.keepAlive = true
             val clientIn = DataInputStream(clientSocket.getInputStream())
             val clientOut = DataOutputStream(clientSocket.getOutputStream())
 
@@ -214,18 +216,21 @@ class AppRoutingServer(
                     val directSocket = Socket()
                     vpnService.protect(directSocket)
                     directSocket.tcpNoDelay = true
+                    directSocket.keepAlive = true
                     try {
                         withContext(Dispatchers.IO) {
                             directSocket.connect(InetSocketAddress(dstHost, dstPort), 10000)
                         }
                     } catch (e: Exception) {
-                        clientOut.write(byteArrayOf(5, 4, 0, 1, 0, 0, 0, 0, 0, 0)) // Host unreachable
-                        clientOut.flush()
+                        try {
+                            clientOut.write(byteArrayOf(5, 4, 0, 1, 0, 0, 0, 0, 0, 0)) // Host unreachable
+                            clientOut.flush()
+                        } catch (_: Exception) {}
                         clientSocket.close()
                         return
                     }
                     upstreamSocket = directSocket
-                    // Success response to tun2socks
+                    // Success response to tun2socks (standard IPv4 0.0.0.0:0)
                     clientOut.write(byteArrayOf(5, 0, 0, 1, 0, 0, 0, 0, 0, 0))
                     clientOut.flush()
 
@@ -236,14 +241,17 @@ class AppRoutingServer(
                     val proxyPort = getProxyPort(targetAction)
                     val proxySocket = Socket()
                     proxySocket.tcpNoDelay = true
+                    proxySocket.keepAlive = true
                     try {
                         withContext(Dispatchers.IO) {
                             proxySocket.connect(InetSocketAddress("127.0.0.1", proxyPort), 5000)
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to connect to proxy $targetAction on port $proxyPort", e)
-                        clientOut.write(byteArrayOf(5, 4, 0, 1, 0, 0, 0, 0, 0, 0))
-                        clientOut.flush()
+                        try {
+                            clientOut.write(byteArrayOf(5, 4, 0, 1, 0, 0, 0, 0, 0, 0))
+                            clientOut.flush()
+                        } catch (_: Exception) {}
                         clientSocket.close()
                         return
                     }
@@ -272,21 +280,33 @@ class AppRoutingServer(
                     // Read upstream CONNECT response
                     val upRespHeader = ByteArray(4)
                     upIn.readFully(upRespHeader)
-                    clientOut.write(upRespHeader)
+                    if (upRespHeader[0].toInt() != 5) {
+                        throw IOException("Invalid SOCKS5 version from upstream")
+                    }
 
-                    val restLen = when (upRespHeader[3].toInt()) {
+                    // Discard upstream BND.ADDR and BND.PORT to fully consume handshake
+                    val addrLen = when (upRespHeader[3].toInt()) {
                         1 -> 4 + 2 // IPv4
                         4 -> 16 + 2 // IPv6
                         3 -> { // Domain
                             val dlen = upIn.readUnsignedByte()
-                            clientOut.writeByte(dlen)
                             dlen + 2
                         }
                         else -> 6
                     }
-                    val restBuf = ByteArray(restLen)
-                    upIn.readFully(restBuf)
-                    clientOut.write(restBuf)
+                    val discardBuf = ByteArray(addrLen)
+                    upIn.readFully(discardBuf)
+
+                    if (upRespHeader[1].toInt() != 0) {
+                        clientOut.write(byteArrayOf(5, upRespHeader[1], 0, 1, 0, 0, 0, 0, 0, 0))
+                        clientOut.flush()
+                        clientSocket.close()
+                        proxySocket.close()
+                        return
+                    }
+
+                    // Success response to tun2socks (standard IPv4 0.0.0.0:0)
+                    clientOut.write(byteArrayOf(5, 0, 0, 1, 0, 0, 0, 0, 0, 0))
                     clientOut.flush()
 
                     pipeSockets(clientSocket, proxySocket)
@@ -311,14 +331,16 @@ class AppRoutingServer(
                         val packages = vpnService.packageManager.getPackagesForUid(uid)
                         if (packages != null) {
                             for (pkg in packages) {
-                                val act = ProxifierRulesManager.findActionForPackage(pkg)
-                                if (act != Prefs.appRoutingDefaultAction) {
-                                    return act
+                                val rule = ProxifierRulesManager.findRuleForPackage(pkg)
+                                if (rule != null) {
+                                    return rule.action
                                 }
                             }
                         }
                     }
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error resolving connection owner: $srcIp:$srcPort -> $dstHost:$dstPort", e)
+                }
             }
         }
         return Prefs.appRoutingDefaultAction
@@ -347,6 +369,7 @@ class AppRoutingServer(
 
     private suspend fun pipeSockets(s1: Socket, s2: Socket) = coroutineScope {
         val j1 = launch(Dispatchers.IO) {
+            var normalEof = false
             try {
                 val input: InputStream = s1.getInputStream()
                 val output: OutputStream = s2.getOutputStream()
@@ -356,8 +379,14 @@ class AppRoutingServer(
                     output.write(buffer, 0, bytesRead)
                     output.flush()
                 }
-            } catch (_: Exception) {}
-            try { s2.shutdownOutput() } catch (_: Exception) {}
+                normalEof = true
+                try { s2.shutdownOutput() } catch (_: Exception) {}
+            } catch (_: Exception) {
+            } finally {
+                if (!normalEof) {
+                    try { s2.close() } catch (_: Exception) {}
+                }
+            }
         }
 
         val j2 = launch(Dispatchers.IO) {
@@ -370,11 +399,20 @@ class AppRoutingServer(
                     output.write(buffer, 0, bytesRead)
                     output.flush()
                 }
-            } catch (_: Exception) {}
-            try { s1.shutdownOutput() } catch (_: Exception) {}
+                try { s1.shutdownOutput() } catch (_: Exception) {}
+            } catch (_: Exception) {
+            } finally {
+                try { s1.close() } catch (_: Exception) {}
+                try { s2.close() } catch (_: Exception) {}
+            }
         }
 
-        j1.join()
-        j2.join()
+        try {
+            j2.join()
+        } finally {
+            try { s1.close() } catch (_: Exception) {}
+            try { s2.close() } catch (_: Exception) {}
+            j1.cancel()
+        }
     }
 }

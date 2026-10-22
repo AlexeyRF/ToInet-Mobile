@@ -54,8 +54,12 @@ fun Context.sendIntentToService(action: String) {
     val isStop = action == org.torproject.jni.TorService.ACTION_STOP
 
     val isGlobalVpnEnabled = Prefs.isGlobalVpnEnabled
+    val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && Prefs.appRoutingEnabled
+    val neededProviders = if (isGlobalVpnEnabled && isAppRouting) {
+        ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders()
+    } else emptySet()
 
-    val isByedpiActive = byedpiEnabled || (isGlobalVpnEnabled && Prefs.vpnProvider == "byedpi")
+    val isByedpiActive = byedpiEnabled || (isGlobalVpnEnabled && (Prefs.vpnProvider == "byedpi" || neededProviders.contains("byedpi")))
     if (isByedpiActive || action == org.torproject.jni.TorService.ACTION_STOP) {
         val byedpiAction = when (action) {
             org.torproject.jni.TorService.ACTION_START -> ru.toinet.android.vpn.data.START_ACTION
@@ -97,7 +101,7 @@ fun Context.sendIntentToService(action: String) {
         )
     }
 
-    val isTorActive = torEnabled || (isGlobalVpnEnabled && Prefs.vpnProvider == "tor")
+    val isTorActive = torEnabled || (isGlobalVpnEnabled && (Prefs.vpnProvider == "tor" || neededProviders.contains("tor")))
     if (isTorActive || action == org.torproject.jni.TorService.ACTION_STOP) {
         sendIntentToService(
             Intent(this, ToInetService::class.java).apply {

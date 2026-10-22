@@ -66,14 +66,18 @@ object ProxifierRulesManager {
         )
     }
 
-    fun findActionForPackage(packageName: String): String {
+    fun findRuleForPackage(packageName: String): ProxifierRule? {
         val rules = getRules()
         for (rule in rules) {
             if (rule.enabled && rule.targetPackages.contains(packageName)) {
-                return rule.action
+                return rule
             }
         }
-        return Prefs.appRoutingDefaultAction
+        return null
+    }
+
+    fun findActionForPackage(packageName: String): String {
+        return findRuleForPackage(packageName)?.action ?: Prefs.appRoutingDefaultAction
     }
 
     fun getNeededProviders(): Set<String> {

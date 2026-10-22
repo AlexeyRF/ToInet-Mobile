@@ -196,8 +196,8 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
         override fun onBindViewHolder(holder: VH, position: Int) {
             val rule = rulesList[position]
             holder.tvRuleName.text = rule.name
+            holder.cbEnabled.setOnCheckedChangeListener(null)
             holder.cbEnabled.isChecked = rule.enabled
-
             holder.cbEnabled.setOnCheckedChangeListener { _, isChecked ->
                 rule.enabled = isChecked
             }
