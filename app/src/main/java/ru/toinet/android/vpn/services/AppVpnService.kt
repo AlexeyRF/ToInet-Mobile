@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 import ru.toinet.android.vpn.utility.*
+import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.sendIntentToService
 class AppVpnService : LifecycleVpnService() {
     private var tunFd: ParcelFileDescriptor? = null
@@ -34,6 +35,7 @@ class AppVpnService : LifecycleVpnService() {
     private var easyVpnServer: ru.toinet.android.easyvpn.EasyVpnServer? = null
     private var zapretServer: ru.toinet.android.zapret.ZapretServer? = null
     private var operaProxyServer: ru.toinet.android.operaproxy.OperaProxyServer? = null
+    private var appRoutingServer: ru.toinet.android.vpn.rules.AppRoutingServer? = null
     private val mutex = Mutex()
     private var stopping: Boolean = false
 
@@ -243,13 +245,13 @@ class AppVpnService : LifecycleVpnService() {
         ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/pdnsd.pid")
 
         val sharedPreferences = getPreferences()
+        val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
         val provider = ru.toinet.android.util.Prefs.vpnProvider
         var actualHost = "127.0.0.1"
         var actualPort = 1080
         when (provider) {
             "byedpi" -> actualPort = getByeDpiPreferences().port
             "tor" -> actualPort = 5242
-            // "tgws" -> actualPort = ru.toinet.android.util.Prefs.tgwsPort
             "rehab", "custom" -> actualPort = 1788
             "fakevpn" -> actualPort = 1790
             "operaproxy" -> {
@@ -262,34 +264,30 @@ class AppVpnService : LifecycleVpnService() {
         }
         var socksAddr = "$actualHost:$actualPort"
 
-        if (provider == "byedpi") {
+        val neededProviders: Set<String> = if (isAppRouting) {
+            ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders()
+        } else {
+            setOf(provider)
+        }
+
+        if (isAppRouting) {
+            appRoutingServer = ru.toinet.android.vpn.rules.AppRoutingServer(this, lifecycleScope).apply {
+                start()
+            }
+        }
+
+        if (neededProviders.contains("byedpi")) {
             val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 action = ru.toinet.android.vpn.data.START_ACTION
             }
             sendIntentToService(byedpiIntent, isForeground = ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi"))
         }
 
-        /*
-        if (provider == "tgws") {
-            ru.toinet.android.tgws.TgwsService.start(
-                this,
-                ru.toinet.android.util.Prefs.tgwsHost,
-                ru.toinet.android.util.Prefs.tgwsPort,
-                ru.toinet.android.util.Prefs.tgwsDcMappings,
-                ru.toinet.android.util.Prefs.tgwsSecret,
-                ru.toinet.android.util.Prefs.tgwsFakeTls,
-                false,
-                ru.toinet.android.util.Prefs.tgwsCfWorkerDomains,
-                ru.toinet.android.util.Prefs.tgwsCfProxyDomains
-            )
-        }
-        */
-
-        if (provider == "rehab" || provider == "custom") {
+        if (neededProviders.contains("rehab") || neededProviders.contains("custom")) {
             ru.toinet.android.rehabilitator.RehabilitatorService.start(this)
         }
 
-        if (provider == "easyvpn") {
+        if (neededProviders.contains("easyvpn")) {
             if (ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
                 ru.toinet.android.easyvpn.EasyVpnService.stop(this)
             }
@@ -304,19 +302,19 @@ class AppVpnService : LifecycleVpnService() {
             easyVpnServer?.start()
         }
 
-        if (provider == "fakevpn") {
+        if (neededProviders.contains("fakevpn")) {
             fakeVpnServer = ru.toinet.android.fakevpn.DirectSocks5Server(
                 java.net.InetSocketAddress("127.0.0.1", 1790)
             )
             fakeVpnServer?.start(lifecycleScope)
         }
 
-        if (provider == "operaproxy") {
+        if (neededProviders.contains("operaproxy") && ArchHelper.isOperaSupported) {
             operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this, lifecycleScope)
             operaProxyServer?.start()
         }
 
-        if (provider == "zapret") {
+        if (neededProviders.contains("zapret")) {
             zapretServer = ru.toinet.android.zapret.ZapretServer(this, lifecycleScope)
             zapretServer?.start()
         }
@@ -339,17 +337,34 @@ class AppVpnService : LifecycleVpnService() {
             "$dir/pdnsd.conf"
         ))
 
-        val command = mutableListOf(
-            "$libDir/libtun2socks.so",
-            "--netif-ipaddr", "26.26.26.2",
-            "--netif-netmask", "255.255.255.0",
-            "--socks-server-addr", socksAddr,
-            "--tunfd", fd.fd.toString(),
-            "--tunmtu", "1500",
-            "--loglevel", "3",
-            "--pid", "$dir/tun2socks.pid",
-            "--dnsgw", "26.26.26.1:8091"
-        )
+        val command = if (isAppRouting) {
+            mutableListOf(
+                "$libDir/libtun2socks.so",
+                "--netif-ipaddr", "26.26.26.2",
+                "--netif-netmask", "255.255.255.0",
+                "--socks-server-addr", "127.0.0.1:10850",
+                "--tunfd", fd.fd.toString(),
+                "--tunmtu", "1500",
+                "--loglevel", "3",
+                "--pid", "$dir/tun2socks.pid",
+                "--dnsgw", "26.26.26.1:8091",
+                "--username", "toinet",
+                "--password", "toinet",
+                "--append-source-to-username"
+            )
+        } else {
+            mutableListOf(
+                "$libDir/libtun2socks.so",
+                "--netif-ipaddr", "26.26.26.2",
+                "--netif-netmask", "255.255.255.0",
+                "--socks-server-addr", socksAddr,
+                "--tunfd", fd.fd.toString(),
+                "--tunmtu", "1500",
+                "--loglevel", "3",
+                "--pid", "$dir/tun2socks.pid",
+                "--dnsgw", "26.26.26.1:8091"
+            )
+        }
         
         if (ipv6) {
             command.add("--netif-ip6addr")
@@ -390,6 +405,9 @@ class AppVpnService : LifecycleVpnService() {
 
         tunFd?.close() ?: Log.w(TAG, "VPN not running")
         tunFd = null
+
+        appRoutingServer?.stop()
+        appRoutingServer = null
 
         val provider = ru.toinet.android.util.Prefs.vpnProvider
         if (provider == "byedpi" && !ru.toinet.android.util.Prefs.byedpiEnabled) {
@@ -486,8 +504,9 @@ class AppVpnService : LifecycleVpnService() {
     }
 
     private fun createNotification(): Notification {
+        val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
         val provider = ru.toinet.android.util.Prefs.vpnProvider
-        val title = when (provider) {
+        val title = if (isAppRouting) "ToInet (Proxifier)" else when (provider) {
             "easyvpn" -> "EasyVPN"
             "zapret" -> "Zapret"
             "operaproxy" -> "Opera Proxy"
@@ -498,7 +517,7 @@ class AppVpnService : LifecycleVpnService() {
             else -> "VPN"
         }
         
-        val defaultDesc = when (provider) {
+        val defaultDesc = if (isAppRouting) "Раздельное туннелирование по правилам" else when (provider) {
             "easyvpn" -> easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
             "tor" -> "Tor VPN запущен"
             "zapret" -> "Zapret VPN запущен"

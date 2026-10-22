@@ -1,0 +1,65 @@
+package ru.toinet.android.vpn.rules
+
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.UUID
+
+data class ProxifierRule(
+    val id: String = UUID.randomUUID().toString(),
+    var name: String,
+    var enabled: Boolean = true,
+    val targetPackages: MutableList<String> = mutableListOf(),
+    var action: String = ACTION_DIRECT
+) {
+    companion object {
+        const val ACTION_DIRECT = "direct"
+        const val ACTION_BLOCK = "block"
+        const val ACTION_BYEDPI = "byedpi"
+        const val ACTION_EASYVPN = "easyvpn"
+        const val ACTION_TOR = "tor"
+        const val ACTION_ZAPRET = "zapret"
+        const val ACTION_OPERAPROXY = "operaproxy"
+        const val ACTION_REHAB = "rehab"
+        const val ACTION_FAKEVPN = "fakevpn"
+
+        fun getActionTitle(action: String): String = when (action) {
+            ACTION_DIRECT -> "Direct (Напрямую)"
+            ACTION_BLOCK -> "Block (Блокировать)"
+            ACTION_BYEDPI -> "ByeDPI (порт 1080)"
+            ACTION_EASYVPN -> "Easy-VPN (Xray)"
+            ACTION_TOR -> "TOR (порт 5242)"
+            ACTION_ZAPRET -> "Zapret (порт 1081)"
+            ACTION_OPERAPROXY -> "Opera Proxy"
+            ACTION_REHAB -> "Socks Rehab (1788)"
+            ACTION_FAKEVPN -> "FakeVPN (1790)"
+            else -> action
+        }
+
+        fun fromJson(obj: JSONObject): ProxifierRule {
+            val id = obj.optString("id", UUID.randomUUID().toString())
+            val name = obj.optString("name", "Правило")
+            val enabled = obj.optBoolean("enabled", true)
+            val action = obj.optString("action", ACTION_DIRECT)
+            val pkgs = mutableListOf<String>()
+            val arr = obj.optJSONArray("targetPackages")
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    pkgs.add(arr.getString(i))
+                }
+            }
+            return ProxifierRule(id, name, enabled, pkgs, action)
+        }
+    }
+
+    fun toJson(): JSONObject {
+        val obj = JSONObject()
+        obj.put("id", id)
+        obj.put("name", name)
+        obj.put("enabled", enabled)
+        obj.put("action", action)
+        val arr = JSONArray()
+        targetPackages.forEach { arr.put(it) }
+        obj.put("targetPackages", arr)
+        return obj
+    }
+}

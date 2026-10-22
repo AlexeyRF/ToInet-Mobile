@@ -315,6 +315,21 @@ object Prefs {
         get() = cr?.getPrefString("pref_vpn_provider") ?: "byedpi"
         set(value) = cr?.putPref("pref_vpn_provider", value) ?: Unit
 
+    var appRoutingEnabled: Boolean
+        get() {
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return false
+            return cr?.getPrefBoolean("pref_app_routing_enabled", true) ?: true
+        }
+        set(value) = cr?.putPref("pref_app_routing_enabled", value) ?: Unit
+
+    var appRoutingRulesJson: String
+        get() = cr?.getPrefString("pref_app_routing_rules_json") ?: ""
+        set(value) = cr?.putPref("pref_app_routing_rules_json", value) ?: Unit
+
+    var appRoutingDefaultAction: String
+        get() = cr?.getPrefString("pref_app_routing_default_action") ?: "direct"
+        set(value) = cr?.putPref("pref_app_routing_default_action", value) ?: Unit
+
     var byedpiEnabled: Boolean
         get() = cr?.getPrefBoolean("byedpi_enabled", false) ?: false
         set(value) = cr?.putPref("byedpi_enabled", value) ?: Unit

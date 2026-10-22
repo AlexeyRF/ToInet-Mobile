@@ -39,6 +39,21 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
 
         binding.swVpnEnabled.isChecked = Prefs.isGlobalVpnEnabled
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            binding.llAppRouting.visibility = View.VISIBLE
+            binding.swAppRouting.isChecked = Prefs.appRoutingEnabled
+            binding.btnOpenProxifierRules.visibility = if (binding.swAppRouting.isChecked) View.VISIBLE else View.GONE
+            binding.swAppRouting.setOnCheckedChangeListener { _, isChecked ->
+                binding.btnOpenProxifierRules.visibility = if (isChecked) View.VISIBLE else View.GONE
+            }
+            binding.btnOpenProxifierRules.setOnClickListener {
+                dismiss()
+                ProxifierRulesBottomSheet().show(parentFragmentManager, ProxifierRulesBottomSheet.TAG)
+            }
+        } else {
+            binding.llAppRouting.visibility = View.GONE
+        }
+
         when (Prefs.vpnProvider) {
             "byedpi" -> binding.rbByedpi.isChecked = true
             "easyvpn" -> binding.rbEasyVpn.isChecked = true
@@ -82,6 +97,9 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
 
         binding.btnSave.setOnClickListener {
             Prefs.isGlobalVpnEnabled = binding.swVpnEnabled.isChecked
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                Prefs.appRoutingEnabled = binding.swAppRouting.isChecked
+            }
             Prefs.vpnProvider = when (binding.rgVpnProvider.checkedRadioButtonId) {
                 binding.rbByedpi.id -> "byedpi"
                 binding.rbEasyVpn.id -> "easyvpn"

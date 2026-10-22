@@ -28,6 +28,28 @@
             android:text="Включить VPN туннелирование"
             android:layout_marginBottom="8dp" />
 
+        <LinearLayout
+            android:id="@+id/llAppRouting"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/swAppRouting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Раздельное туннелирование (Proxifier rules)" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOpenProxifierRules"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Настроить правила проксификации →" />
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

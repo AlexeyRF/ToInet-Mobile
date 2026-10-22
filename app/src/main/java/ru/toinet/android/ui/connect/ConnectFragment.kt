@@ -113,7 +113,11 @@ class ConnectFragment : Fragment(),
         }
         
         binding.btnProvider.setOnClickListener {
-            VpnBottomSheet().show(requireActivity().supportFragmentManager, VpnBottomSheet.TAG)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && Prefs.appRoutingEnabled) {
+                ProxifierRulesBottomSheet().show(requireActivity().supportFragmentManager, ProxifierRulesBottomSheet.TAG)
+            } else {
+                VpnBottomSheet().show(requireActivity().supportFragmentManager, VpnBottomSheet.TAG)
+            }
         }
         
         binding.btnSettings.setOnClickListener {
@@ -228,7 +232,11 @@ class ConnectFragment : Fragment(),
     }
 
     fun refreshMenuList(context: Context) {
-        // Menu list moved to SettingsBottomSheet
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && Prefs.appRoutingEnabled) {
+            binding.btnProvider.text = "VPN Правила"
+        } else {
+            binding.btnProvider.text = "VPN Провайдер"
+        }
     }
 
 
