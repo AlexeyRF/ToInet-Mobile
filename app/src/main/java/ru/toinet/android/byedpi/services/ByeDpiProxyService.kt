@@ -183,6 +183,15 @@ class ByeDpiProxyService : LifecycleService() {
             }
         }
 
+        if (ru.toinet.android.util.Prefs.byedpiUpstreamEnabled) {
+            val upstreamProvider = ru.toinet.android.util.Prefs.byedpiUpstreamProvider
+            ru.toinet.android.util.UpstreamProxyCoordinator.ensureUpstreamStarted(this, upstreamProvider)
+            val upstreamArg = "${ru.toinet.android.util.Prefs.byedpiUpstreamHost}:${ru.toinet.android.util.Prefs.byedpiUpstreamPort}"
+            if (!cmdStrOriginal.contains("-C")) {
+                cmdStrOriginal = "$cmdStrOriginal -C $upstreamArg".trim()
+            }
+        }
+
         val cmdStr = if (cmdStrOriginal.trim().equals("TOR", ignoreCase = true)) {
             "{\"\":\"TOR\"}"
         } else {

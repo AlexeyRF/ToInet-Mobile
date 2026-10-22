@@ -117,6 +117,10 @@ public class ToInetService extends VpnService {
                 .setSilent(true)
                 .setOngoing(true);
 
+        if ("address_status".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) {
+            notifyMsg = ru.toinet.android.util.AddressStatusHelper.getAddressStatus(this);
+        }
+
         if (!isDetailed) {
             mNotifyBuilder
                     .setSmallIcon(R.drawable.ic_stat_tor)
@@ -128,11 +132,14 @@ public class ToInetService extends VpnService {
                     .setContentIntent(pendIntent);
         }
         else {
+            String title = "address_status".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())
+                    ? "Состояние Адреса"
+                    : Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
             mNotifyBuilder
                     .setSmallIcon(icon)
                     .setContentText(notifyMsg)
                     .setContentIntent(pendIntent)
-                    .setContentTitle(Notifications.getNotificationTitleForStatus(this, mCurrentStatus))
+                    .setContentTitle(title)
                     .setPriority(NotificationCompat.PRIORITY_LOW);
             // Tor connection is active
             if (conn != null && mCurrentStatus.equals(STATUS_ON)) { // only add new identity action when there is a connection
@@ -452,6 +459,23 @@ public class ToInetService extends VpnService {
 
 
     private synchronized void startTorService() throws Exception {
+        if (Prefs.getProxyEnabled()) {
+            String upstream = Prefs.getTorUpstreamProvider();
+            if (upstream == null || upstream.isEmpty() || "none".equals(upstream)) {
+                var pair = Prefs.getOutboundProxy();
+                if (pair.getFirst() != null && "127.0.0.1".equals(pair.getFirst().getHost())) {
+                    int port = pair.getFirst().getPort();
+                    if (port == Prefs.getEasyVpnProxyPort()) upstream = "easyvpn";
+                    else if (port == 1080) upstream = "byedpi";
+                    else if (port == Prefs.getZapretPort()) upstream = "zapret";
+                    else if (port == 1788) upstream = "rehab";
+                }
+            }
+            if (upstream != null && !"none".equals(upstream) && !"custom".equals(upstream)) {
+                ru.toinet.android.util.UpstreamProxyCoordinator.INSTANCE.ensureUpstreamStarted(this, upstream);
+            }
+        }
+
         DiskUtils.flushTextToFile(TorService.getDefaultsTorrc(this), """
                 DNSPort 0
                 TransPort 0

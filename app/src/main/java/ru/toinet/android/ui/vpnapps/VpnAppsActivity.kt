@@ -248,5 +248,6 @@ class VpnAppsActivity : AppCompatActivity() {
 
     private fun savePrefs() {
         Prefs.vpnExcludedApps = excludedApps
+        ru.toinet.android.vpn.services.AppVpnService.updateLogNotification(this, "")
     }
 }

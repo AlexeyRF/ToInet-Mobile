@@ -25,10 +25,37 @@ class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
         binding.etArgs.setText(Prefs.byedpiArgs)
         configureMultilineEditTextScrollEvent(binding.etArgs)
 
+        binding.swByeDpiUpstreamEnabled.isChecked = Prefs.byedpiUpstreamEnabled
+        binding.llByeDpiUpstream.visibility = if (binding.swByeDpiUpstreamEnabled.isChecked) View.VISIBLE else View.GONE
+        binding.swByeDpiUpstreamEnabled.setOnCheckedChangeListener { _, isChecked ->
+            binding.llByeDpiUpstream.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        val upstreamOptions = listOf(
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:${Prefs.easyVpnProxyPort})",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_TOR to "TOR (127.0.0.1:5242)",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)"
+        )
+        val upstreamTitles = upstreamOptions.map { it.second }
+        val upstreamAdapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, upstreamTitles)
+        binding.spByeDpiUpstreamProvider.adapter = upstreamAdapter
+
+        val curProvider = Prefs.byedpiUpstreamProvider
+        val curIndex = upstreamOptions.indexOfFirst { it.first == curProvider }.coerceAtLeast(0)
+        binding.spByeDpiUpstreamProvider.setSelection(curIndex)
+
         binding.btnSave.setOnClickListener {
             Prefs.byedpiEnabled = binding.swEnabled.isChecked
             Prefs.byedpiArgs = binding.etArgs.text.toString().trim()
             Prefs.byedpiEnableCmdSettings = true
+
+            Prefs.byedpiUpstreamEnabled = binding.swByeDpiUpstreamEnabled.isChecked
+            val chosen = upstreamOptions[binding.spByeDpiUpstreamProvider.selectedItemPosition].first
+            Prefs.byedpiUpstreamProvider = chosen
+            Prefs.byedpiUpstreamHost = "127.0.0.1"
+            Prefs.byedpiUpstreamPort = ru.toinet.android.util.UpstreamProxyCoordinator.getPortForProvider(chosen)
+
             viewModel.triggerRefreshMenuList()
             dismiss()
         }

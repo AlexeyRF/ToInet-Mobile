@@ -146,6 +146,7 @@ object Prefs {
         set(value) = cr?.putPref("pref_proxy_enabled", value) ?: Unit
 
     // URI, if config present + valid, malformed URL string if config present + invalid
+    @JvmStatic
     val outboundProxy: Pair<URI?, String?>
         get() {
             if (!proxyEnabled) return Pair(null, null)
@@ -329,6 +330,51 @@ object Prefs {
     var appRoutingDefaultAction: String
         get() = cr?.getPrefString("pref_app_routing_default_action") ?: "direct"
         set(value) = cr?.putPref("pref_app_routing_default_action", value) ?: Unit
+
+    @JvmStatic
+    var torUpstreamProvider: String
+        get() = cr?.getPrefString("pref_tor_upstream_provider") ?: "none"
+        set(value) = cr?.putPref("pref_tor_upstream_provider", value) ?: Unit
+
+    @JvmStatic
+    var easyVpnUpstreamEnabled: Boolean
+        get() = cr?.getPrefBoolean("pref_easyvpn_upstream_enabled", false) ?: false
+        set(value) = cr?.putPref("pref_easyvpn_upstream_enabled", value) ?: Unit
+
+    @JvmStatic
+    var easyVpnUpstreamProvider: String
+        get() = cr?.getPrefString("pref_easyvpn_upstream_provider") ?: "tor"
+        set(value) = cr?.putPref("pref_easyvpn_upstream_provider", value) ?: Unit
+
+    @JvmStatic
+    var easyVpnUpstreamHost: String
+        get() = cr?.getPrefString("pref_easyvpn_upstream_host") ?: "127.0.0.1"
+        set(value) = cr?.putPref("pref_easyvpn_upstream_host", value) ?: Unit
+
+    @JvmStatic
+    var easyVpnUpstreamPort: Int
+        get() = cr?.getPrefInt("pref_easyvpn_upstream_port") ?: 5242
+        set(value) = cr?.putPref("pref_easyvpn_upstream_port", value) ?: Unit
+
+    @JvmStatic
+    var byedpiUpstreamEnabled: Boolean
+        get() = cr?.getPrefBoolean("pref_byedpi_upstream_enabled", false) ?: false
+        set(value) = cr?.putPref("pref_byedpi_upstream_enabled", value) ?: Unit
+
+    @JvmStatic
+    var byedpiUpstreamProvider: String
+        get() = cr?.getPrefString("pref_byedpi_upstream_provider") ?: "easyvpn"
+        set(value) = cr?.putPref("pref_byedpi_upstream_provider", value) ?: Unit
+
+    @JvmStatic
+    var byedpiUpstreamHost: String
+        get() = cr?.getPrefString("pref_byedpi_upstream_host") ?: "127.0.0.1"
+        set(value) = cr?.putPref("pref_byedpi_upstream_host", value) ?: Unit
+
+    @JvmStatic
+    var byedpiUpstreamPort: Int
+        get() = cr?.getPrefInt("pref_byedpi_upstream_port") ?: 10808
+        set(value) = cr?.putPref("pref_byedpi_upstream_port", value) ?: Unit
 
     var byedpiEnabled: Boolean
         get() = cr?.getPrefBoolean("byedpi_enabled", false) ?: false
@@ -667,6 +713,9 @@ object Prefs {
     @JvmStatic
     fun shouldServiceShowNotification(serviceKey: String): Boolean {
         val current = notificationLogProvider
+        if (current == "address_status") {
+            return isPrimaryNotificationService(serviceKey)
+        }
         if (current == "all") {
             if (isGlobalVpnEnabled && (serviceKey == vpnProvider || (vpnProvider in listOf("rehab", "custom") && serviceKey in listOf("rehab", "custom")))) {
                 return false

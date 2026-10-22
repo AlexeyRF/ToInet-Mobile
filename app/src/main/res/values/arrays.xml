@@ -17,6 +17,7 @@
         <item>EasyVPN</item>
         <item>VPN</item>
         <item>Все</item>
+        <item>Состояние Адреса</item>
     </array>
     
     <array name="log_providers_values">
@@ -30,6 +31,7 @@
         <item>easyvpn</item>
         <item>vpn</item>
         <item>all</item>
+        <item>address_status</item>
     </array>
     
     <string-array name="dns_protocols">

@@ -56,6 +56,50 @@
                 android:minLines="3" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swEasyVpnUpstreamEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Upstream прокси (цепочка)"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:id="@+id/llEasyVpnUpstream"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Проксировать трафик EasyVPN через:"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:layout_marginBottom="4dp" />
+
+            <Spinner
+                android:id="@+id/spEasyVpnUpstreamProvider"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilEasyVpnCustomHost"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Кастомный SOCKS5 (хост:порт)"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:visibility="gone">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etEasyVpnCustomHost"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
         <Button
             android:id="@+id/btnEasyVpnUpdateNow"
             android:layout_width="match_parent"

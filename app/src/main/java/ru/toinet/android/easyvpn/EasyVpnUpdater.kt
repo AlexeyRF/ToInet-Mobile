@@ -263,15 +263,69 @@ object EasyVpnUpdater {
         return emptyList()
     }
 
+    fun buildDirectFallbackConfig(): JSONObject {
+        val listenHost = Prefs.easyVpnProxyHost.ifBlank { "127.0.0.1" }
+        val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1791
+        return JSONObject().apply {
+            put("log", JSONObject().apply { put("loglevel", "warning") })
+            put("inbounds", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("tag", "socks-in")
+                    put("listen", listenHost)
+                    put("port", listenPort)
+                    put("protocol", "socks")
+                    put("settings", JSONObject().apply {
+                        put("auth", "noauth")
+                        put("udp", true)
+                    })
+                })
+            })
+            put("outbounds", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("tag", "direct")
+                    put("protocol", "freedom")
+                    put("settings", JSONObject())
+                })
+            })
+            put("routing", JSONObject().apply {
+                put("domainStrategy", "AsIs")
+                put("rules", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("type", "field")
+                        put("inboundTag", JSONArray().apply { put("socks-in") })
+                        put("outboundTag", "direct")
+                    })
+                })
+            })
+        }
+    }
+
     fun buildConfig(nodes: List<VlessNode>, activeNodeIndex: Int = 0): JSONObject {
+        return try {
+            buildConfigInternal(nodes, activeNodeIndex)
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error generating Xray config, falling back to direct config", e)
+            buildDirectFallbackConfig()
+        }
+    }
+
+    private fun buildConfigInternal(nodes: List<VlessNode>, activeNodeIndex: Int = 0): JSONObject {
         val outbounds = JSONArray()
         val proxyTags = JSONArray()
 
+        val listenHost = Prefs.easyVpnProxyHost.ifBlank { "127.0.0.1" }
+        val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1791
+
         nodes.take(100).forEachIndexed { i, node ->
             try {
+                if (node.server.isBlank() || node.port !in 1..65535 || node.uuid.isBlank()) {
+                    Log.w(TAG, "Skipping invalid node $i: server='${node.server}', port=${node.port}, uuid='${node.uuid}'")
+                    return@forEachIndexed
+                }
+
                 val tag = "proxy-$i"
 
-                val rawType = node.type.lowercase()
+                val rawType = node.type.lowercase().trim()
                 val netType = when (rawType) {
                     "raw", "", "tcp" -> "tcp"
                     "xhttp", "splithttp" -> "splithttp"
@@ -281,31 +335,32 @@ object EasyVpnUpdater {
                     else -> "tcp"
                 }
 
-                var sec = node.security.lowercase()
+                var sec = node.security.lowercase().trim()
                 if (sec != "reality" && sec != "tls") {
                     sec = "none"
                 }
 
-                if (sec == "reality" && node.pbk.isEmpty()) {
-                    sec = if (node.sni.isNotEmpty()) "tls" else "none"
+                if (sec == "reality" && node.pbk.trim().isEmpty()) {
+                    sec = if (node.sni.trim().isNotEmpty()) "tls" else "none"
                 }
 
-                val effectiveFlow = if (netType == "tcp" && (sec == "tls" || sec == "reality") && node.flow.isNotEmpty()) {
-                    node.flow
+                val effectiveFlow = if (netType == "tcp" && (sec == "tls" || sec == "reality") && node.flow.contains("vision", ignoreCase = true)) {
+                    "xtls-rprx-vision"
                 } else {
                     ""
                 }
 
                 val userObj = JSONObject().apply {
-                    put("id", node.uuid)
-                    put("encryption", if (node.method.isNotEmpty()) node.method else "none")
+                    put("id", node.uuid.trim())
+                    // VLESS specification requires client encryption to be 'none'
+                    put("encryption", "none")
                     if (effectiveFlow.isNotEmpty()) {
                         put("flow", effectiveFlow)
                     }
                 }
 
                 val vnextObj = JSONObject().apply {
-                    put("address", node.server)
+                    put("address", node.server.trim())
                     put("port", node.port)
                     put("users", JSONArray().apply { put(userObj) })
                 }
@@ -318,15 +373,21 @@ object EasyVpnUpdater {
                     put("network", netType)
                     put("security", sec)
 
-                    val effectiveSni = if (node.sni.isNotEmpty()) node.sni else node.server
-                    val effectiveFp = if (node.fp.isNotEmpty()) node.fp else "chrome"
+                    val effectiveSni = node.sni.trim().ifEmpty { node.server.trim() }
+                    val cleanFp = node.fp.trim().lowercase()
+                    val effectiveFp = when (cleanFp) {
+                        "chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized" -> cleanFp
+                        else -> "chrome"
+                    }
 
                     if (sec == "tls") {
                         val tlsObj = JSONObject().apply {
-                            put("serverName", effectiveSni)
+                            if (effectiveSni.isNotEmpty()) {
+                                put("serverName", effectiveSni)
+                            }
                             put("fingerprint", effectiveFp)
-                            if (node.alpn.isNotEmpty()) {
-                                val alpnList = node.alpn.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                            if (node.alpn.isNotEmpty() && !node.alpn.equals("null", ignoreCase = true)) {
+                                val alpnList = node.alpn.split(",").map { it.trim() }.filter { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
                                 if (alpnList.isNotEmpty()) {
                                     put("alpn", JSONArray(alpnList))
                                 }
@@ -335,13 +396,19 @@ object EasyVpnUpdater {
                         put("tlsSettings", tlsObj)
                     } else if (sec == "reality") {
                         val realityObj = JSONObject().apply {
-                            put("serverName", effectiveSni)
+                            if (effectiveSni.isNotEmpty()) {
+                                put("serverName", effectiveSni)
+                            }
                             put("fingerprint", effectiveFp)
-                            put("publicKey", node.pbk)
-                            put("shortId", node.sid)
+                            put("publicKey", node.pbk.trim())
+
+                            val rawSid = node.sid.trim().lowercase()
+                            val validSid = if (rawSid.all { it in '0'..'9' || it in 'a'..'f' } && rawSid.length % 2 == 0) rawSid else ""
+                            put("shortId", validSid)
                             put("spiderX", if (node.spx.isNotEmpty()) node.spx else "")
-                            if (node.alpn.isNotEmpty()) {
-                                val alpnList = node.alpn.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+                            if (node.alpn.isNotEmpty() && !node.alpn.equals("null", ignoreCase = true)) {
+                                val alpnList = node.alpn.split(",").map { it.trim() }.filter { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
                                 if (alpnList.isNotEmpty()) {
                                     put("alpn", JSONArray(alpnList))
                                 }
@@ -350,21 +417,26 @@ object EasyVpnUpdater {
                         put("realitySettings", realityObj)
                     }
 
-                    val effectiveHost = if (node.host.isNotEmpty()) node.host else effectiveSni
+                    val effectiveHost = node.host.trim().ifEmpty { effectiveSni }
 
                     when (netType) {
                         "splithttp" -> {
                             val shObj = JSONObject().apply {
-                                put("path", if (node.path.isNotEmpty()) node.path else "/")
+                                val p = node.path.trim()
+                                val effectivePath = if (p.isNotEmpty() && !p.equals("null", ignoreCase = true)) {
+                                    if (p.startsWith("/")) p else "/$p"
+                                } else "/"
+                                put("path", effectivePath)
                                 if (effectiveHost.isNotEmpty()) {
                                     put("host", effectiveHost)
                                 }
-                                val effectiveMode = if (node.mode.isNotEmpty()) node.mode else "auto"
+                                val effectiveMode = if (node.mode.trim().isNotEmpty() && !node.mode.equals("null", ignoreCase = true)) node.mode.trim() else "auto"
                                 put("mode", effectiveMode)
 
-                                if (node.extra.isNotEmpty()) {
+                                val rawExtra = node.extra.trim()
+                                if (rawExtra.isNotEmpty() && !rawExtra.equals("null", ignoreCase = true) && rawExtra.startsWith("{")) {
                                     try {
-                                        val extraObj = JSONObject(node.extra)
+                                        val extraObj = JSONObject(rawExtra)
                                         val keys = extraObj.keys()
                                         while (keys.hasNext()) {
                                             val k = keys.next()
@@ -374,7 +446,7 @@ object EasyVpnUpdater {
                                                     if (optString(k, "").isEmpty()) {
                                                         put(k, v)
                                                     }
-                                                } else {
+                                                } else if (k != "extra" && k != "downloadSettings") {
                                                     put(k, v)
                                                 }
                                             }
@@ -387,10 +459,15 @@ object EasyVpnUpdater {
                         }
                         "ws" -> {
                             val wsObj = JSONObject().apply {
-                                put("path", if (node.path.isNotEmpty()) node.path else "/")
+                                val p = node.path.trim()
+                                val effectivePath = if (p.isNotEmpty() && !p.equals("null", ignoreCase = true)) {
+                                    if (p.startsWith("/")) p else "/$p"
+                                } else "/"
+                                put("path", effectivePath)
                                 val headers = JSONObject()
                                 if (effectiveHost.isNotEmpty()) {
-                                    headers.put("Host", effectiveHost)
+                                    val cleanHost = effectiveHost.replace("https://", "").replace("http://", "").split("/")[0].trim()
+                                    headers.put("Host", cleanHost)
                                 }
                                 put("headers", headers)
                             }
@@ -398,14 +475,19 @@ object EasyVpnUpdater {
                         }
                         "grpc" -> {
                             val grpcObj = JSONObject().apply {
-                                put("serviceName", node.serviceName)
+                                val sName = if (node.serviceName.trim().isNotEmpty() && !node.serviceName.equals("null", ignoreCase = true)) node.serviceName.trim() else "grpc"
+                                put("serviceName", sName)
                                 put("multiMode", true)
                             }
                             put("grpcSettings", grpcObj)
                         }
                         "httpupgrade" -> {
                             val huObj = JSONObject().apply {
-                                put("path", if (node.path.isNotEmpty()) node.path else "/")
+                                val p = node.path.trim()
+                                val effectivePath = if (p.isNotEmpty() && !p.equals("null", ignoreCase = true)) {
+                                    if (p.startsWith("/")) p else "/$p"
+                                } else "/"
+                                put("path", effectivePath)
                                 if (effectiveHost.isNotEmpty()) {
                                     put("host", effectiveHost)
                                 }
@@ -420,6 +502,11 @@ object EasyVpnUpdater {
                     put("protocol", "vless")
                     put("settings", settingsObj)
                     put("streamSettings", streamSettings)
+                    if (ru.toinet.android.util.Prefs.easyVpnUpstreamEnabled) {
+                        put("proxySettings", JSONObject().apply {
+                            put("tag", "chain-upstream")
+                        })
+                    }
                 }
 
                 outbounds.put(outbound)
@@ -427,6 +514,23 @@ object EasyVpnUpdater {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to build node $i", e)
             }
+        }
+
+        if (ru.toinet.android.util.Prefs.easyVpnUpstreamEnabled) {
+            val upstreamHost = ru.toinet.android.util.Prefs.easyVpnUpstreamHost.ifBlank { "127.0.0.1" }
+            val upstreamPort = if (ru.toinet.android.util.Prefs.easyVpnUpstreamPort in 1..65535) ru.toinet.android.util.Prefs.easyVpnUpstreamPort else 5242
+            outbounds.put(JSONObject().apply {
+                put("tag", "chain-upstream")
+                put("protocol", "socks")
+                put("settings", JSONObject().apply {
+                    put("servers", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("address", upstreamHost)
+                            put("port", upstreamPort)
+                        })
+                    })
+                })
+            })
         }
 
         // Direct outbound
@@ -438,6 +542,7 @@ object EasyVpnUpdater {
 
         val targetTag = if (activeNodeIndex in 0 until nodes.size) "proxy-$activeNodeIndex" else null
         val hasTarget = targetTag != null && (0 until proxyTags.length()).any { proxyTags.getString(it) == targetTag }
+        val effectiveTargetTag = if (hasTarget) targetTag else if (proxyTags.length() > 0) proxyTags.getString(0) else null
 
         return JSONObject().apply {
             put("log", JSONObject().apply {
@@ -447,8 +552,8 @@ object EasyVpnUpdater {
             put("inbounds", JSONArray().apply {
                 put(JSONObject().apply {
                     put("tag", "socks-in")
-                    put("listen", Prefs.easyVpnProxyHost)
-                    put("port", Prefs.easyVpnProxyPort)
+                    put("listen", listenHost)
+                    put("port", listenPort)
                     put("protocol", "socks")
                     put("settings", JSONObject().apply {
                         put("auth", "noauth")
@@ -468,12 +573,12 @@ object EasyVpnUpdater {
 
             put("routing", JSONObject().apply {
                 put("domainStrategy", "AsIs")
-                if (hasTarget) {
+                if (effectiveTargetTag != null) {
                     put("rules", JSONArray().apply {
                         put(JSONObject().apply {
                             put("type", "field")
                             put("inboundTag", JSONArray().apply { put("socks-in") })
-                            put("outboundTag", targetTag)
+                            put("outboundTag", effectiveTargetTag)
                         })
                     })
                 } else if (proxyTags.length() > 0) {
@@ -482,7 +587,7 @@ object EasyVpnUpdater {
                             put("tag", "balancer")
                             put("selector", JSONArray().apply { put("proxy-") })
                             put("strategy", JSONObject().apply {
-                                put("type", "leastPing")
+                                put("type", "random")
                             })
                         })
                     })
@@ -503,15 +608,6 @@ object EasyVpnUpdater {
                     })
                 }
             })
-
-            if (proxyTags.length() > 0 && (activeNodeIndex !in 0 until nodes.size || !hasTarget)) {
-                put("observatory", JSONObject().apply {
-                    put("subjectSelector", JSONArray().apply { put("proxy-") })
-                    put("probeUrl", "http://cp.cloudflare.com/generate_204")
-                    put("probeInterval", "3m")
-                    put("enableConcurrency", true)
-                })
-            }
         }
     }
 }

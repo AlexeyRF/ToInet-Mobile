@@ -38,6 +38,38 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
 
         updateTimestampHeader()
 
+        binding.swEasyVpnUpstreamEnabled.isChecked = Prefs.easyVpnUpstreamEnabled
+        binding.llEasyVpnUpstream.visibility = if (binding.swEasyVpnUpstreamEnabled.isChecked) View.VISIBLE else View.GONE
+        binding.swEasyVpnUpstreamEnabled.setOnCheckedChangeListener { _, isChecked ->
+            binding.llEasyVpnUpstream.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        val upstreamOptions = listOf(
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_TOR to "TOR (127.0.0.1:5242)",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_BYEDPI to "ByeDPI (127.0.0.1:1080)",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_CUSTOM to "Кастомный SOCKS5..."
+        )
+        val upstreamTitles = upstreamOptions.map { it.second }
+        val upstreamAdapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, upstreamTitles)
+        binding.spEasyVpnUpstreamProvider.adapter = upstreamAdapter
+
+        val curProvider = Prefs.easyVpnUpstreamProvider
+        val curIndex = upstreamOptions.indexOfFirst { it.first == curProvider }.coerceAtLeast(0)
+        binding.spEasyVpnUpstreamProvider.setSelection(curIndex)
+
+        binding.etEasyVpnCustomHost.setText("${Prefs.easyVpnUpstreamHost}:${Prefs.easyVpnUpstreamPort}")
+        binding.tilEasyVpnCustomHost.visibility = if (curProvider == ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_CUSTOM) View.VISIBLE else View.GONE
+
+        binding.spEasyVpnUpstreamProvider.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val isCustom = upstreamOptions[position].first == ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_CUSTOM
+                binding.tilEasyVpnCustomHost.visibility = if (isCustom) View.VISIBLE else View.GONE
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+
         binding.btnEasyVpnUpdateNow.setOnClickListener {
             binding.btnEasyVpnUpdateNow.isEnabled = false
             binding.btnEasyVpnUpdateNow.text = "Обновление..."
@@ -70,6 +102,20 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
             Prefs.easyVpnProxyEnabled = newEnabled
             Prefs.easyVpnServerNumberOnly = binding.swEasyVpnNumberOnly.isChecked
             Prefs.easyVpnSubs = binding.etEasyVpnSubs.text.toString().trim()
+
+            Prefs.easyVpnUpstreamEnabled = binding.swEasyVpnUpstreamEnabled.isChecked
+            val chosenProvider = upstreamOptions[binding.spEasyVpnUpstreamProvider.selectedItemPosition].first
+            Prefs.easyVpnUpstreamProvider = chosenProvider
+            if (chosenProvider == ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_CUSTOM) {
+                val custom = binding.etEasyVpnCustomHost.text.toString().trim()
+                val host = custom.substringBeforeLast(':', "127.0.0.1")
+                val port = custom.substringAfterLast(':', "1080").toIntOrNull() ?: 1080
+                Prefs.easyVpnUpstreamHost = host
+                Prefs.easyVpnUpstreamPort = port
+            } else {
+                Prefs.easyVpnUpstreamHost = "127.0.0.1"
+                Prefs.easyVpnUpstreamPort = ru.toinet.android.util.UpstreamProxyCoordinator.getPortForProvider(chosenProvider)
+            }
 
             if (newEnabled && !wasEnabled) {
                 if (!Prefs.isGlobalVpnEnabled || Prefs.vpnProvider != "easyvpn") {

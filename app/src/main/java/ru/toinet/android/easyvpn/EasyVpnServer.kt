@@ -60,7 +60,7 @@ data class VlessNode(
                     queryParams = q.split("&").mapNotNull {
                         val kv = it.split("=", limit = 2)
                         if (kv.size == 2) {
-                            val key = kv[0].lowercase()
+                            val key = kv[0].lowercase().trim()
                             val value = try {
                                 URLDecoder.decode(kv[1], "UTF-8")
                             } catch (_: Exception) {
@@ -73,8 +73,17 @@ data class VlessNode(
 
                 if (!s.contains("@")) return null
                 val userParts = s.split("@", limit = 2)
-                val uuid = userParts[0]
-                val hostPort = userParts[1].trimEnd('/')
+                val uuid = userParts[0].trim()
+                if (uuid.isEmpty()) return null
+
+                var hostPort = userParts[1].trim()
+                var embeddedPath = ""
+                val slashIdx = hostPort.indexOf('/')
+                if (slashIdx != -1) {
+                    embeddedPath = hostPort.substring(slashIdx)
+                    hostPort = hostPort.substring(0, slashIdx)
+                }
+                hostPort = hostPort.trim()
 
                 val host: String
                 val port: Int
@@ -86,11 +95,21 @@ data class VlessNode(
                     if (!afterBracket.startsWith(":")) return null
                     port = afterBracket.substring(1).toIntOrNull() ?: return null
                 } else {
-                    val hp = hostPort.split(":")
-                    if (hp.size != 2) return null
-                    host = hp[0]
-                    port = hp[1].toIntOrNull() ?: return null
+                    val lastColon = hostPort.lastIndexOf(':')
+                    if (lastColon == -1) return null
+                    host = hostPort.substring(0, lastColon).trim()
+                    port = hostPort.substring(lastColon + 1).trim().toIntOrNull() ?: return null
                 }
+
+                if (host.isEmpty() || port !in 1..65535) return null
+
+                fun cleanParam(key: String, default: String = ""): String {
+                    val v = queryParams[key]?.trim() ?: return default
+                    return if (v.isEmpty() || v.equals("null", ignoreCase = true)) default else v
+                }
+
+                val rawPath = cleanParam("path", "")
+                val path = if (rawPath.isNotEmpty()) rawPath else embeddedPath
 
                 return VlessNode(
                     originalLink = raw.trim(),
@@ -98,21 +117,21 @@ data class VlessNode(
                     port = port,
                     uuid = uuid,
                     remarks = remarks,
-                    method = queryParams["encryption"] ?: "none",
-                    security = queryParams["security"] ?: "none",
-                    host = queryParams["host"] ?: "",
-                    path = queryParams["path"] ?: "",
-                    flow = queryParams["flow"] ?: "",
-                    sni = queryParams["sni"] ?: "",
-                    alpn = queryParams["alpn"] ?: "",
-                    fp = queryParams["fp"] ?: "",
-                    pbk = queryParams["pbk"] ?: "",
-                    sid = queryParams["sid"] ?: "",
-                    type = queryParams["type"] ?: "tcp",
-                    serviceName = queryParams["servicename"] ?: "",
-                    spx = queryParams["spx"] ?: "",
-                    mode = queryParams["mode"] ?: "",
-                    extra = queryParams["extra"] ?: ""
+                    method = cleanParam("encryption", "none"),
+                    security = cleanParam("security", "none"),
+                    host = cleanParam("host", ""),
+                    path = path,
+                    flow = cleanParam("flow", ""),
+                    sni = cleanParam("sni", ""),
+                    alpn = cleanParam("alpn", ""),
+                    fp = cleanParam("fp", ""),
+                    pbk = cleanParam("pbk", ""),
+                    sid = cleanParam("sid", ""),
+                    type = cleanParam("type", "tcp"),
+                    serviceName = cleanParam("servicename", ""),
+                    spx = cleanParam("spx", ""),
+                    mode = cleanParam("mode", ""),
+                    extra = cleanParam("extra", "")
                 )
             } catch (e: Exception) {
                 return null
@@ -126,6 +145,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
     private val TAG = "EasyVpnServer"
     private var updateJob: Job? = null
 
+    private val nodeLock = Any()
     private var allNodes: MutableList<VlessNode> = mutableListOf()
     private var currentNodeIndex: Int = 0
     var onServerChanged: (() -> Unit)? = null
@@ -137,7 +157,14 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
             private set
     }
 
-    fun getCurrentServerDescription(): String {
+    private data class ServerSwitchData(
+        val rotatedNodes: List<VlessNode>,
+        val currentNode: VlessNode,
+        val index: Int,
+        val totalCount: Int
+    )
+
+    fun getCurrentServerDescription(): String = synchronized(nodeLock) {
         if (allNodes.isEmpty()) return context.getString(R.string.vpn_notification_content)
         val idx = currentNodeIndex.coerceIn(0, allNodes.lastIndex)
         val node = allNodes[idx]
@@ -150,26 +177,32 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
     }
 
     fun switchToNextServer() {
-        if (allNodes.isEmpty()) {
+        val switchData = synchronized(nodeLock) {
+            if (allNodes.isEmpty()) return@synchronized null
+            currentNodeIndex = (currentNodeIndex + 1) % allNodes.size
+            val node = allNodes[currentNodeIndex]
+            val rotated = allNodes.drop(currentNodeIndex) + allNodes.take(currentNodeIndex)
+            ServerSwitchData(rotated, node, currentNodeIndex, allNodes.size)
+        }
+
+        if (switchData == null) {
             Handler(Looper.getMainLooper()).post {
                 Toast.makeText(context, "EasyVPN: нет доступных серверов", Toast.LENGTH_SHORT).show()
             }
             return
         }
-        currentNodeIndex = (currentNodeIndex + 1) % allNodes.size
-        val currentNode = allNodes[currentNodeIndex]
-        Log.i(TAG, "Switching to next server ($currentNodeIndex/${allNodes.size}): ${currentNode.server}")
 
-        val rotatedNodes = allNodes.drop(currentNodeIndex) + allNodes.take(currentNodeIndex)
-        val config = EasyVpnUpdater.buildConfig(rotatedNodes, activeNodeIndex = 0)
+        Log.i(TAG, "Switching to next server (${switchData.index + 1}/${switchData.totalCount}): ${switchData.currentNode.server}")
+
+        val config = EasyVpnUpdater.buildConfig(switchData.rotatedNodes, activeNodeIndex = 0)
         startXrayProcess(config)
 
         Handler(Looper.getMainLooper()).post {
             val msg = if (ru.toinet.android.util.Prefs.easyVpnServerNumberOnly) {
-                "EasyVPN: сервер #${currentNodeIndex + 1}"
+                "EasyVPN: сервер #${switchData.index + 1}"
             } else {
-                val name = currentNode.remarks.ifEmpty { currentNode.server }
-                "EasyVPN: сервер ${currentNodeIndex + 1}/${allNodes.size} ($name)"
+                val name = switchData.currentNode.remarks.ifEmpty { switchData.currentNode.server }
+                "EasyVPN: сервер ${switchData.index + 1}/${switchData.totalCount} ($name)"
             }
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
         }
@@ -179,6 +212,13 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
     fun start() {
         stop()
         activeInstance = this
+
+        if (ru.toinet.android.util.Prefs.easyVpnUpstreamEnabled) {
+            ru.toinet.android.util.UpstreamProxyCoordinator.ensureUpstreamStarted(
+                context,
+                ru.toinet.android.util.Prefs.easyVpnUpstreamProvider
+            )
+        }
 
         val activeSubs = EasyVpnUpdater.getActiveSources()
         val subsHash = activeSubs.joinToString("|").hashCode().toString()
@@ -195,16 +235,22 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
 
         if (directUserNodes.isNotEmpty()) {
             Log.i(TAG, "Starting with ${directUserNodes.size} direct user vless nodes")
-            allNodes = directUserNodes.toMutableList()
-            currentNodeIndex = 0
-            val config = EasyVpnUpdater.buildConfig(allNodes, activeNodeIndex = 0)
+            val nodes = synchronized(nodeLock) {
+                allNodes = directUserNodes.toMutableList()
+                currentNodeIndex = 0
+                allNodes.toList()
+            }
+            val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
             startXrayProcess(config)
             startedWithUserNodes = true
         } else if (cachedUserNodes.isNotEmpty()) {
             Log.i(TAG, "Starting with ${cachedUserNodes.size} cached user nodes")
-            allNodes = cachedUserNodes.toMutableList()
-            currentNodeIndex = 0
-            val config = EasyVpnUpdater.buildConfig(allNodes, activeNodeIndex = 0)
+            val nodes = synchronized(nodeLock) {
+                allNodes = cachedUserNodes.toMutableList()
+                currentNodeIndex = 0
+                allNodes.toList()
+            }
+            val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
             startXrayProcess(config)
             startedWithUserNodes = true
         }
@@ -215,12 +261,17 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
             Log.i(TAG, "Activating Plan Ъ (reserve fallback nodes) while fetching user links...")
             val fallbackNodes = EasyVpnUpdater.loadPlanBReserveNodes(context)
             if (fallbackNodes.isNotEmpty()) {
-                allNodes = fallbackNodes.toMutableList()
-                currentNodeIndex = 0
-                val config = EasyVpnUpdater.buildConfig(allNodes, activeNodeIndex = 0)
+                val nodes = synchronized(nodeLock) {
+                    allNodes = fallbackNodes.toMutableList()
+                    currentNodeIndex = 0
+                    allNodes.toList()
+                }
+                val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
                 startXrayProcess(config)
             } else {
-                Log.w(TAG, "Plan Ъ reserve nodes not available")
+                Log.w(TAG, "Plan Ъ reserve nodes not available, starting with fallback direct config")
+                val fallbackConfig = EasyVpnUpdater.buildDirectFallbackConfig()
+                startXrayProcess(fallbackConfig)
             }
         }
 
@@ -239,29 +290,32 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
 
     fun reloadWithNodes(nodes: List<VlessNode>) {
         if (!isRunning) return
-        Log.i(TAG, "Reloading Xray with ${nodes.size} verified nodes")
-        allNodes = nodes.toMutableList()
-        currentNodeIndex = currentNodeIndex.coerceIn(0, (allNodes.size - 1).coerceAtLeast(0))
-        val rotatedNodes = if (allNodes.isNotEmpty()) allNodes.drop(currentNodeIndex) + allNodes.take(currentNodeIndex) else allNodes
-        val config = EasyVpnUpdater.buildConfig(rotatedNodes, activeNodeIndex = 0)
+        val (rotated, total) = synchronized(nodeLock) {
+            allNodes = nodes.toMutableList()
+            currentNodeIndex = currentNodeIndex.coerceIn(0, (allNodes.size - 1).coerceAtLeast(0))
+            val rotatedNodes = if (allNodes.isNotEmpty()) allNodes.drop(currentNodeIndex) + allNodes.take(currentNodeIndex) else allNodes
+            Pair(rotatedNodes, allNodes.size)
+        }
+        Log.i(TAG, "Reloading Xray with $total verified nodes")
+        val config = EasyVpnUpdater.buildConfig(rotated, activeNodeIndex = 0)
         startXrayProcess(config)
         onServerChanged?.invoke()
     }
 
     @Synchronized
     private fun startXrayProcess(config: JSONObject): Boolean {
-        val configFile = File(context.filesDir, "xray_config.json")
-        configFile.writeText(config.toString(2))
+        return try {
+            val configFile = File(context.filesDir, "xray_config.json")
+            configFile.writeText(config.toString(2))
 
-        val libDir = context.applicationInfo.nativeLibraryDir
-        val nativeXray = File(libDir, "libxray.so")
+            val libDir = context.applicationInfo.nativeLibraryDir
+            val nativeXray = File(libDir, "libxray.so")
 
-        if (!nativeXray.exists()) {
-            Log.e(TAG, "libxray.so not found in $libDir")
-            return false
-        }
+            if (!nativeXray.exists()) {
+                Log.e(TAG, "libxray.so not found in $libDir")
+                return false
+            }
 
-        try {
             val oldProc = process
             if (oldProc != null) {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -274,14 +328,12 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                     Thread.sleep(100)
                 } catch (_: Exception) {}
             }
-        } catch (_: Exception) {}
 
-        val pb = ProcessBuilder(nativeXray.absolutePath, "run", "-c", configFile.absolutePath)
-        pb.directory(context.filesDir)
-        pb.environment()["xray.location.asset"] = context.filesDir.absolutePath
-        pb.redirectErrorStream(true)
+            val pb = ProcessBuilder(nativeXray.absolutePath, "run", "-c", configFile.absolutePath)
+            pb.directory(context.filesDir)
+            pb.environment()["xray.location.asset"] = context.filesDir.absolutePath
+            pb.redirectErrorStream(true)
 
-        return try {
             val proc = pb.start()
             process = proc
             isRunning = true
@@ -315,8 +367,10 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         if (activeInstance == this) {
             activeInstance = null
         }
-        allNodes.clear()
-        currentNodeIndex = 0
+        synchronized(nodeLock) {
+            allNodes.clear()
+            currentNodeIndex = 0
+        }
         try {
             val oldProc = process
             if (oldProc != null) {

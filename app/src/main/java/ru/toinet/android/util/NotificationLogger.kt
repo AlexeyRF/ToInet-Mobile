@@ -39,7 +39,9 @@ object NotificationLogger {
 
         if (isCurrentVpn) {
             lastActiveVpnLog = cleanMsg
-            AppVpnService.updateLogNotification(context, cleanMsg)
+            if (Prefs.notificationLogProvider != "address_status") {
+                AppVpnService.updateLogNotification(context, cleanMsg)
+            }
             return
         }
 

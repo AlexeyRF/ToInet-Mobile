@@ -23,7 +23,36 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/pref_byedpi_enabled_title"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swByeDpiUpstreamEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Upstream прокси (-C)"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:id="@+id/llByeDpiUpstream"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Проксировать трафик ByeDPI через:"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:layout_marginBottom="4dp" />
+
+            <Spinner
+                android:id="@+id/spByeDpiUpstreamProvider"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp" />
+        </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"

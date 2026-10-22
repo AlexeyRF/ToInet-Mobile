@@ -264,10 +264,29 @@ class AppVpnService : LifecycleVpnService() {
         }
         var socksAddr = "$actualHost:$actualPort"
 
-        val neededProviders: Set<String> = if (isAppRouting) {
-            ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders()
+        val neededProviders: MutableSet<String> = if (isAppRouting) {
+            ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().toMutableSet()
         } else {
-            setOf(provider)
+            mutableSetOf(provider)
+        }
+
+        if (neededProviders.contains("tor") && ru.toinet.android.util.Prefs.proxyEnabled) {
+            val u = ru.toinet.android.util.Prefs.torUpstreamProvider
+            if (u != "none" && u != "custom" && u.isNotBlank()) {
+                neededProviders.add(u)
+            }
+        }
+        if (neededProviders.contains("easyvpn") && ru.toinet.android.util.Prefs.easyVpnUpstreamEnabled) {
+            val u = ru.toinet.android.util.Prefs.easyVpnUpstreamProvider
+            if (u != "none" && u != "custom" && u.isNotBlank()) {
+                neededProviders.add(u)
+            }
+        }
+        if (neededProviders.contains("byedpi") && ru.toinet.android.util.Prefs.byedpiUpstreamEnabled) {
+            val u = ru.toinet.android.util.Prefs.byedpiUpstreamProvider
+            if (u != "none" && u != "custom" && u.isNotBlank()) {
+                neededProviders.add(u)
+            }
         }
 
         if (isAppRouting) {
@@ -504,9 +523,12 @@ class AppVpnService : LifecycleVpnService() {
     }
 
     private fun createNotification(): Notification {
+        val isAddressStatus = ru.toinet.android.util.Prefs.notificationLogProvider == "address_status"
         val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
         val provider = ru.toinet.android.util.Prefs.vpnProvider
-        val title = if (isAppRouting) "ToInet (Proxifier)" else when (provider) {
+        val title = if (isAddressStatus) {
+            "Состояние Адреса"
+        } else if (isAppRouting) "ToInet (Proxifier)" else when (provider) {
             "easyvpn" -> "EasyVPN"
             "zapret" -> "Zapret"
             "operaproxy" -> "Opera Proxy"
@@ -517,7 +539,9 @@ class AppVpnService : LifecycleVpnService() {
             else -> "VPN"
         }
         
-        val defaultDesc = if (isAppRouting) "Раздельное туннелирование по правилам" else when (provider) {
+        val defaultDesc = if (isAddressStatus) {
+            ru.toinet.android.util.AddressStatusHelper.getAddressStatus(this)
+        } else if (isAppRouting) "Раздельное туннелирование по правилам" else when (provider) {
             "easyvpn" -> easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
             "tor" -> "Tor VPN запущен"
             "zapret" -> "Zapret VPN запущен"
@@ -527,7 +551,9 @@ class AppVpnService : LifecycleVpnService() {
             "fakevpn" -> "FakeVPN запущен"
             else -> getString(R.string.vpn_notification_content)
         }
-        val content = if (!currentLogMessage.isNullOrBlank()) {
+        val content = if (isAddressStatus) {
+            defaultDesc
+        } else if (!currentLogMessage.isNullOrBlank()) {
             currentLogMessage!!
         } else {
             defaultDesc

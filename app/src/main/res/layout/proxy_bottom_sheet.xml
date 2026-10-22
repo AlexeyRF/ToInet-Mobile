@@ -40,13 +40,31 @@
         
 
         <TextView
+            android:id="@+id/tvBundledLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Upstream провайдер из комплекта:"
+            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            app:layout_constraintTop_toBottomOf="@id/swProxyEnabled"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <Spinner
+            android:id="@+id/spBundledProvider"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            app:layout_constraintTop_toBottomOf="@id/tvBundledLabel"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
             android:id="@+id/tvProxyTypeLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="15dp"
             android:text="@string/socks_proxy_type"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/swProxyEnabled"
+            app:layout_constraintTop_toBottomOf="@id/spBundledProvider"
             style="@style/BottomSheetTextView" />
 
         <Spinner

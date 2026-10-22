@@ -175,6 +175,7 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             .setSingleChoiceItems(allProviders.toTypedArray(), checkedItem) { dialog, which ->
                 Prefs.notificationLogProvider = allValues[which]
                 requireContext().sendIntentToService(ToInetConstants.CMD_ACTIVE)
+                ru.toinet.android.vpn.services.AppVpnService.updateLogNotification(requireContext(), "")
                 onUpdated()
                 dialog.dismiss()
             }
