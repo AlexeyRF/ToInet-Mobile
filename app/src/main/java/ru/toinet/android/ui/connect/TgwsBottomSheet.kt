@@ -41,6 +41,58 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
 
         binding.swEnabled.isChecked = Prefs.tgwsEnabled
         binding.swShareProxy.isChecked = Prefs.openProxyOnAllInterfaces
+        binding.swShareProxy.setOnClickListener {
+            if (binding.swShareProxy.isChecked) {
+                ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
+                    requireContext(),
+                    onConfirmed = {
+                        // User confirmed
+                    },
+                    onCancelled = {
+                        binding.swShareProxy.isChecked = false
+                    }
+                )
+            }
+        }
+        binding.swShareProxy.setOnClickListener {
+            if (binding.swShareProxy.isChecked) {
+                ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
+                    requireContext(),
+                    onConfirmed = {
+                        // User confirmed
+                    },
+                    onCancelled = {
+                        binding.swShareProxy.isChecked = false
+                    }
+                )
+            }
+        }
+        binding.swShareProxy.setOnClickListener {
+            if (binding.swShareProxy.isChecked) {
+                ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
+                    requireContext(),
+                    onConfirmed = {
+                        // User confirmed
+                    },
+                    onCancelled = {
+                        binding.swShareProxy.isChecked = false
+                    }
+                )
+            }
+        }
+        binding.swShareProxy.setOnClickListener {
+            if (binding.swShareProxy.isChecked) {
+                ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
+                    requireContext(),
+                    onConfirmed = {
+                        // User confirmed
+                    },
+                    onCancelled = {
+                        binding.swShareProxy.isChecked = false
+                    }
+                )
+            }
+        }
         binding.etPort.setText(Prefs.tgwsPort.toString())
         
         binding.etSecret.setText(Prefs.tgwsSecret)

@@ -84,6 +84,27 @@ class SettingsPreferenceFragment : AbstractPreferenceFragment() {
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
         )
 
+        findPreference<androidx.preference.TwoStatePreference>("pref_open_proxy_on_all_interfaces")?.let { pref ->
+            pref.onPreferenceChangeListener = OnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as? Boolean ?: false
+                if (enabled && !Prefs.proxyShareWarningDismissed) {
+                    ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
+                        requireContext(),
+                        onConfirmed = {
+                            pref.isChecked = true
+                            Prefs.openProxyOnAllInterfaces = true
+                        },
+                        onCancelled = {
+                            pref.isChecked = false
+                        }
+                    )
+                    false
+                } else {
+                    true
+                }
+            }
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // if defined in XML, disable the persistent notification preference on Oreo+
             findPreference<Preference>("pref_persistent_notifications")?.let {

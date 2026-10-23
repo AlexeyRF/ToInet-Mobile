@@ -113,6 +113,14 @@ object Prefs {
         get() = cr?.getPrefBoolean(PREF_OPEN_PROXY_ON_ALL_INTERFACES) ?: false
         set(value) = cr?.putPref(PREF_OPEN_PROXY_ON_ALL_INTERFACES, value) ?: Unit
 
+    var proxyShareWarningDismissed: Boolean
+        get() = cr?.getPrefBoolean("pref_proxy_share_warning_dismissed", false) ?: false
+        set(value) = cr?.putPref("pref_proxy_share_warning_dismissed", value) ?: Unit
+
+    var directPingWarningDismissed: Boolean
+        get() = cr?.getPrefBoolean("pref_direct_ping_warning_dismissed", false) ?: false
+        set(value) = cr?.putPref("pref_direct_ping_warning_dismissed", value) ?: Unit
+
     fun startOnBoot(): Boolean {
         return cr?.getPrefBoolean(PREF_START_ON_BOOT, true) ?: true
     }

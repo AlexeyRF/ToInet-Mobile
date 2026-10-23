@@ -45,7 +45,7 @@ object EasyVpnUpdater {
                 connectTimeout = 8000
                 readTimeout = 8000
                 instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "v2rayng/1.8.12 (Android; Mobile)")
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Mobile; rv:132.0) Gecko/132.0 Firefox/132.0")
             }
             val code = connDirect.responseCode
             if (code in 200..299) {
@@ -68,7 +68,7 @@ object EasyVpnUpdater {
                     connectTimeout = 8000
                     readTimeout = 8000
                     instanceFollowRedirects = true
-                    setRequestProperty("User-Agent", "v2rayng/1.8.12 (Android; Mobile)")
+                    setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Mobile; rv:132.0) Gecko/132.0 Firefox/132.0")
                 }
                 val code = connProxy.responseCode
                 if (code in 200..299) {
@@ -109,17 +109,71 @@ object EasyVpnUpdater {
         return result
     }
 
-    suspend fun pingTestNodes(nodes: List<VlessNode>): List<VlessNode> = withContext(Dispatchers.IO) {
+    fun getTestingProxy(): Proxy? {
+        if (EasyVpnServer.isRunning) {
+            val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1791
+            try {
+                Socket().use { s ->
+                    s.connect(InetSocketAddress("127.0.0.1", listenPort), 250)
+                    return Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", listenPort))
+                }
+            } catch (_: Exception) {}
+        }
+        if (Prefs.easyVpnUpstreamEnabled) {
+            val host = Prefs.easyVpnUpstreamHost.ifBlank { "127.0.0.1" }
+            val port = if (Prefs.easyVpnUpstreamPort in 1..65535) Prefs.easyVpnUpstreamPort else 5242
+            try {
+                Socket().use { s ->
+                    s.connect(InetSocketAddress(host, port), 250)
+                    return Proxy(Proxy.Type.SOCKS, InetSocketAddress(host, port))
+                }
+            } catch (_: Exception) {}
+        }
+        val torPort = Prefs.proxySocksPort?.toIntOrNull() ?: 9050
+        try {
+            Socket().use { s ->
+                s.connect(InetSocketAddress("127.0.0.1", torPort), 250)
+                return Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", torPort))
+            }
+        } catch (_: Exception) {}
+
+        return null
+    }
+
+    fun isTestingProxyAvailable(): Boolean {
+        return getTestingProxy() != null
+    }
+
+    suspend fun pingTestNodes(nodes: List<VlessNode>, context: Context? = null): List<VlessNode> = withContext(Dispatchers.IO) {
         val workingWithPing = mutableListOf<Pair<VlessNode, Long>>()
-        val semaphore = Semaphore(50)
+        val semaphore = Semaphore(30)
+
+        // Проверяем наличие активного прокси для тестирования
+        val proxy = getTestingProxy()
+        if (proxy == null) {
+            Log.w(TAG, "Готовых прокси-нод нет. Выполняется прямой пинг серверов (IP раскрывается серверам)")
+            if (context != null) {
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    try {
+                        android.widget.Toast.makeText(
+                            context,
+                            "EasyVPN: готовых нод для скрытия нет, тест серверов выполняется напрямую (возможна утечка IP)",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+
         val deferreds = nodes.take(300).map { node ->
             async(Dispatchers.IO) {
                 semaphore.withPermit {
                     if (!coroutineContext.isActive) return@withPermit null
                     try {
                         val start = System.currentTimeMillis()
-                        Socket().use { sock ->
-                            sock.connect(InetSocketAddress(node.server, node.port), 2000)
+                        val sock = if (proxy != null) Socket(proxy) else Socket()
+                        sock.use { s ->
+                            s.connect(InetSocketAddress(node.server, node.port), 3000)
                             val rtt = System.currentTimeMillis() - start
                             Pair(node, rtt)
                         }
@@ -177,7 +231,7 @@ object EasyVpnUpdater {
         }
 
         // Тестирование нод
-        val workingNodes = pingTestNodes(uniqueNodes)
+        val workingNodes = pingTestNodes(uniqueNodes, context)
         Log.i(TAG, "Working unique nodes after ping test: ${workingNodes.size}")
 
         val finalNodes = if (workingNodes.isNotEmpty()) {
@@ -548,6 +602,15 @@ object EasyVpnUpdater {
             put("log", JSONObject().apply {
                 put("loglevel", "info")
             })
+
+            if (proxyTags.length() > 0) {
+                put("observatory", JSONObject().apply {
+                    put("subjectSelector", JSONArray().apply { put("proxy-") })
+                    put("probeURL", "https://cp.cloudflare.com/generate_204")
+                    put("probeInterval", "30s")
+                    put("enableConcurrency", true)
+                })
+            }
 
             put("inbounds", JSONArray().apply {
                 put(JSONObject().apply {

@@ -56,14 +56,29 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                     "Раздавать все прокси на локальную сеть: Выкл\n(только для этого устройства, 127.0.0.1)"
                 }
             ) {
-                Prefs.openProxyOnAllInterfaces = !Prefs.openProxyOnAllInterfaces
-                val ipInfo = if (Prefs.openProxyOnAllInterfaces) " (IP: ${ru.toinet.android.util.NetworkUtils.getLocalIpAddress()})" else ""
-                Toast.makeText(
-                    requireContext(),
-                    "Раздача прокси: ${if (Prefs.openProxyOnAllInterfaces) "Вкл" else "Выкл"}$ipInfo. Перезапустите прокси для применения.",
-                    Toast.LENGTH_LONG
-                ).show()
-                setupMenu(view)
+                if (!Prefs.openProxyOnAllInterfaces) {
+                    ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
+                        requireContext(),
+                        onConfirmed = {
+                            Prefs.openProxyOnAllInterfaces = true
+                            val ipInfo = " (IP: ${ru.toinet.android.util.NetworkUtils.getLocalIpAddress()})"
+                            Toast.makeText(
+                                requireContext(),
+                                "Раздача прокси: Вкл$ipInfo. Перезапустите прокси для применения.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            setupMenu(view)
+                        }
+                    )
+                } else {
+                    Prefs.openProxyOnAllInterfaces = false
+                    Toast.makeText(
+                        requireContext(),
+                        "Раздача прокси: Выкл. Перезапустите прокси для применения.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    setupMenu(view)
+                }
             },
             ToInetMenuAction(
                 0,

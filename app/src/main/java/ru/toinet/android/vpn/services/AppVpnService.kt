@@ -348,9 +348,10 @@ class AppVpnService : LifecycleVpnService() {
         var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
         if (dns.isBlank()) dns = "8.8.8.8"
 
-        val ipv6 = false
+        val hasExternalIpv6 = checkExternalIpv6()
+        Log.i(TAG, "External IPv6 present: $hasExternalIpv6 (route v6: $hasExternalIpv6, block v6 if false)")
 
-        val fd = createBuilder(dns, ipv6).establish()
+        val fd = createBuilder(dns, hasExternalIpv6).establish()
             ?: throw IllegalStateException("VPN connection failed")
 
         this.tunFd = fd
@@ -392,7 +393,7 @@ class AppVpnService : LifecycleVpnService() {
             )
         }
         
-        if (ipv6) {
+        if (hasExternalIpv6) {
             command.add("--netif-ip6addr")
             command.add("fdfe:dcba:9876::2")
         }
@@ -684,9 +685,16 @@ class AppVpnService : LifecycleVpnService() {
             builder.addRoute("0.0.0.0", 0)
         }
 
-        if (ipv6) {
+        try {
+            // Always route IPv6 into TUN: if external IPv6 exists, tun2socks forwards it;
+            // if IPv4-only, tun2socks omits --netif-ip6addr so all IPv6 is blackholed/blocked, preventing leaks.
             builder.addAddress("fdfe:dcba:9876::1", 126)
                 .addRoute("::", 0)
+            if (ipv6) {
+                builder.addDnsServer("2606:4700:4700::1111")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to configure IPv6 on VPN interface", e)
         }
 
         if (dns.isNotBlank()) {
@@ -752,6 +760,51 @@ class AppVpnService : LifecycleVpnService() {
 
         return builder
     }
+
+    private fun checkExternalIpv6(): Boolean {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                val activeNet = cm?.activeNetwork
+                val linkProps = activeNet?.let { cm.getLinkProperties(it) }
+                if (linkProps != null) {
+                    for (linkAddr in linkProps.linkAddresses) {
+                        if (isGlobalIpv6(linkAddr.address)) {
+                            return true
+                        }
+                    }
+                }
+            }
+
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return false
+            for (iface in interfaces) {
+                if (!iface.isUp || iface.isLoopback) continue
+                val name = iface.name.lowercase()
+                if (name.startsWith("tun") || name.startsWith("dummy") || name.startsWith("tap") || name.startsWith("p2p")) continue
+
+                for (addr in iface.inetAddresses) {
+                    if (isGlobalIpv6(addr)) {
+                        return true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error checking external IPv6: ${e.message}")
+        }
+        return false
+    }
+
+    private fun isGlobalIpv6(addr: java.net.InetAddress?): Boolean {
+        if (addr !is java.net.Inet6Address) return false
+        if (addr.isLoopbackAddress || addr.isLinkLocalAddress || addr.isSiteLocalAddress ||
+            addr.isAnyLocalAddress || addr.isMulticastAddress || addr.isIPv4CompatibleAddress) {
+            return false
+        }
+        val firstByte = addr.address[0].toInt() and 0xff
+        // Exclude ULA (fc00::/7)
+        if ((firstByte and 0xfe) == 0xfc) {
+            return false
+        }
+        return true
+    }
 }
-
-
