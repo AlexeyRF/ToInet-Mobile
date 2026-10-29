@@ -14,8 +14,8 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * Local SOCKS5 proxy server that forwards incoming TCP connections
- * through JSch ChannelDirectTCPIP (SSH dynamic port forwarding).
+ * High-performance local SOCKS5 proxy server that forwards incoming TCP connections
+ * through JSch ChannelDirectTCPIP (SSH dynamic port forwarding) with robust bidirectional streaming.
  */
 class SocksProxyServer(
     private val session: Session,
@@ -30,6 +30,9 @@ class SocksProxyServer(
     @Volatile
     private var isRunning = false
     private var executor: ExecutorService? = null
+
+    val isListening: Boolean
+        get() = isRunning && serverSocket != null && !(serverSocket?.isClosed ?: true)
 
     @Synchronized
     fun start() {
@@ -80,6 +83,7 @@ class SocksProxyServer(
         var channel: ChannelDirectTCPIP? = null
         try {
             socket.tcpNoDelay = true
+            socket.soTimeout = 30000
             val `in` = socket.getInputStream()
             val out = socket.getOutputStream()
 
@@ -110,7 +114,7 @@ class SocksProxyServer(
             val atyp = `in`.read()
 
             if (ver != 5 || cmd != 1) { // Only CMD=1 (CONNECT) supported
-                out.write(byteArrayOf(0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0))
+                out.write(byteArrayOf(0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0)) // Command not supported
                 out.flush()
                 socket.close()
                 return
@@ -144,7 +148,7 @@ class SocksProxyServer(
                     }
                 }
                 else -> {
-                    out.write(byteArrayOf(0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0))
+                    out.write(byteArrayOf(0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0)) // Address type not supported
                     out.flush()
                     socket.close()
                     return
@@ -155,27 +159,78 @@ class SocksProxyServer(
             readFully(`in`, portBytes)
             val targetPort = ((portBytes[0].toInt() and 0xFF) shl 8) or (portBytes[1].toInt() and 0xFF)
 
+            if (!session.isConnected) {
+                Log.w(TAG, "SSH session not connected, dropping request to $targetHost:$targetPort")
+                out.write(byteArrayOf(0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0))
+                out.flush()
+                socket.close()
+                return
+            }
+
             // 3. Open SSH Direct TCPIP Channel
             channel = session.openChannel("direct-tcpip") as ChannelDirectTCPIP
             channel.setHost(targetHost)
             channel.setPort(targetPort)
-            channel.setInputStream(`in`)
-            channel.connect(10000)
+
+            try {
+                channel.connect(15000)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to connect direct-tcpip channel to $targetHost:$targetPort: ${e.message}")
+                try {
+                    out.write(byteArrayOf(0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0)) // 0x05 = Connection refused
+                    out.flush()
+                } catch (_: Exception) {}
+                socket.close()
+                return
+            }
+
+            val chIn = channel.inputStream
+            val chOut = channel.outputStream
 
             // 4. Send SOCKS5 Success Response before routing channel output
             out.write(byteArrayOf(0x05, 0x00, 0x00, 0x01, 0x7F, 0x00, 0x00, 0x01, 0x00, 0x00))
             out.flush()
 
-            channel.setOutputStream(out)
+            // Disable socket read timeout for ongoing data transfer
+            socket.soTimeout = 0
 
-            // 5. Keep connection alive while channel is running
-            while (isRunning && session.isConnected && !channel.isClosed && !channel.isEOF && !socket.isClosed) {
+            // 5. Bidirectional streaming between client socket and SSH channel
+            val clientToSsh = Thread({
+                val buffer = ByteArray(16384)
                 try {
-                    Thread.sleep(200)
-                } catch (_: InterruptedException) {
-                    break
-                }
-            }
+                    while (isRunning && !socket.isClosed && channel.isConnected) {
+                        val bytes = `in`.read(buffer)
+                        if (bytes == -1) break
+                        chOut.write(buffer, 0, bytes)
+                        chOut.flush()
+                    }
+                } catch (_: Exception) {}
+                try {
+                    chOut.flush()
+                } catch (_: Exception) {}
+            }, "SvpnClientToSsh")
+
+            val sshToClient = Thread({
+                val buffer = ByteArray(16384)
+                try {
+                    while (isRunning && !socket.isClosed && channel.isConnected) {
+                        val bytes = chIn.read(buffer)
+                        if (bytes == -1) break
+                        out.write(buffer, 0, bytes)
+                        out.flush()
+                    }
+                } catch (_: Exception) {}
+                try {
+                    out.flush()
+                } catch (_: Exception) {}
+            }, "SvpnSshToClient")
+
+            clientToSsh.start()
+            sshToClient.start()
+
+            clientToSsh.join()
+            sshToClient.join()
+
         } catch (_: Exception) {
             // Normal on close
         } finally {

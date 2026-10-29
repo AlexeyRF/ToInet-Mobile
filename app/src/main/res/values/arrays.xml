@@ -8,31 +8,13 @@
     
     <array name="log_providers">
         <item>ToInet</item>
-        <item>TOR</item>
-        <item>ByeDPI</item>
-        <item>TGWS</item>
-        <item>Socks Rehab</item>
-        <item>Opera Proxy</item>
-        <item>Zapret</item>
-        <item>EasyVPN</item>
-        <item>SVPN (SSH)</item>
         <item>VPN</item>
-        <item>Все</item>
         <item>Состояние Адреса</item>
     </array>
     
     <array name="log_providers_values">
         <item>none</item>
-        <item>tor</item>
-        <item>byedpi</item>
-        <item>tgws</item>
-        <item>rehab</item>
-        <item>operaproxy</item>
-        <item>zapret</item>
-        <item>easyvpn</item>
-        <item>svpn</item>
         <item>vpn</item>
-        <item>all</item>
         <item>address_status</item>
     </array>
     

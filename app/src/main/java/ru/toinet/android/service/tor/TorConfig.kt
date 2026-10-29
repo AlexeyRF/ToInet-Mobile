@@ -68,7 +68,8 @@ object TorConfig {
         conf.add("DNSPort ${NetworkUtils.checkPortOrAuto(dnsPort)} $isolate")
         conf.add("VirtualAddrNetwork 10.192.0.0/10")
         conf.add("AutomapHostsOnResolve 1")
-        conf.add("DormantClientTimeout 10 minutes")
+        conf.add("DormantClientTimeout 24 hours")
+        conf.add("DormantTimeoutDisabledByIdleStreams 1")
         conf.add("DormantCanceledByStartup 1")
         conf.add("DisableNetwork 0")
 

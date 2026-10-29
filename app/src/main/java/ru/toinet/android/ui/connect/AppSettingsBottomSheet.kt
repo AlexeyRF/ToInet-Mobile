@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import ru.toinet.android.R
+import ru.toinet.android.ToInetActivity
 import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.ui.ToInetMenuAction
@@ -96,9 +97,16 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             ToInetMenuAction(
                 0,
                 R.drawable.ic_log,
-                statusString = "Уведомления (лог): ${getLogProviderString()}"
+                statusString = "Уведомления: ${getLogProviderString()}"
             ) {
                 showNotificationSettings { setupMenu(view) }
+            },
+            ToInetMenuAction(
+                0,
+                R.drawable.ic_log,
+                statusString = "Общий лог работы"
+            ) {
+                showGeneralLog()
             },
             ToInetMenuAction(
                 0,
@@ -158,36 +166,29 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             .show()
     }
 
+    private fun showGeneralLog() {
+        val act = activity as? ToInetActivity
+        if (act != null) {
+            act.showLog()
+        } else {
+            ru.toinet.android.ui.more.LogBottomSheet().show(parentFragmentManager, "LogBottomSheet")
+        }
+    }
+
     private fun showNotificationSettings(onUpdated: () -> Unit) {
-        val allProviders = resources.getStringArray(R.array.log_providers).toMutableList()
-        val allValues = resources.getStringArray(R.array.log_providers_values).toMutableList()
-
-        if (!ArchHelper.isOperaSupported) {
-            val operaIdx = allValues.indexOf("operaproxy")
-            if (operaIdx != -1) {
-                allProviders.removeAt(operaIdx)
-                allValues.removeAt(operaIdx)
-            }
-            if (Prefs.notificationLogProvider == "operaproxy") {
-                Prefs.notificationLogProvider = "tor"
-            }
-        }
-
-        val tgwsIdx = allValues.indexOf("tgws")
-        if (tgwsIdx != -1) {
-            allProviders.removeAt(tgwsIdx)
-            allValues.removeAt(tgwsIdx)
-        }
-        if (Prefs.notificationLogProvider == "tgws") {
-            Prefs.notificationLogProvider = "tor"
-        }
+        val allProviders = resources.getStringArray(R.array.log_providers)
+        val allValues = resources.getStringArray(R.array.log_providers_values)
 
         val currentProvider = Prefs.notificationLogProvider
-        val checkedItem = allValues.indexOf(currentProvider).takeIf { it >= 0 } ?: 0
+        var checkedItem = allValues.indexOf(currentProvider)
+        if (checkedItem < 0) {
+            checkedItem = 0
+            Prefs.notificationLogProvider = allValues[0]
+        }
 
         AlertDialog.Builder(requireContext())
             .setTitle("Провайдер уведомлений")
-            .setSingleChoiceItems(allProviders.toTypedArray(), checkedItem) { dialog, which ->
+            .setSingleChoiceItems(allProviders, checkedItem) { dialog, which ->
                 Prefs.notificationLogProvider = allValues[which]
                 requireContext().sendIntentToService(ToInetConstants.CMD_ACTIVE)
                 ru.toinet.android.vpn.services.AppVpnService.updateLogNotification(requireContext(), "")

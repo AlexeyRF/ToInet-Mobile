@@ -62,18 +62,22 @@ public class ToInetService extends VpnService {
     private NotificationCompat.Builder mNotifyBuilder;
     private static final String TAG = "ToInetService";
 
+    private boolean isTorDesired() {
+        return Prefs.isProviderActive("tor");
+    }
+
     private final Runnable autoReconnectRunnable = new Runnable() {
         @Override
         public void run() {
-            if (Prefs.getTorEnabled() && STATUS_OFF.equals(mCurrentStatus)) {
-                Log.d(TAG, "Auto-pressing 'Connect' button (Tor is enabled and in STATUS_OFF)...");
+            if (isTorDesired() && STATUS_OFF.equals(mCurrentStatus)) {
+                Log.d(TAG, "Auto-pressing 'Connect' button (Tor is desired and in STATUS_OFF)...");
                 startTor();
             }
         }
     };
 
     private void scheduleAutoReconnectIfEnabled() {
-        if (Prefs.getTorEnabled() && !STATUS_ON.equals(mCurrentStatus) && !STATUS_STARTING.equals(mCurrentStatus)) {
+        if (isTorDesired() && !STATUS_ON.equals(mCurrentStatus) && !STATUS_STARTING.equals(mCurrentStatus)) {
             if (mHandler != null) {
                 mHandler.removeCallbacks(autoReconnectRunnable);
                 mHandler.postDelayed(autoReconnectRunnable, 4000);
@@ -104,58 +108,55 @@ public class ToInetService extends VpnService {
                 .setSilent(true)
                 .setOngoing(true);
 
-        if ("address_status".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())) {
-            notifyMsg = ru.toinet.android.util.AddressStatusHelper.getAddressStatus(this);
+        String currentProvider = ru.toinet.android.util.Prefs.getNotificationLogProvider();
+        String title = "ToInet";
+        String content = null;
+
+        if ("address_status".equals(currentProvider)) {
+            title = "Состояние Адреса";
+            content = ru.toinet.android.util.AddressStatusHelper.getAddressStatus(this);
+        } else if ("vpn".equals(currentProvider)) {
+            title = "ToInet";
+            content = Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
+        } else {
+            title = "ToInet";
+            content = null;
         }
 
-        if (!isDetailed) {
+        mNotifyBuilder
+                .setSmallIcon(R.drawable.ic_stat_tor)
+                .setContentTitle(title)
+                .setContentText(content)
+                .setSubText(null)
+                .setProgress(0, 0, false)
+                .setPriority(priority)
+                .setContentIntent(pendIntent);
+
+        // Tor connection is active
+        if (conn != null && mCurrentStatus.equals(STATUS_ON)) { // only add new identity action when there is a connection
+            var i = new Intent(this, ToInetService.class);
+            i.setAction(TorControlCommands.SIGNAL_NEWNYM);
+            i.putExtra(ToInetConstants.EXTRA_NOT_SYSTEM, true);
+
+            var pendingIntentNewNym = getServiceIntent(i);
+
+            mNotifyBuilder.addAction(R.drawable.ic_refresh_white_24dp, getString(R.string.menu_new_identity), pendingIntentNewNym);
+        } // Tor connection is off
+        else if (mCurrentStatus.equals(STATUS_OFF)) {
+            var i = new Intent(this, ToInetService.class);
+            i.setAction(ACTION_START);
+            i.putExtra(ToInetConstants.EXTRA_NOT_SYSTEM, true);
+
+            var pendingIntentConnect = getServiceIntent(i);
+
             mNotifyBuilder
-                    .setSmallIcon(R.drawable.ic_stat_tor)
-                    .setContentTitle("ToInet")
-                    .setContentText(null)
+                    .addAction(R.drawable.ic_stat_tor, getString(R.string.connect_to_tor), pendingIntentConnect)
+                    .setContentText(content)
                     .setSubText(null)
                     .setProgress(0, 0, false)
-                    .setPriority(priority)
-                    .setContentIntent(pendIntent);
-        }
-        else {
-            String title = "address_status".equals(ru.toinet.android.util.Prefs.getNotificationLogProvider())
-                    ? "Состояние Адреса"
-                    : Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
-            mNotifyBuilder
-                    .setSmallIcon(icon)
-                    .setContentText(notifyMsg)
-                    .setContentIntent(pendIntent)
-                    .setContentTitle(title)
-                    .setPriority(NotificationCompat.PRIORITY_LOW);
-            // Tor connection is active
-            if (conn != null && mCurrentStatus.equals(STATUS_ON)) { // only add new identity action when there is a connection
-                mNotifyBuilder.setProgress(0, 0, false); // removes progress bar
+                    .setTicker(null);
 
-                var i = new Intent(this, ToInetService.class);
-                i.setAction(TorControlCommands.SIGNAL_NEWNYM);
-                i.putExtra(ToInetConstants.EXTRA_NOT_SYSTEM, true);
-
-                var pendingIntentNewNym = getServiceIntent(i);
-
-                mNotifyBuilder.addAction(R.drawable.ic_refresh_white_24dp, getString(R.string.menu_new_identity), pendingIntentNewNym);
-            } // Tor connection is off
-            else if (mCurrentStatus.equals(STATUS_OFF)) {
-                var i = new Intent(this, ToInetService.class);
-                i.setAction(ACTION_START);
-                i.putExtra(ToInetConstants.EXTRA_NOT_SYSTEM, true);
-
-                var pendingIntentConnect = getServiceIntent(i);
-
-                mNotifyBuilder
-                        .addAction(R.drawable.ic_stat_tor, getString(R.string.connect_to_tor), pendingIntentConnect)
-                        .setContentText(notifyMsg)
-                        .setSubText(null)
-                        .setProgress(0, 0, false)
-                        .setTicker(notifyType != NOTIFY_ID ? notifyMsg : null);
-
-                scheduleAutoReconnectIfEnabled();
-            }
+            scheduleAutoReconnectIfEnabled();
         }
         var notification = mNotifyBuilder.build();
         try {
@@ -277,6 +278,9 @@ public class ToInetService extends VpnService {
         } else {
             sendLocalStatusOffBroadcast();
         }
+        try {
+            stopService(new Intent(this, TorService.class));
+        } catch (Exception ignored) {}
     }
 
     private void requestTorRereadConfig() {
@@ -531,6 +535,13 @@ public class ToInetService extends VpnService {
             @Override
             public void onServiceDisconnected(ComponentName componentName) {
                 Log.d(TAG, "TorService: onServiceDisconnected");
+                if (shouldUnbindTorService && torServiceConnection != null) {
+                    try {
+                        unbindService(torServiceConnection);
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error unbinding on onServiceDisconnected", e);
+                    }
+                }
                 conn = null;
                 torServiceConnection = null;
                 shouldUnbindTorService = false;
@@ -542,6 +553,13 @@ public class ToInetService extends VpnService {
             @Override
             public void onBindingDied(ComponentName componentName) {
                 Log.w(TAG, "TorService: onBindingDied");
+                if (shouldUnbindTorService && torServiceConnection != null) {
+                    try {
+                        unbindService(torServiceConnection);
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error unbinding on onBindingDied", e);
+                    }
+                }
                 conn = null;
                 torServiceConnection = null;
                 shouldUnbindTorService = false;
@@ -552,11 +570,17 @@ public class ToInetService extends VpnService {
         };
 
         var serviceIntent = new Intent(this, TorService.class);
-        Log.d(TAG, "binding tor service");
+        Log.d(TAG, "starting & binding tor service");
+        try {
+            startService(serviceIntent);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed startService for TorService", e);
+        }
+        int bindFlags = Context.BIND_AUTO_CREATE | Context.BIND_IMPORTANT;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
-            shouldUnbindTorService = bindService(serviceIntent, torServiceConnection, BIND_AUTO_CREATE);
+            shouldUnbindTorService = bindService(serviceIntent, torServiceConnection, bindFlags);
         else
-            shouldUnbindTorService = bindService(serviceIntent, BIND_AUTO_CREATE, mExecutor, torServiceConnection);
+            shouldUnbindTorService = bindService(serviceIntent, bindFlags, mExecutor, torServiceConnection);
     }
 
     private void sendLocalStatusOffBroadcast() {
@@ -642,6 +666,7 @@ public class ToInetService extends VpnService {
 
     private void sendCallbackLogMessage(final String logMessage) {
         var notificationMessage = logMessage;
+        ru.toinet.android.util.NotificationLogger.addLog("[tor] " + logMessage);
         ru.toinet.android.util.NetworkBlackoutMonitor.onTorLog(logMessage);
 
         var localIntent = new Intent(LOCAL_ACTION_LOG)

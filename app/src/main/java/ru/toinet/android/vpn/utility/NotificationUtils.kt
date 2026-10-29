@@ -59,19 +59,11 @@ fun registerNotificationChannel(context: Context, id: String, @StringRes name: I
 }
 
 fun resolveNotificationChannelAndPriority(serviceKey: String, baseChannelId: String): Pair<String, Int> {
-    val current = ru.toinet.android.util.Prefs.notificationLogProvider
-    if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification(serviceKey)) {
-        return Pair("${baseChannelId}_low", NotificationCompat.PRIORITY_LOW)
+    val isPrimary = ru.toinet.android.util.Prefs.isPrimaryNotificationService(serviceKey)
+    if (!ru.toinet.android.util.Prefs.shouldServiceShowNotification(serviceKey) || !isPrimary) {
+        return Pair("${baseChannelId}_silent", NotificationCompat.PRIORITY_MIN)
     }
-    if (current == "none") {
-        if (ru.toinet.android.util.Prefs.isPrimaryNotificationService(serviceKey)) {
-            return Pair("${baseChannelId}_mini", NotificationCompat.PRIORITY_LOW)
-        } else {
-            return Pair("${baseChannelId}_silent", NotificationCompat.PRIORITY_MIN)
-        }
-    }
-    // Non-selected background service: minimize completely so it doesn't clutter shade
-    return Pair("${baseChannelId}_silent", NotificationCompat.PRIORITY_MIN)
+    return Pair("${baseChannelId}_mini", NotificationCompat.PRIORITY_LOW)
 }
 
 fun createConnectionNotification(
@@ -85,7 +77,7 @@ fun createConnectionNotification(
     registerNotificationChannel(context, channelId, title)
 
     val (actualId, priority) = resolveNotificationChannelAndPriority(serviceKey, channelId)
-    val isDetailed = ru.toinet.android.util.Prefs.shouldShowDetailedNotification(serviceKey)
+    val currentProvider = ru.toinet.android.util.Prefs.notificationLogProvider
 
     val builder = NotificationCompat.Builder(context, actualId)
         .setSmallIcon(R.drawable.ic_stat_tor)
@@ -102,14 +94,20 @@ fun createConnectionNotification(
             )
         )
 
-    if (!isDetailed) {
-        builder.setContentTitle("ToInet")
-            .setContentText(null)
-            .setSubText(null)
+    val notifTitle = if (currentProvider == "address_status") "Состояние Адреса" else "ToInet"
+    val notifContent = if (currentProvider == "none") {
+        null
+    } else if (currentProvider == "address_status") {
+        ru.toinet.android.util.AddressStatusHelper.getAddressStatus(context)
     } else {
-        builder.setContentTitle(context.getString(title))
-            .setContentText(context.getString(content))
+        context.getString(content)
+    }
 
+    builder.setContentTitle(notifTitle)
+        .setContentText(notifContent)
+        .setSubText(null)
+
+    if (currentProvider != "none") {
         builder.addAction(
             0,
             context.getString(R.string.disable),
@@ -142,7 +140,7 @@ fun createConnectionNotificationString(
     registerNotificationChannel(context, channelId, channelName)
 
     val (actualId, priority) = resolveNotificationChannelAndPriority(serviceKey, channelId)
-    val isDetailed = ru.toinet.android.util.Prefs.shouldShowDetailedNotification(serviceKey)
+    val currentProvider = ru.toinet.android.util.Prefs.notificationLogProvider
 
     val builder = NotificationCompat.Builder(context, actualId)
         .setSmallIcon(R.drawable.ic_stat_tor)
@@ -159,14 +157,20 @@ fun createConnectionNotificationString(
             )
         )
 
-    if (!isDetailed) {
-        builder.setContentTitle("ToInet")
-            .setContentText(null)
-            .setSubText(null)
+    val notifTitle = if (currentProvider == "address_status") "Состояние Адреса" else "ToInet"
+    val notifContent = if (currentProvider == "none") {
+        null
+    } else if (currentProvider == "address_status") {
+        ru.toinet.android.util.AddressStatusHelper.getAddressStatus(context)
     } else {
-        builder.setContentTitle(title)
-            .setContentText(content)
+        content.ifBlank { null }
+    }
 
+    builder.setContentTitle(notifTitle)
+        .setContentText(notifContent)
+        .setSubText(null)
+
+    if (currentProvider != "none") {
         if (switchServerIntent != null) {
             builder.addAction(
                 0,

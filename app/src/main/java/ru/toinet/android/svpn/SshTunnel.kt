@@ -1,11 +1,14 @@
 package ru.toinet.android.svpn
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.net.VpnService
+import android.os.Build
 import android.util.Log
 import com.jcraft.jsch.*
-import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.charset.StandardCharsets
@@ -63,7 +66,9 @@ class SshTunnel(
                         vpnService?.protect(socket)
                         socket.tcpNoDelay = true
                         socket.keepAlive = true
-                        socket.connect(InetSocketAddress(targetHost, targetPort), timeoutMs)
+
+                        val resolved = resolveHostSafely(vpnService, targetHost)
+                        socket.connect(InetSocketAddress(resolved, targetPort), timeoutMs)
                         return socket
                     }
                     override fun getInputStream(socket: Socket): InputStream = socket.getInputStream()
@@ -82,6 +87,22 @@ class SshTunnel(
                 } catch (_: Exception) {}
             }
         }
+
+        private fun resolveHostSafely(vpnService: VpnService?, targetHost: String): InetAddress {
+            if (vpnService != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                try {
+                    val cm = vpnService.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                    val activeNet = cm?.activeNetwork
+                    if (activeNet != null) {
+                        val addrs = activeNet.getAllByName(targetHost)
+                        if (addrs.isNotEmpty()) return addrs[0]
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed resolving $targetHost via activeNetwork: ${e.message}")
+                }
+            }
+            return InetAddress.getByName(targetHost)
+        }
     }
 
     interface TunnelListener {
@@ -96,10 +117,18 @@ class SshTunnel(
     private var isRunning = false
     private var workerThread: Thread? = null
 
+    @Volatile
+    var lastError: String? = null
+        private set
+
+    val isProxyListening: Boolean
+        get() = proxyServer?.isListening == true
+
     @Synchronized
     fun start(vpnService: VpnService?, listener: TunnelListener?) {
         if (isRunning) return
         isRunning = true
+        lastError = null
 
         workerThread = Thread({
             try {
@@ -138,7 +167,9 @@ class SshTunnel(
                         }
                         socket.tcpNoDelay = true
                         socket.keepAlive = true
-                        socket.connect(InetSocketAddress(targetHost, targetPort), connectTimeoutMs)
+
+                        val resolved = resolveHostSafely(vpnService, targetHost)
+                        socket.connect(InetSocketAddress(resolved, targetPort), connectTimeoutMs)
                         return socket
                     }
 
@@ -182,9 +213,10 @@ class SshTunnel(
                     listener?.onDisconnected()
                 }
             } catch (e: Throwable) {
-                Log.e(TAG, "SSH Tunnel error", e)
-                stop()
                 val msg = e.localizedMessage ?: e.message ?: e.toString()
+                Log.e(TAG, "SSH Tunnel error: $msg", e)
+                lastError = msg
+                stop()
                 listener?.onError(msg, e)
             }
         }, "SvpnTunnelThread")

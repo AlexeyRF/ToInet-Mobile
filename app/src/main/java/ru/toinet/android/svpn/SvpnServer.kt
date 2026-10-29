@@ -4,8 +4,6 @@ import android.content.Context
 import android.net.VpnService
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import ru.toinet.android.util.NotificationLogger
 import ru.toinet.android.util.Prefs
 
@@ -21,6 +19,9 @@ class SvpnServer(
     }
 
     private var tunnel: SshTunnel? = null
+
+    val lastErrorMessage: String?
+        get() = tunnel?.lastError
 
     fun start() {
         stop()
@@ -77,6 +78,28 @@ class SvpnServer(
                 NotificationLogger.log(context, "svpn", "Ошибка SVPN: $message")
             }
         })
+    }
+
+    /**
+     * Starts the SVPN SSH tunnel and synchronously blocks until connected or failed/timed out.
+     */
+    fun startAndWait(timeoutMs: Long = 12000L): Boolean {
+        start()
+        val start = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            if (isRunning && tunnel?.isProxyListening == true) {
+                return true
+            }
+            if (tunnel?.lastError != null) {
+                return false
+            }
+            try {
+                Thread.sleep(100)
+            } catch (_: InterruptedException) {
+                break
+            }
+        }
+        return isRunning && tunnel?.isProxyListening == true
     }
 
     fun stop() {

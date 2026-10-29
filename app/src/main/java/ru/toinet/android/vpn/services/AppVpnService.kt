@@ -346,8 +346,17 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         if (neededProviders.contains("svpn") || neededProviders.contains("ssh")) {
-            svpnServer = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope).apply {
-                start()
+            val server = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope)
+            svpnServer = server
+            if (provider == "svpn" || provider == "ssh") {
+                val ok = server.startAndWait(12000L)
+                if (!ok) {
+                    val errMsg = server.lastErrorMessage ?: "Не удалось подключиться к SSH серверу"
+                    ru.toinet.android.util.NotificationLogger.log(this, "svpn", "Ошибка SVPN: $errMsg")
+                    throw IllegalStateException(errMsg)
+                }
+            } else {
+                server.start()
             }
         }
 
@@ -359,6 +368,9 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
+        if (provider == "tor" && dns == "208.67.222.222") {
+            dns = "1.1.1.1"
+        }
         if ((provider == "svpn" || provider == "ssh") && ru.toinet.android.util.Prefs.svpnDnsServer.isNotBlank()) {
             dns = ru.toinet.android.util.Prefs.svpnDnsServer
         }
@@ -372,7 +384,8 @@ class AppVpnService : LifecycleVpnService() {
 
         this.tunFd = fd
 
-        ru.toinet.android.vpn.utility.VpnUtility.makePdnsdConf(this, dns, 53)
+        val dnsPort = if (provider == "svpn" || provider == "ssh") ru.toinet.android.util.Prefs.svpnDnsPort else 53
+        ru.toinet.android.vpn.utility.VpnUtility.makePdnsdConf(this, dns, dnsPort)
 
         ru.toinet.android.vpn.utility.VpnUtility.exec(arrayOf(
             "$libDir/libpdnsd.so",
@@ -594,6 +607,8 @@ class AppVpnService : LifecycleVpnService() {
         
         val defaultDesc = if (isAddressStatus) {
             ru.toinet.android.util.AddressStatusHelper.getAddressStatus(this)
+        } else if (ru.toinet.android.util.Prefs.notificationLogProvider == "none") {
+            ""
         } else if (isAppRouting) "Раздельное туннелирование по правилам" else when (provider) {
             "easyvpn" -> easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
             "tor" -> "Tor VPN запущен"
@@ -605,13 +620,7 @@ class AppVpnService : LifecycleVpnService() {
             "fakevpn" -> "FakeVPN запущен"
             else -> getString(R.string.vpn_notification_content)
         }
-        val content = if (isAddressStatus) {
-            defaultDesc
-        } else if (!currentLogMessage.isNullOrBlank()) {
-            currentLogMessage!!
-        } else {
-            defaultDesc
-        }
+        val content = defaultDesc
 
         val switchIntent = if (provider == "easyvpn") {
             PendingIntent.getService(

@@ -21,6 +21,7 @@ static int g_proxy_running = 0;
 struct params default_params = {
         .sfdelay = 3,
         .wait_send = 1,
+        .def_ttl = 64,
         .cache_ttl = 100800,
         .ipv6 = 1,
         .resolve = 1,
@@ -76,6 +77,10 @@ Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStartProxy(JNIEnv *env, __attr
     reset_params();
     g_proxy_running = 1;
     optind = 1;
+#if defined(__BIONIC__) || defined(__ANDROID__)
+    extern int optreset;
+    optreset = 1;
+#endif
 
     int result = main(argc, argv);
 
@@ -100,6 +105,8 @@ Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStopProxy(__attribute__((unuse
     NOT_EXIT = 0;
     if (server_fd >= 0) {
         shutdown(server_fd, SHUT_RDWR);
+        close(server_fd);
+        server_fd = -1;
     }
     g_proxy_running = 0;
 

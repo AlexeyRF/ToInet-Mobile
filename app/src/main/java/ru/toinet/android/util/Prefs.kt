@@ -732,6 +732,13 @@ object Prefs {
 
     @JvmStatic
     fun isProviderActive(provider: String): Boolean {
+        if (isGlobalVpnEnabled && appRoutingEnabled) {
+            try {
+                if (ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().contains(provider)) {
+                    return true
+                }
+            } catch (_: Throwable) {}
+        }
         return when (provider) {
             "vpn" -> isGlobalVpnEnabled
             "tor" -> torEnabled || (isGlobalVpnEnabled && vpnProvider == "tor")
@@ -780,33 +787,17 @@ object Prefs {
     @JvmStatic
     fun shouldServiceShowNotification(serviceKey: String): Boolean {
         val current = notificationLogProvider
-        if (current == "address_status") {
-            return isPrimaryNotificationService(serviceKey)
-        }
-        if (current == "all") {
-            if (isGlobalVpnEnabled && (serviceKey == vpnProvider || (vpnProvider in listOf("rehab", "custom") && serviceKey in listOf("rehab", "custom")))) {
-                return false
-            }
-            return true
-        }
-        if (current == "none") {
-            return isPrimaryNotificationService(serviceKey)
-        }
-        if (isProviderActive(current)) {
-            if (current == "vpn") {
+        if (current == "vpn") {
+            if (isGlobalVpnEnabled) {
                 return serviceKey == "vpn"
             }
-            if (isGlobalVpnEnabled && (vpnProvider == current || (vpnProvider in listOf("rehab", "custom") && current in listOf("rehab", "custom")))) {
-                return serviceKey == "vpn"
-            }
-            return serviceKey == current
+            return isPrimaryNotificationService(serviceKey)
         }
         return isPrimaryNotificationService(serviceKey)
     }
 
     @JvmStatic
     fun shouldShowDetailedNotification(serviceKey: String): Boolean {
-        if (!shouldServiceShowNotification(serviceKey)) return false
-        return notificationLogProvider != "none"
+        return false
     }
 }
