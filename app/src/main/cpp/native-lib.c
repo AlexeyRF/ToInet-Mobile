@@ -1,4 +1,8 @@
 #include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <jni.h>
 #include <getopt.h>
@@ -7,29 +11,33 @@
 #include <stdlib.h>
 
 #include "byedpi/error.h"
+#include "byedpi/params.h"
 #include "main.h"
 
 extern int server_fd;
+extern int NOT_EXIT;
 static int g_proxy_running = 0;
 
 struct params default_params = {
-        .await_int = 10,
+        .sfdelay = 3,
+        .wait_send = 1,
+        .cache_ttl = 100800,
         .ipv6 = 1,
         .resolve = 1,
         .udp = 1,
         .max_open = 512,
         .bfsize = 16384,
         .baddr = {
-            .in6 = { .sin6_family = AF_INET6 }
+            .sin6_family = AF_INET6
         },
         .laddr = {
-            .in = { .sin_family = AF_INET }
+            .sin6_family = AF_INET
         },
         .debug = 0
 };
 
 void reset_params(void) {
-    clear_params(NULL, NULL);
+    clear_params();
     params = default_params;
 }
 
@@ -89,7 +97,10 @@ Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStopProxy(__attribute__((unuse
         return -1;
     }
 
-    shutdown(server_fd, SHUT_RDWR);
+    NOT_EXIT = 0;
+    if (server_fd >= 0) {
+        shutdown(server_fd, SHUT_RDWR);
+    }
     g_proxy_running = 0;
 
     return 0;
@@ -99,9 +110,13 @@ JNIEXPORT jint JNICALL
 Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniForceClose(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
     LOG(LOG_S, "closing server socket (fd: %d)", server_fd);
 
-    if (close(server_fd) == -1) {
-        LOG(LOG_S, "failed to close server socket (fd: %d)", server_fd);
-        return -1;
+    NOT_EXIT = 0;
+    if (server_fd >= 0) {
+        if (close(server_fd) == -1) {
+            LOG(LOG_S, "failed to close server socket (fd: %d)", server_fd);
+            return -1;
+        }
+        server_fd = -1;
     }
 
     LOG(LOG_S, "proxy socket force close");

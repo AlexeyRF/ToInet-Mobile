@@ -8,3 +8,7 @@
 -keep interface okhttp3.** { *; }
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# Keep JSch reflection algorithms (ciphers, kex, macs, signatures)
+-keep class com.jcraft.jsch.** { *; }
+-dontwarn com.jcraft.jsch.**

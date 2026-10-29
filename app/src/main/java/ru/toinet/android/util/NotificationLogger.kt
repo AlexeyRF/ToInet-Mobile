@@ -71,6 +71,7 @@ object NotificationLogger {
             "operaproxy" -> "opera_proxy_channel"
             "zapret" -> "zapret_channel"
             "easyvpn" -> "EasyVpnProxy"
+            "svpn" -> "svpn_channel"
             else -> "toinet_log_channel"
         }
 
@@ -79,6 +80,7 @@ object NotificationLogger {
             "operaproxy" -> 1888
             "zapret" -> 1081
             "easyvpn" -> 1791
+            "svpn" -> 1770
             else -> 1999
         }
 
@@ -106,6 +108,7 @@ object NotificationLogger {
             "operaproxy" -> context.getString(R.string.opera_proxy_notification_title)
             "zapret" -> context.getString(R.string.zapret_notification_title)
             "easyvpn" -> "EasyVPN"
+            "svpn" -> "SVPN (SSH)"
             "tgws" -> "TGWS"
             else -> "ToInet: $providerName"
         }

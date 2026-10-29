@@ -122,6 +122,20 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
         listItems.add(
             ToInetMenuAction(
                 0,
+                R.drawable.ic_server,
+                statusString = "SVPN (SSH): ${if (Prefs.svpnEnabled) "ВКЛ" else "ВЫКЛ"}\n(туннель, сервер, ключ)"
+            ) {
+                SvpnBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    SvpnBottomSheet.TAG
+                )
+                dismiss()
+            }
+        )
+
+        listItems.add(
+            ToInetMenuAction(
+                0,
                 R.drawable.ic_send_airplane,
                 statusString = "Добавить прокси в Telegram"
             ) {
@@ -154,6 +168,9 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
 
                 proxies.add("FakeVPN (порт 1790)")
                 proxyLinks.add("tg://socks?server=127.0.0.1&port=1790")
+
+                proxies.add("SVPN / SSH (порт ${Prefs.svpnLocalPort})")
+                proxyLinks.add("tg://socks?server=127.0.0.1&port=${Prefs.svpnLocalPort}")
 
                 AlertDialog.Builder(ctx)
                     .setTitle("Выберите прокси для добавления")

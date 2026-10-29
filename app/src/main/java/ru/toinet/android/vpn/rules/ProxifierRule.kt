@@ -21,6 +21,7 @@ data class ProxifierRule(
         const val ACTION_OPERAPROXY = "operaproxy"
         const val ACTION_REHAB = "rehab"
         const val ACTION_FAKEVPN = "fakevpn"
+        const val ACTION_SVPN = "svpn"
 
         fun getActionTitle(action: String): String = when (action) {
             ACTION_DIRECT -> "Direct (Напрямую)"
@@ -32,6 +33,7 @@ data class ProxifierRule(
             ACTION_OPERAPROXY -> "Opera Proxy"
             ACTION_REHAB -> "Socks Rehab (1788)"
             ACTION_FAKEVPN -> "FakeVPN (1790)"
+            ACTION_SVPN -> "SVPN / SSH (${ru.toinet.android.util.Prefs.svpnLocalPort})"
             else -> action
         }
 

@@ -127,6 +127,12 @@ object PresetManager {
             needsDelay = true
         }
 
+        // SVPN (SSH standalone proxy)
+        if (oldJson.optBoolean("pref_svpn_enabled") && (!newJson.optBoolean("pref_svpn_enabled") || changed(oldJson, newJson, listOf("pref_svpn_host", "pref_svpn_port", "pref_svpn_user", "pref_svpn_password", "pref_svpn_private_key", "pref_svpn_local_port", "pref_open_proxy_on_all_interfaces")))) {
+            ru.toinet.android.svpn.SvpnService.stop(context)
+            needsDelay = true
+        }
+
         // VPN
         if (oldJson.optBoolean("pref_global_vpn_enabled") && (!newJson.optBoolean("pref_global_vpn_enabled") || oldJson.optString("pref_vpn_provider") != newJson.optString("pref_vpn_provider") || changed(oldJson, newJson, listOf("pref_easy_vpn_subs", "custom_socks_ip", "custom_socks_port", "pref_open_proxy_on_all_interfaces", "pref_vpn_bypass_lan")))) {
             context.sendIntentToService(Intent(context, ru.toinet.android.vpn.services.AppVpnService::class.java).apply {

@@ -666,6 +666,61 @@ object Prefs {
         set(value) = cr?.putPref("easyvpn_proxy_port", value) ?: Unit
 
     @JvmStatic
+    var svpnEnabled: Boolean
+        get() = cr?.getPrefBoolean("pref_svpn_enabled", false) ?: false
+        set(value) = cr?.putPref("pref_svpn_enabled", value) ?: Unit
+
+    @JvmStatic
+    var svpnHost: String
+        get() = cr?.getPrefString("pref_svpn_host") ?: ""
+        set(value) = cr?.putPref("pref_svpn_host", value) ?: Unit
+
+    @JvmStatic
+    var svpnPort: Int
+        get() = cr?.getPrefInt("pref_svpn_port", 22) ?: 22
+        set(value) = cr?.putPref("pref_svpn_port", value) ?: Unit
+
+    @JvmStatic
+    var svpnUser: String
+        get() = cr?.getPrefString("pref_svpn_user") ?: "root"
+        set(value) = cr?.putPref("pref_svpn_user", value) ?: Unit
+
+    @JvmStatic
+    var svpnAuthType: String
+        get() = cr?.getPrefString("pref_svpn_auth_type") ?: "password"
+        set(value) = cr?.putPref("pref_svpn_auth_type", value) ?: Unit
+
+    @JvmStatic
+    var svpnPassword: String
+        get() = cr?.getPrefString("pref_svpn_password") ?: ""
+        set(value) = cr?.putPref("pref_svpn_password", value) ?: Unit
+
+    @JvmStatic
+    var svpnPrivateKey: String
+        get() = cr?.getPrefString("pref_svpn_private_key") ?: ""
+        set(value) = cr?.putPref("pref_svpn_private_key", value) ?: Unit
+
+    @JvmStatic
+    var svpnKeyPassphrase: String
+        get() = cr?.getPrefString("pref_svpn_key_passphrase") ?: ""
+        set(value) = cr?.putPref("pref_svpn_key_passphrase", value) ?: Unit
+
+    @JvmStatic
+    var svpnLocalPort: Int
+        get() = cr?.getPrefInt("pref_svpn_local_port", 1770) ?: 1770
+        set(value) = cr?.putPref("pref_svpn_local_port", value) ?: Unit
+
+    @JvmStatic
+    var svpnDnsServer: String
+        get() = cr?.getPrefString("pref_svpn_dns_server") ?: "1.1.1.1"
+        set(value) = cr?.putPref("pref_svpn_dns_server", value) ?: Unit
+
+    @JvmStatic
+    var svpnDnsPort: Int
+        get() = cr?.getPrefInt("pref_svpn_dns_port", 53) ?: 53
+        set(value) = cr?.putPref("pref_svpn_dns_port", value) ?: Unit
+
+    @JvmStatic
     var easyVpnProxyHost: String
         get() = if (openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
         set(_) = Unit
@@ -686,6 +741,7 @@ object Prefs {
             "operaproxy" -> (operaProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "operaproxy")) && ArchHelper.isOperaSupported
             "zapret" -> zapretEnabled || (isGlobalVpnEnabled && vpnProvider == "zapret")
             "easyvpn" -> easyVpnProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "easyvpn")
+            "svpn", "ssh" -> svpnEnabled || (isGlobalVpnEnabled && (vpnProvider == "svpn" || vpnProvider == "ssh"))
             else -> false
         }
     }
@@ -709,6 +765,9 @@ object Prefs {
         }
         if (operaProxyEnabled && ArchHelper.isOperaSupported) {
             return serviceKey == "operaproxy"
+        }
+        if (svpnEnabled) {
+            return serviceKey == "svpn"
         }
         /*
         if (tgwsEnabled) {

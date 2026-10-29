@@ -104,7 +104,8 @@ object ProxifierRulesManager {
             ProxifierRule.ACTION_TOR to ProxifierRule.getActionTitle(ProxifierRule.ACTION_TOR),
             ProxifierRule.ACTION_ZAPRET to ProxifierRule.getActionTitle(ProxifierRule.ACTION_ZAPRET),
             ProxifierRule.ACTION_REHAB to ProxifierRule.getActionTitle(ProxifierRule.ACTION_REHAB),
-            ProxifierRule.ACTION_FAKEVPN to ProxifierRule.getActionTitle(ProxifierRule.ACTION_FAKEVPN)
+            ProxifierRule.ACTION_FAKEVPN to ProxifierRule.getActionTitle(ProxifierRule.ACTION_FAKEVPN),
+            ProxifierRule.ACTION_SVPN to ProxifierRule.getActionTitle(ProxifierRule.ACTION_SVPN)
         )
         if (ArchHelper.isOperaSupported) {
             list.add(ProxifierRule.ACTION_OPERAPROXY to ProxifierRule.getActionTitle(ProxifierRule.ACTION_OPERAPROXY))

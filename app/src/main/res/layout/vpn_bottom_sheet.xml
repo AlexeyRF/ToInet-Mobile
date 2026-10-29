@@ -126,6 +126,14 @@
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
                 android:text="FakeVPN (Напрямую)" />
+
+            <RadioButton
+                android:id="@+id/rbSvpn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="38dp"
+                android:paddingVertical="2dp"
+                android:text="SVPN / SSH (порт 1770)" />
         </RadioGroup>
 
         <!--

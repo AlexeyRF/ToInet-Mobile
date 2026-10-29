@@ -260,6 +260,17 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="EasyVPN Proxy functionality" />
         </service>
+
+        <service
+            android:name=".svpn.SvpnService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="SVPN SSH functionality" />
+        </service>
     </application>
 </manifest>
 

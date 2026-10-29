@@ -19,6 +19,9 @@
     *   Прямое туннелирование с опциональной подменой SNI (FakeTLS).
 *   **Opera Proxy**:
     *   Маршрутизация через прокси-серверы Opera.
+*   **SVPN (SSH)**:
+    *   SSH-туннелирование с динамическим SOCKS5-прокси (JSch) и поддержкой системного VPN.
+    *   Гибкая настройка: хост, порт, логин, пароль или приватный SSH-ключ (PEM / OpenSSH / Ed25519) и upstream DNS.
 
 ---
 
@@ -36,6 +39,7 @@
 | **Socks-Reabilitator** | `1788` | SOCKS5     |
 | **Opera-Proxy**        | `1888` | SOCKS5     | 
 | **FakeVPN**            | `1790` | SOCKS5     |
+| **SVPN (SSH)**         | `1770` | SOCKS5     |
 
 ---
 
@@ -55,6 +59,7 @@
 *   [romanvht (Стратегии и тестер ByeDPI)](https://github.com/romanvht/)
 *   [Flowseal (Оригинальный TGWS, стратегии Zapret-discord-youtube)](https://github.com/Flowseal/)
 *   [Alexey71 (OperaProxy)](https://github.com/Alexey71/)
+*   [mwiede (JSch - SSH для SVPN)](https://github.com/mwiede/jsch)
 
 
 ## Дисклеймер

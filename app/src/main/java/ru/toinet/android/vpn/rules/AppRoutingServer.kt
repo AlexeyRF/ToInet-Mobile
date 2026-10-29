@@ -363,6 +363,7 @@ class AppRoutingServer(
             }
             ProxifierRule.ACTION_REHAB -> 1788
             ProxifierRule.ACTION_FAKEVPN -> 1790
+            ProxifierRule.ACTION_SVPN -> Prefs.svpnLocalPort
             else -> 1080
         }
     }

@@ -231,6 +231,7 @@ dependencies {
     implementation(libs.androidx.work.kotlin)
     implementation(libs.upnp)
     implementation(libs.iptproxy)
+    implementation(libs.jsch)
 
     // Tor
     implementation(files("../libs/geoip.jar"))
@@ -238,12 +239,17 @@ dependencies {
     api(libs.tor.android)
 
     testImplementation(libs.junit.jupiter)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso)
     androidTestImplementation(libs.androidx.rules)
     androidTestImplementation(libs.androidx.runner)
     androidTestImplementation(libs.androidx.espresso.contrib)
     androidTestUtil(libs.androidx.orchestrator)
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 tasks.register<Copy>("copyAllApks") {
