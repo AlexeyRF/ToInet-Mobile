@@ -186,8 +186,13 @@
         <service
             android:name="org.torproject.jni.TorService"
             android:process=":tor"
+            android:foregroundServiceType="specialUse"
             tools:node="merge"
-            tools:replace="android:process" />
+            tools:replace="android:process">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Tor background service" />
+        </service>
 
 
             
@@ -228,14 +233,22 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse"
-            android:stopWithTask="false" />
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Opera Proxy functionality" />
+        </service>
 
         <service
             android:name=".zapret.ZapretService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse"
-            android:stopWithTask="false" />
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Zapret functionality" />
+        </service>
 
         <service
             android:name=".easyvpn.EasyVpnService"

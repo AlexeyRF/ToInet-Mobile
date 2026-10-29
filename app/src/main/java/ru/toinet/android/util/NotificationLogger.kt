@@ -16,18 +16,27 @@ object NotificationLogger {
     @Volatile
     var lastActiveVpnLog: String? = null
 
+    private val lastNotifyTimes = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    @Volatile
+    private var lastBroadcastTime = 0L
+
     fun log(context: Context, providerName: String, message: String) {
         val cleanMsg = message.trim()
         if (cleanMsg.isEmpty()) return
 
-        // 1. Send log broadcast to update logBottomSheet and UI
-        try {
-            val logIntent = Intent(ToInetConstants.LOCAL_ACTION_LOG).apply {
-                putExtra(ToInetConstants.LOCAL_EXTRA_LOG, "[$providerName] $cleanMsg")
-                setPackage(context.packageName)
-            }
-            context.sendBroadcast(logIntent)
-        } catch (_: Exception) {}
+        val now = System.currentTimeMillis()
+
+        // 1. Send log broadcast to update logBottomSheet and UI (throttled to avoid main thread freeze)
+        if (now - lastBroadcastTime > 80L) {
+            lastBroadcastTime = now
+            try {
+                val logIntent = Intent(ToInetConstants.LOCAL_ACTION_LOG).apply {
+                    putExtra(ToInetConstants.LOCAL_EXTRA_LOG, "[$providerName] $cleanMsg")
+                    setPackage(context.packageName)
+                }
+                context.sendBroadcast(logIntent)
+            } catch (_: Exception) {}
+        }
 
         // 2. If Global VPN is enabled and this provider is active, update the primary VPN notification
         val isVpn = Prefs.isGlobalVpnEnabled
@@ -48,7 +57,14 @@ object NotificationLogger {
         // 3. For standalone proxy services
         if (!Prefs.shouldShowDetailedNotification(providerName)) return
 
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // Throttle standalone notification updates to at most once per 1000ms per provider
+        val lastTime = lastNotifyTimes[providerName] ?: 0L
+        if (now - lastTime < 1000L) {
+            return
+        }
+        lastNotifyTimes[providerName] = now
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
         val channelId = when (providerName) {
             "tgws" -> "tgws_channel"
@@ -104,6 +120,8 @@ object NotificationLogger {
             .setGroup("toinet_services")
             .setOnlyAlertOnce(true)
 
-        manager.notify(notifyId, builder.build())
+        try {
+            manager.notify(notifyId, builder.build())
+        } catch (_: Exception) {}
     }
 }

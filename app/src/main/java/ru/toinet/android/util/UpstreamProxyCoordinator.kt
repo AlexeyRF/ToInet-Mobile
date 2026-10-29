@@ -42,14 +42,14 @@ object UpstreamProxyCoordinator {
                     val intent = Intent(context, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                         action = ru.toinet.android.vpn.data.START_ACTION
                     }
-                    context.sendIntentToService(intent, isForeground = Prefs.shouldServiceShowNotification("byedpi"))
+                    context.sendIntentToService(intent, isForeground = true)
                 }
                 PROVIDER_TOR -> {
                     Log.i(TAG, "Ensuring Tor is started as upstream")
                     val intent = Intent(context, ru.toinet.android.service.ToInetService::class.java).apply {
                         action = org.torproject.jni.TorService.ACTION_START
                     }
-                    context.sendIntentToService(intent, isForeground = Prefs.shouldServiceShowNotification("tor"))
+                    context.sendIntentToService(intent, isForeground = true)
                 }
                 PROVIDER_ZAPRET -> {
                     Log.i(TAG, "Ensuring Zapret is started as upstream")

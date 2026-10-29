@@ -66,12 +66,14 @@ class QuickTileService : TileService() {
                 addAction(STOPPED_BROADCAST)
                 addAction(FAILED_BROADCAST)
             },
-            ContextCompat.RECEIVER_EXPORTED,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
         )
     }
 
     override fun onStopListening() {
-        unregisterReceiver(receiver)
+        try {
+            unregisterReceiver(receiver)
+        } catch (_: Exception) {}
     }
 
     private fun launchActivity() {

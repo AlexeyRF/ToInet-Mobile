@@ -54,10 +54,18 @@ class AppVpnService : LifecycleVpnService() {
         @Volatile
         var currentLogMessage: String? = null
 
+        @Volatile
+        private var lastLogNotificationTime: Long = 0L
+
         @JvmStatic
         fun updateLogNotification(context: Context, logMessage: String) {
             currentLogMessage = logMessage
             val service = activeService ?: return
+            val now = System.currentTimeMillis()
+            if (logMessage.isNotBlank() && now - lastLogNotificationTime < 1000L) {
+                return
+            }
+            lastLogNotificationTime = now
             if (status == ServiceStatus.Connected && ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
                 try {
                     val nm = service.getSystemService(android.app.NotificationManager::class.java)
@@ -168,18 +176,6 @@ class AppVpnService : LifecycleVpnService() {
     }
 
     private fun startForeground() {
-        if (!ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
-            val nm = getSystemService(android.app.NotificationManager::class.java)
-            nm?.cancel(FOREGROUND_SERVICE_ID)
-            return
-        }
-
         val notification: Notification = createNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             try {
@@ -234,7 +230,13 @@ class AppVpnService : LifecycleVpnService() {
         Log.i(TAG, "Starting tun2socks")
 
         if (tunFd != null) {
-            throw IllegalStateException("VPN field not null")
+            Log.w(TAG, "Previous tunFd was not null, closing it safely")
+            try {
+                tunFd?.close()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to close previous tunFd", e)
+            }
+            tunFd = null
         }
 
         val dir = filesDir.absolutePath
@@ -299,7 +301,7 @@ class AppVpnService : LifecycleVpnService() {
             val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 action = ru.toinet.android.vpn.data.START_ACTION
             }
-            sendIntentToService(byedpiIntent, isForeground = ru.toinet.android.util.Prefs.shouldServiceShowNotification("byedpi"))
+            sendIntentToService(byedpiIntent, isForeground = true)
         }
 
         if (neededProviders.contains("rehab") || neededProviders.contains("custom")) {
@@ -309,6 +311,9 @@ class AppVpnService : LifecycleVpnService() {
         if (neededProviders.contains("easyvpn")) {
             if (ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
                 ru.toinet.android.easyvpn.EasyVpnService.stop(this)
+                try {
+                    Thread.sleep(100)
+                } catch (_: Exception) {}
             }
             easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
                 onServerChanged = {
@@ -342,7 +347,7 @@ class AppVpnService : LifecycleVpnService() {
             val torIntent = Intent(this, ru.toinet.android.service.ToInetService::class.java).apply {
                 action = org.torproject.jni.TorService.ACTION_START
             }
-            sendIntentToService(torIntent, isForeground = ru.toinet.android.util.Prefs.shouldServiceShowNotification("tor"))
+            sendIntentToService(torIntent, isForeground = true)
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
@@ -447,14 +452,22 @@ class AppVpnService : LifecycleVpnService() {
             val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 action = ru.toinet.android.vpn.data.STOP_ACTION
             }
-            startService(byedpiIntent)
+            try {
+                startService(byedpiIntent)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to stop ByeDpiProxyService", e)
+            }
         }
 
         if (stoppedProviders.contains("tor") && !ru.toinet.android.util.Prefs.torEnabled) {
             val torIntent = Intent(this, ru.toinet.android.service.ToInetService::class.java).apply {
                 action = org.torproject.jni.TorService.ACTION_STOP
             }
-            startService(torIntent)
+            try {
+                startService(torIntent)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to stop ToInetService", e)
+            }
         }
 
         /*

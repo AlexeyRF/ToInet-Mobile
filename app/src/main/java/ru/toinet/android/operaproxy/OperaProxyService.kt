@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,10 +38,19 @@ class OperaProxyService : Service() {
             val intent = Intent(context, OperaProxyService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Prefs.shouldServiceShowNotification("operaproxy")) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed startForegroundService, attempting startService", e)
+                try {
+                    context.startService(intent)
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Failed to start OperaProxyService", e2)
+                }
             }
         }
 
@@ -48,7 +58,11 @@ class OperaProxyService : Service() {
             val intent = Intent(context, OperaProxyService::class.java).apply {
                 action = ACTION_STOP
             }
-            context.startService(intent)
+            try {
+                context.startService(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to stop OperaProxyService", e)
+            }
         }
     }
 
@@ -91,18 +105,6 @@ class OperaProxyService : Service() {
     }
 
     private fun startForegroundNotification() {
-        if (!Prefs.shouldServiceShowNotification("operaproxy")) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
-            val nm = getSystemService(NotificationManager::class.java)
-            nm?.cancel(NOTIFICATION_ID)
-            return
-        }
-
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,

@@ -19,17 +19,33 @@ fun Intent.putNotSystem(): Intent = this.putExtra(ToInetConstants.EXTRA_NOT_SYST
 
 
 fun Context.sendIntentToService(intent: Intent, isForeground: Boolean = true) {
-    //    Log.d("ToInetService", "sendIntentToService-${intent.action}")
-    if (isForeground && canStartForegroundServices()) {
-        ContextCompat.startForegroundService(this, intent.putNotSystem())
-    } else {
-        startService(intent.putNotSystem())
+    try {
+        if (isForeground && canStartForegroundServices()) {
+            ContextCompat.startForegroundService(this, intent.putNotSystem())
+        } else {
+            startService(intent.putNotSystem())
+        }
+    } catch (e: Exception) {
+        Log.e("ToInetService", "Failed to sendIntentToService for action: ${intent.action}", e)
+        if (isForeground) {
+            try {
+                startService(intent.putNotSystem())
+            } catch (e2: Exception) {
+                Log.e("ToInetService", "Fallback startService failed as well", e2)
+            }
+        }
     }
 }
 
 fun Context.canStartForegroundServices(): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
         return true
+
+    try {
+        if (androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+            return true
+        }
+    } catch (_: Exception) {}
 
     if (Prefs.isGlobalVpnEnabled && VpnService.prepare(this) == null)
         return true
@@ -70,7 +86,7 @@ fun Context.sendIntentToService(action: String) {
             Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 this.action = byedpiAction
             },
-            isForeground = Prefs.shouldServiceShowNotification("byedpi") && !isPing && !isStop
+            isForeground = !isPing && !isStop
         )
     }
 
@@ -78,9 +94,13 @@ fun Context.sendIntentToService(action: String) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
             ru.toinet.android.zapret.ZapretService.start(this)
         } else if (isPing && ru.toinet.android.zapret.ZapretService.isRunning) {
-            startService(Intent(this, ru.toinet.android.zapret.ZapretService::class.java).apply {
-                this.action = "ACTIVE"
-            })
+            try {
+                startService(Intent(this, ru.toinet.android.zapret.ZapretService::class.java).apply {
+                    this.action = "ACTIVE"
+                })
+            } catch (e: Exception) {
+                Log.e("ToInetService", "Failed to ping ZapretService", e)
+            }
         }
     }
     if (action == org.torproject.jni.TorService.ACTION_STOP) {
@@ -97,7 +117,7 @@ fun Context.sendIntentToService(action: String) {
             Intent(this, ru.toinet.android.vpn.services.AppVpnService::class.java).apply {
                 this.action = vpnAction
             },
-            isForeground = Prefs.shouldServiceShowNotification("vpn") && !isPing && !isStop
+            isForeground = !isPing && !isStop
         )
     }
 
@@ -107,7 +127,7 @@ fun Context.sendIntentToService(action: String) {
             Intent(this, ToInetService::class.java).apply {
                 this.action = action
             },
-            isForeground = Prefs.shouldServiceShowNotification("tor") && !isPing && !isStop
+            isForeground = !isPing && !isStop
         )
     }
 
@@ -144,9 +164,13 @@ fun Context.sendIntentToService(action: String) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
             ru.toinet.android.operaproxy.OperaProxyService.start(this)
         } else if (isPing && ru.toinet.android.operaproxy.OperaProxyService.isRunning) {
-            startService(Intent(this, ru.toinet.android.operaproxy.OperaProxyService::class.java).apply {
-                this.action = "ACTIVE"
-            })
+            try {
+                startService(Intent(this, ru.toinet.android.operaproxy.OperaProxyService::class.java).apply {
+                    this.action = "ACTIVE"
+                })
+            } catch (e: Exception) {
+                Log.e("ToInetService", "Failed to ping OperaProxyService", e)
+            }
         }
     }
     if (action == org.torproject.jni.TorService.ACTION_STOP) {
@@ -158,9 +182,13 @@ fun Context.sendIntentToService(action: String) {
             ru.toinet.android.easyvpn.EasyVpnService.start(this)
         } else if (isPing) {
             if (ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
-                startService(Intent(this, ru.toinet.android.easyvpn.EasyVpnService::class.java).apply {
-                    this.action = "ACTIVE"
-                })
+                try {
+                    startService(Intent(this, ru.toinet.android.easyvpn.EasyVpnService::class.java).apply {
+                        this.action = "ACTIVE"
+                    })
+                } catch (e: Exception) {
+                    Log.e("ToInetService", "Failed to ping EasyVpnService", e)
+                }
             } else {
                 ru.toinet.android.easyvpn.EasyVpnService.start(this)
             }

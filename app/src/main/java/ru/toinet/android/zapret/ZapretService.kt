@@ -45,10 +45,19 @@ class ZapretService : Service() {
             val intent = Intent(context, ZapretService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Prefs.shouldServiceShowNotification("zapret")) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to startForegroundService, attempting fallback startService", e)
+                try {
+                    context.startService(intent)
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Failed to start ZapretService", e2)
+                }
             }
         }
 
@@ -56,7 +65,11 @@ class ZapretService : Service() {
             val intent = Intent(context, ZapretService::class.java).apply {
                 action = ACTION_STOP
             }
-            context.startService(intent)
+            try {
+                context.startService(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to stop ZapretService", e)
+            }
         }
 
         fun getExecutable(context: Context): String? {
@@ -118,18 +131,6 @@ class ZapretService : Service() {
     }
 
     private fun startForegroundNotification() {
-        if (!Prefs.shouldServiceShowNotification("zapret")) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
-            val nm = getSystemService(NotificationManager::class.java)
-            nm?.cancel(NOTIFICATION_ID)
-            return
-        }
-
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,

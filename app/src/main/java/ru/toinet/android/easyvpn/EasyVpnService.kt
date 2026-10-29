@@ -38,17 +38,15 @@ class EasyVpnService : Service() {
                 action = ACTION_START
             }
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Prefs.shouldServiceShowNotification("easyvpn")) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)
                 } else {
                     context.startService(intent)
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Standard startService failed, attempting startForegroundService", e)
+                Log.w(TAG, "Failed to start EasyVpnService as foreground, attempting startService", e)
                 try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        context.startForegroundService(intent)
-                    }
+                    context.startService(intent)
                 } catch (e2: Exception) {
                     Log.e(TAG, "Failed to start EasyVpnService", e2)
                 }
@@ -59,7 +57,11 @@ class EasyVpnService : Service() {
             val intent = Intent(context, EasyVpnService::class.java).apply {
                 action = ACTION_STOP
             }
-            context.startService(intent)
+            try {
+                context.startService(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to stop EasyVpnService", e)
+            }
         }
     }
 
@@ -136,17 +138,6 @@ class EasyVpnService : Service() {
     }
 
     private fun startForegroundNotification() {
-        if (!Prefs.shouldServiceShowNotification("easyvpn")) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
-            val nm = getSystemService(NotificationManager::class.java)
-            nm?.cancel(NOTIFICATION_ID)
-            return
-        }
         val notification = buildNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

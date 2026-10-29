@@ -16,16 +16,26 @@ object ServiceManager {
         when (mode) {
             Mode.VPN -> {
                 Log.i(TAG, "Starting VPN")
-                val intent = Intent(context, AppVpnService::class.java)
-                intent.action = START_ACTION
-                ContextCompat.startForegroundService(context, intent)
+                val intent = Intent(context, AppVpnService::class.java).apply {
+                    action = START_ACTION
+                }
+                try {
+                    ContextCompat.startForegroundService(context, intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to start VPN foreground service", e)
+                }
             }
 
             Mode.Proxy -> {
                 Log.i(TAG, "Starting proxy")
-                val intent = Intent(context, ByeDpiProxyService::class.java)
-                intent.action = START_ACTION
-                ContextCompat.startForegroundService(context, intent)
+                val intent = Intent(context, ByeDpiProxyService::class.java).apply {
+                    action = START_ACTION
+                }
+                try {
+                    ContextCompat.startForegroundService(context, intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to start ByeDPI foreground service", e)
+                }
             }
         }
     }
@@ -35,18 +45,27 @@ object ServiceManager {
         when (mode) {
             Mode.VPN -> {
                 Log.i(TAG, "Stopping VPN")
-                val intent = Intent(context, AppVpnService::class.java)
-                intent.action = STOP_ACTION
-                context.startService(intent)
+                val intent = Intent(context, AppVpnService::class.java).apply {
+                    action = STOP_ACTION
+                }
+                try {
+                    context.startService(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to stop VPN service", e)
+                }
             }
 
             Mode.Proxy -> {
                 Log.i(TAG, "Stopping proxy")
-                val intent = Intent(context, ByeDpiProxyService::class.java)
-                intent.action = STOP_ACTION
-                context.startService(intent)
+                val intent = Intent(context, ByeDpiProxyService::class.java).apply {
+                    action = STOP_ACTION
+                }
+                try {
+                    context.startService(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to stop proxy service", e)
+                }
             }
         }
     }
 }
-

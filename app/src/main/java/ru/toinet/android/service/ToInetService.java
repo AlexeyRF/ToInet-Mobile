@@ -82,20 +82,7 @@ public class ToInetService extends VpnService {
     }
 
     protected void showToolbarNotification(String notifyMsg, int notifyType, int icon) {
-        if (!ru.toinet.android.util.Prefs.shouldServiceShowNotification("tor")) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE);
-            } else {
-                stopForeground(true);
-            }
-            if (mNotificationManager == null) {
-                mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            }
-            if (mNotificationManager != null) {
-                mNotificationManager.cancel(NOTIFY_ID);
-            }
-            return;
-        }
+
 
         var intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
         var pendIntent = PendingIntent.getActivity(ToInetService.this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
@@ -277,10 +264,16 @@ public class ToInetService extends VpnService {
         }
 
         if (shouldUnbindTorService) {
-            Log.d(TAG, "unbinding tor service");
-            unbindService(torServiceConnection); //unbinding from the tor service will stop tor
-            shouldUnbindTorService = false;
-            conn = null;
+            try {
+                Log.d(TAG, "unbinding tor service");
+                unbindService(torServiceConnection);
+            } catch (Exception e) {
+                Log.w(TAG, "Error unbinding tor service", e);
+            } finally {
+                shouldUnbindTorService = false;
+                torServiceConnection = null;
+                conn = null;
+            }
         } else {
             sendLocalStatusOffBroadcast();
         }
@@ -406,11 +399,11 @@ public class ToInetService extends VpnService {
     private void startTor() {
         if (torServiceConnection != null && conn != null) {
             Log.d(TAG, "already started, ignoring start request");
-            mNotifyBuilder.setProgress(0, 0, false);
+            if (mNotifyBuilder != null) mNotifyBuilder.setProgress(0, 0, false);
             showToolbarNotification(getString(R.string.status_activated), NOTIFY_ID, R.drawable.ic_stat_tor);
             return;
         }
-        if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
+        if (mNotifyBuilder != null && ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
             mNotifyBuilder.setProgress(100, 0, false);
         }
         showToolbarNotification("", NOTIFY_ID, R.drawable.ic_stat_tor);
@@ -636,7 +629,7 @@ public class ToInetService extends VpnService {
             public void run() {
                 try {
                     if (conn != null && mCurrentStatus.equals(STATUS_ON)) {
-                        mNotifyBuilder.setSubText(null); // clear previous exit node info if present
+                        if (mNotifyBuilder != null) mNotifyBuilder.setSubText(null);
                         showToolbarNotification(getString(R.string.newnym), NOTIFY_ID, R.drawable.ic_stat_tor);
                         conn.signal(TorControlCommands.SIGNAL_NEWNYM);
                     }
@@ -658,16 +651,26 @@ public class ToInetService extends VpnService {
         if (logMessage.contains(LOG_NOTICE_HEADER)) {
             notificationMessage = notificationMessage.substring(LOG_NOTICE_HEADER.length());
             if (notificationMessage.contains(LOG_NOTICE_BOOTSTRAPPED)) {
-                var percent = notificationMessage.substring(LOG_NOTICE_BOOTSTRAPPED.length());
-                percent = percent.substring(0, percent.indexOf('%')).trim();
-                localIntent.putExtra(LOCAL_EXTRA_BOOTSTRAP_PERCENT, percent);
-                var prog = Integer.parseInt(percent);
-                SmartConnect.updateProgress(prog);
-                ru.toinet.android.util.NetworkBlackoutMonitor.onTorProgress(prog);
-                if (mNotifyBuilder != null && ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
-                    mNotifyBuilder.setProgress(100, prog, false);
+                try {
+                    var percent = notificationMessage.substring(LOG_NOTICE_BOOTSTRAPPED.length());
+                    int pctIdx = percent.indexOf('%');
+                    if (pctIdx != -1) {
+                        percent = percent.substring(0, pctIdx).trim();
+                        localIntent.putExtra(LOCAL_EXTRA_BOOTSTRAP_PERCENT, percent);
+                        var prog = Integer.parseInt(percent);
+                        SmartConnect.updateProgress(prog);
+                        ru.toinet.android.util.NetworkBlackoutMonitor.onTorProgress(prog);
+                        if (mNotifyBuilder != null && ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
+                            mNotifyBuilder.setProgress(100, prog, false);
+                        }
+                    }
+                    int colonIdx = notificationMessage.indexOf(':');
+                    if (colonIdx != -1) {
+                        notificationMessage = notificationMessage.substring(colonIdx + 1).trim();
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed parsing bootstrap progress", e);
                 }
-                notificationMessage = notificationMessage.substring(notificationMessage.indexOf(':') + 1).trim();
             }
         }
         if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
@@ -757,14 +760,7 @@ public class ToInetService extends VpnService {
                 case ACTION_START -> {
                     var transport = Prefs.getTransport();
                     transport.start(ToInetService.this);
-                    var p = Prefs.INSTANCE.getVpnProvider();
-                    if ("tor".equals(p) || "byedpi".equals(p)) {
-                        startTor();
-                    } else {
-                        mCurrentStatus = STATUS_ON;
-                        mNotifyBuilder.setProgress(0, 0, false);
-                        showToolbarNotification(getString(R.string.status_activated), NOTIFY_ID, R.drawable.ic_stat_tor);
-                    }
+                    startTor();
                     replyWithStatus(mIntent);
                 }
                 case ACTION_STOP -> {
@@ -808,7 +804,13 @@ public class ToInetService extends VpnService {
                 }
                 case ACTION_ERROR -> {
                     if (showTorServiceErrorMsg) {
-                        Toast.makeText(context, getString(R.string.toinet_config_invalid), Toast.LENGTH_LONG).show();
+                        if (mHandler != null) {
+                            mHandler.post(() -> {
+                                try {
+                                    Toast.makeText(ToInetService.this, getString(R.string.toinet_config_invalid), Toast.LENGTH_LONG).show();
+                                } catch (Exception ignored) {}
+                            });
+                        }
                         showTorServiceErrorMsg = false;
                     }
                     stopTor();
