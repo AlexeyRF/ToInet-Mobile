@@ -87,7 +87,7 @@ fun Context.sendIntentToService(action: String) {
             Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 this.action = byedpiAction
             },
-            isForeground = !isPing && !isStop
+            isForeground = !isPing && !isStop && !isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi")
         )
     }
 
@@ -128,7 +128,7 @@ fun Context.sendIntentToService(action: String) {
             Intent(this, ToInetService::class.java).apply {
                 this.action = action
             },
-            isForeground = !isPing && !isStop
+            isForeground = !isPing && !isStop && !isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("tor")
         )
     }
 

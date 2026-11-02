@@ -30,7 +30,7 @@ class ZapretService : Service() {
     companion object {
         private const val TAG = "ZapretService"
         private const val NOTIFICATION_CHANNEL_ID = "zapret_channel"
-        private const val NOTIFICATION_ID = 1081
+        private const val NOTIFICATION_ID = 1
 
         const val ACTION_START = "ru.toinet.android.zapret.START"
         const val ACTION_STOP = "ru.toinet.android.zapret.STOP"
@@ -131,6 +131,7 @@ class ZapretService : Service() {
     }
 
     private fun startForegroundNotification() {
+        if (Prefs.isGlobalVpnEnabled || !Prefs.isPrimaryNotificationService("zapret")) return
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,

@@ -1,134 +1,102 @@
+#include <errno.h>
+#include <jni.h>
+#include <pthread.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#include <jni.h>
 #include <getopt.h>
-#include <signal.h>
-#include <setjmp.h>
-#include <stdlib.h>
 
 #include "byedpi/error.h"
-#include "byedpi/params.h"
 #include "main.h"
 
 extern int server_fd;
-extern int NOT_EXIT;
-static int g_proxy_running = 0;
+static pthread_mutex_t proxy_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int proxy_started = 0;
+static int proxy_running = 0;
 
-struct params default_params = {
-        .sfdelay = 3,
-        .wait_send = 1,
-        .def_ttl = 64,
-        .cache_ttl = 100800,
-        .ipv6 = 1,
-        .resolve = 1,
-        .udp = 1,
-        .max_open = 512,
-        .bfsize = 16384,
-        .baddr = {
-            .sin6_family = AF_INET6
-        },
-        .laddr = {
-            .sin6_family = AF_INET
-        },
-        .debug = 0
-};
-
-void reset_params(void) {
-    clear_params();
-    params = default_params;
+int __wrap_daemon(__attribute__((unused)) int nochdir, __attribute__((unused)) int noclose) {
+    LOG(LOG_S, "daemon mode is not supported in the native worker");
+    errno = EPERM;
+    return -1;
 }
 
 JNIEXPORT jint JNICALL
 Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStartProxy(JNIEnv *env, __attribute__((unused)) jobject thiz, jobjectArray args) {
-    if (g_proxy_running) {
-        LOG(LOG_S, "proxy already running");
+    pthread_mutex_lock(&proxy_mutex);
+    if (proxy_running) {
+        pthread_mutex_unlock(&proxy_mutex);
+        LOG(LOG_S, "proxy process already running");
         return -1;
     }
+    proxy_started = 1;
+    pthread_mutex_unlock(&proxy_mutex);
 
     int argc = (*env)->GetArrayLength(env, args);
-    char **argv = calloc(argc, sizeof(char *));
-
+    char **argv = calloc(argc + 1, sizeof(char *));
+    int result = -1;
     if (!argv) {
-        LOG(LOG_S, "failed to allocate memory for argv");
-        return -1;
+        return result;
     }
 
     for (int i = 0; i < argc; i++) {
         jstring arg = (jstring) (*env)->GetObjectArrayElement(env, args, i);
-
         if (!arg) {
-            argv[i] = NULL;
-            continue;
+            goto cleanup;
         }
 
-        const char *arg_str = (*env)->GetStringUTFChars(env, arg, 0);
-        argv[i] = arg_str ? strdup(arg_str) : NULL;
-
-        if (arg_str) (*env)->ReleaseStringUTFChars(env, arg, arg_str);
-
+        const char *arg_str = (*env)->GetStringUTFChars(env, arg, NULL);
+        if (arg_str) {
+            argv[i] = strdup(arg_str);
+            (*env)->ReleaseStringUTFChars(env, arg, arg_str);
+        }
         (*env)->DeleteLocalRef(env, arg);
+        if (!argv[i]) {
+            goto cleanup;
+        }
     }
-    
+
     LOG(LOG_S, "starting proxy with %d args", argc);
-    reset_params();
-    g_proxy_running = 1;
+    pthread_mutex_lock(&proxy_mutex);
+    server_fd = -1;
+    proxy_running = 1;
+    pthread_mutex_unlock(&proxy_mutex);
+
     optind = 1;
 #if defined(__BIONIC__) || defined(__ANDROID__)
     extern int optreset;
     optreset = 1;
 #endif
 
-    int result = main(argc, argv);
+    result = main(argc, argv);
 
+    pthread_mutex_lock(&proxy_mutex);
+    proxy_running = 0;
+    proxy_started = 0;
+    pthread_mutex_unlock(&proxy_mutex);
     LOG(LOG_S, "proxy return code %d", result);
-    g_proxy_running = 0;
 
+cleanup:
     for (int i = 0; i < argc; i++) free(argv[i]);
     free(argv);
-
     return result;
 }
 
 JNIEXPORT jint JNICALL
 Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStopProxy(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
     LOG(LOG_S, "send shutdown to proxy");
-
-    if (!g_proxy_running) {
-        LOG(LOG_S, "proxy is not running");
-        return -1;
-    }
-
-    NOT_EXIT = 0;
-    if (server_fd >= 0) {
-        shutdown(server_fd, SHUT_RDWR);
-        close(server_fd);
-        server_fd = -1;
-    }
-    g_proxy_running = 0;
-
-    return 0;
+    pthread_mutex_lock(&proxy_mutex);
+    int result = proxy_running && server_fd >= 0 ? shutdown(server_fd, SHUT_RDWR) : -1;
+    pthread_mutex_unlock(&proxy_mutex);
+    return result;
 }
 
 JNIEXPORT jint JNICALL
 Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniForceClose(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
-    LOG(LOG_S, "closing server socket (fd: %d)", server_fd);
-
-    NOT_EXIT = 0;
-    if (server_fd >= 0) {
-        if (close(server_fd) == -1) {
-            LOG(LOG_S, "failed to close server socket (fd: %d)", server_fd);
-            return -1;
-        }
-        server_fd = -1;
-    }
-
     LOG(LOG_S, "proxy socket force close");
-    g_proxy_running = 0;
-
-    return 0;
+    pthread_mutex_lock(&proxy_mutex);
+    int result = server_fd >= 0 ? close(server_fd) : -1;
+    server_fd = -1;
+    pthread_mutex_unlock(&proxy_mutex);
+    return result;
 }
-

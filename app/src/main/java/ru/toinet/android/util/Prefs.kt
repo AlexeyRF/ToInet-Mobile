@@ -744,6 +744,7 @@ object Prefs {
             "tor" -> torEnabled || (isGlobalVpnEnabled && vpnProvider == "tor")
             "byedpi" -> byedpiEnabled || (isGlobalVpnEnabled && vpnProvider == "byedpi")
             // "tgws" -> tgwsEnabled || (isGlobalVpnEnabled && vpnProvider == "tgws")
+            "fakevpn" -> isGlobalVpnEnabled && vpnProvider == "fakevpn"
             "rehab" -> rehabilitatorEnabled || (isGlobalVpnEnabled && (vpnProvider == "rehab" || vpnProvider == "custom"))
             "operaproxy" -> (operaProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "operaproxy")) && ArchHelper.isOperaSupported
             "zapret" -> zapretEnabled || (isGlobalVpnEnabled && vpnProvider == "zapret")

@@ -42,7 +42,7 @@ class AppVpnService : LifecycleVpnService() {
 
     companion object {
         private val TAG: String = AppVpnService::class.java.simpleName
-        private const val FOREGROUND_SERVICE_ID: Int = 2
+        private const val FOREGROUND_SERVICE_ID: Int = 1
         private const val NOTIFICATION_CHANNEL_ID: String = "ToInetVpn"
         const val ACTION_SWITCH_SERVER: String = "ru.toinet.android.vpn.SWITCH_SERVER"
 
@@ -303,7 +303,7 @@ class AppVpnService : LifecycleVpnService() {
             val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                 action = ru.toinet.android.vpn.data.START_ACTION
             }
-            sendIntentToService(byedpiIntent, isForeground = true)
+            sendIntentToService(byedpiIntent, isForeground = false)
         }
 
         if (neededProviders.contains("rehab") || neededProviders.contains("custom")) {
@@ -364,7 +364,7 @@ class AppVpnService : LifecycleVpnService() {
             val torIntent = Intent(this, ru.toinet.android.service.ToInetService::class.java).apply {
                 action = org.torproject.jni.TorService.ACTION_START
             }
-            sendIntentToService(torIntent, isForeground = true)
+            sendIntentToService(torIntent, isForeground = false)
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")

@@ -29,7 +29,7 @@ class ByeDpiProxyService : LifecycleService() {
 
     companion object {
         private val TAG: String = ByeDpiProxyService::class.java.simpleName
-        private const val FOREGROUND_SERVICE_ID: Int = 3
+        private const val FOREGROUND_SERVICE_ID: Int = 1
         private const val NOTIFICATION_CHANNEL_ID: String = "ByeDPI Proxy"
 
         private var status: ServiceStatus = ServiceStatus.Disconnected
@@ -109,6 +109,9 @@ class ByeDpiProxyService : LifecycleService() {
     }
 
     private fun startForeground() {
+        if (ru.toinet.android.util.Prefs.isGlobalVpnEnabled || !ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi")) {
+            return
+        }
         val notification: Notification = createNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

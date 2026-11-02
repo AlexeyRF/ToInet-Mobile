@@ -25,7 +25,7 @@ class SvpnService : Service() {
     companion object {
         private const val TAG = "SvpnService"
         private const val NOTIFICATION_CHANNEL_ID = "svpn_channel"
-        private const val NOTIFICATION_ID = 1770
+        private const val NOTIFICATION_ID = 1
 
         const val ACTION_START = "ru.toinet.android.svpn.START"
         const val ACTION_STOP = "ru.toinet.android.svpn.STOP"
@@ -105,6 +105,7 @@ class SvpnService : Service() {
     }
 
     private fun startForegroundNotification() {
+        if (Prefs.isGlobalVpnEnabled || !Prefs.isPrimaryNotificationService("svpn")) return
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,

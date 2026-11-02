@@ -12,6 +12,7 @@ target_compile_options(byedpi PRIVATE -std=c99 -O2 -Wall -Wno-unused -Wextra -Wn
 target_compile_definitions(byedpi PRIVATE ANDROID_APP)
 
 target_link_libraries(byedpi PRIVATE android log)
+target_link_options(byedpi PRIVATE "-Wl,--wrap=daemon")
 
 set(TPWS_SRC
     zapret/tpws.c

@@ -65,8 +65,12 @@ class OperaProxyServer(
     fun start() {
         stop()
 
+        NotificationLogger.log(context, "operaproxy", "Запуск Opera Proxy...")
+
         val executable = getExecutable(context) ?: run {
-            Log.e(TAG, "opera-proxy executable not found")
+            val err = "Ошибка: исполняемый файл opera-proxy не найден"
+            Log.e(TAG, err)
+            NotificationLogger.log(context, "operaproxy", err)
             return
         }
 
@@ -93,6 +97,7 @@ class OperaProxyServer(
             process = proc
             isRunning = true
             Log.i(TAG, "opera-proxy started with args: $cmdArgs")
+            NotificationLogger.log(context, "operaproxy", "Opera Proxy запущен ($bindAddress)")
 
             scope.launch(Dispatchers.IO) {
                 try {
@@ -114,7 +119,9 @@ class OperaProxyServer(
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start opera-proxy process", e)
+            val errMsg = "Ошибка запуска процесса opera-proxy: ${e.message}"
+            Log.e(TAG, errMsg, e)
+            NotificationLogger.log(context, "operaproxy", errMsg)
         }
     }
 
@@ -125,7 +132,10 @@ class OperaProxyServer(
             // ignore
         }
         process = null
-        isRunning = false
+        if (isRunning) {
+            isRunning = false
+            NotificationLogger.log(context, "operaproxy", "Opera Proxy остановлен")
+        }
         Log.i(TAG, "opera-proxy stopped")
     }
 }

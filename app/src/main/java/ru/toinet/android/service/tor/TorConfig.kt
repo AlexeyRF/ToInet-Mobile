@@ -115,7 +115,7 @@ object TorConfig {
         val custom = Prefs.customTorRc
         if (!custom.isNullOrEmpty()) conf.add(custom)
 
-        return conf.joinToString("\n")
+        return conf.filter { it.isNotBlank() }.joinToString("\n")
     }
 
 

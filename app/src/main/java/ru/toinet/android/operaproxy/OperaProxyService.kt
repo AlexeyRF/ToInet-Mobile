@@ -26,7 +26,7 @@ class OperaProxyService : Service() {
     companion object {
         private const val TAG = "OperaProxyService"
         private const val NOTIFICATION_CHANNEL_ID = "operaproxy_channel"
-        private const val NOTIFICATION_ID = 1888
+        private const val NOTIFICATION_ID = 1
 
         const val ACTION_START = "ru.toinet.android.operaproxy.START"
         const val ACTION_STOP = "ru.toinet.android.operaproxy.STOP"
@@ -105,6 +105,9 @@ class OperaProxyService : Service() {
     }
 
     private fun startForegroundNotification() {
+        if (Prefs.isGlobalVpnEnabled || !Prefs.isPrimaryNotificationService("operaproxy")) {
+            return
+        }
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,

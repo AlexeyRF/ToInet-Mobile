@@ -86,6 +86,9 @@ public class ToInetService extends VpnService {
     }
 
     protected void showToolbarNotification(String notifyMsg, int notifyType, int icon) {
+        if (ru.toinet.android.util.Prefs.isGlobalVpnEnabled() || !ru.toinet.android.util.Prefs.isPrimaryNotificationService("tor")) {
+            return;
+        }
 
 
         var intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
@@ -247,7 +250,7 @@ public class ToInetService extends VpnService {
     }
 
     private void stopTorOnError(String message) {
-        //  stopTorAsync(false);
+        stopTorAsync(false);
         showToolbarNotification(getString(R.string.unable_to_start_tor) + ": " + message, ERROR_NOTIFY_ID, R.drawable.ic_stat_notifyerr);
         scheduleAutoReconnectIfEnabled();
     }
@@ -484,6 +487,17 @@ public class ToInetService extends VpnService {
 
         sendCallbackLogMessage(getString(R.string.status_starting_up));
 
+        if (torServiceConnection != null) {
+            try {
+                if (shouldUnbindTorService) {
+                    unbindService(torServiceConnection);
+                }
+            } catch (Exception ignored) {}
+            shouldUnbindTorService = false;
+            torServiceConnection = null;
+            conn = null;
+        }
+
         torServiceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
@@ -510,7 +524,12 @@ public class ToInetService extends VpnService {
 
                         mToInetRawEventListener = new ToInetRawEventListener(ToInetService.this);
 
-                        if (conn == null) return;
+                        if (conn == null) {
+                            Log.e(TAG, "Timed out waiting for Tor control connection");
+                            logNotice("Ошибка: таймаут подключения к Tor");
+                            mHandler.post(() -> stopTorOnError("Таймаут подключения к Tor"));
+                            return;
+                        }
                         try {
                             initControlConnection();
                             if (conn == null)

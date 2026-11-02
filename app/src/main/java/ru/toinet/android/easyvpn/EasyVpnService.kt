@@ -24,7 +24,7 @@ class EasyVpnService : Service() {
     companion object {
         private const val TAG = "EasyVpnService"
         private const val NOTIFICATION_CHANNEL_ID = "EasyVpnProxy"
-        private const val NOTIFICATION_ID = 1791
+        private const val NOTIFICATION_ID = 1
 
         const val ACTION_START = "ru.toinet.android.easyvpn.START"
         const val ACTION_STOP = "ru.toinet.android.easyvpn.STOP"
@@ -138,6 +138,7 @@ class EasyVpnService : Service() {
     }
 
     private fun startForegroundNotification() {
+        if (Prefs.isGlobalVpnEnabled || !Prefs.isPrimaryNotificationService("easyvpn")) return
         val notification = buildNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

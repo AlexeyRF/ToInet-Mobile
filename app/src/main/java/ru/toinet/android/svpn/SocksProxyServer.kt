@@ -171,65 +171,23 @@ class SocksProxyServer(
             channel = session.openChannel("direct-tcpip") as ChannelDirectTCPIP
             channel.setHost(targetHost)
             channel.setPort(targetPort)
-
-            try {
-                channel.connect(15000)
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to connect direct-tcpip channel to $targetHost:$targetPort: ${e.message}")
-                try {
-                    out.write(byteArrayOf(0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0)) // 0x05 = Connection refused
-                    out.flush()
-                } catch (_: Exception) {}
-                socket.close()
-                return
-            }
-
-            val chIn = channel.inputStream
-            val chOut = channel.outputStream
+            channel.setInputStream(`in`)
+            channel.connect(10000)
 
             // 4. Send SOCKS5 Success Response before routing channel output
             out.write(byteArrayOf(0x05, 0x00, 0x00, 0x01, 0x7F, 0x00, 0x00, 0x01, 0x00, 0x00))
             out.flush()
 
-            // Disable socket read timeout for ongoing data transfer
-            socket.soTimeout = 0
+            channel.setOutputStream(out)
 
-            // 5. Bidirectional streaming between client socket and SSH channel
-            val clientToSsh = Thread({
-                val buffer = ByteArray(16384)
+            // 5. Keep connection alive while channel is running
+            while (isRunning && session.isConnected && !channel.isClosed && !socket.isClosed) {
                 try {
-                    while (isRunning && !socket.isClosed && channel.isConnected) {
-                        val bytes = `in`.read(buffer)
-                        if (bytes == -1) break
-                        chOut.write(buffer, 0, bytes)
-                        chOut.flush()
-                    }
-                } catch (_: Exception) {}
-                try {
-                    chOut.flush()
-                } catch (_: Exception) {}
-            }, "SvpnClientToSsh")
-
-            val sshToClient = Thread({
-                val buffer = ByteArray(16384)
-                try {
-                    while (isRunning && !socket.isClosed && channel.isConnected) {
-                        val bytes = chIn.read(buffer)
-                        if (bytes == -1) break
-                        out.write(buffer, 0, bytes)
-                        out.flush()
-                    }
-                } catch (_: Exception) {}
-                try {
-                    out.flush()
-                } catch (_: Exception) {}
-            }, "SvpnSshToClient")
-
-            clientToSsh.start()
-            sshToClient.start()
-
-            clientToSsh.join()
-            sshToClient.join()
+                    Thread.sleep(500)
+                } catch (_: InterruptedException) {
+                    break
+                }
+            }
 
         } catch (_: Exception) {
             // Normal on close
