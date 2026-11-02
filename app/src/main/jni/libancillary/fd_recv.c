@@ -33,6 +33,7 @@
 #endif
 
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -52,6 +53,9 @@ ancil_recv_fds_with_buffer(int sock, int *fds, unsigned n_fds, void *buffer)
     struct cmsghdr *cmsg;
     int i;
 
+    if (n_fds == 0)
+        return -1;
+
     nothing_ptr.iov_base = &nothing;
     nothing_ptr.iov_len = 1;
     msghdr.msg_name = NULL;
@@ -60,20 +64,27 @@ ancil_recv_fds_with_buffer(int sock, int *fds, unsigned n_fds, void *buffer)
     msghdr.msg_iovlen = 1;
     msghdr.msg_flags = 0;
     msghdr.msg_control = buffer;
-    msghdr.msg_controllen = sizeof(struct cmsghdr) + sizeof(int) * n_fds;
-    cmsg = CMSG_FIRSTHDR(&msghdr);
-    cmsg->cmsg_len = msghdr.msg_controllen;
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
+    msghdr.msg_controllen = CMSG_SPACE(sizeof(int) * n_fds);
+    memset(buffer, 0, msghdr.msg_controllen);
     for(i = 0; i < n_fds; i++)
-	((int *)CMSG_DATA(cmsg))[i] = -1;
+	fds[i] = -1;
     
     if(recvmsg(sock, &msghdr, 0) < 0)
 	return(-1);
-    for(i = 0; i < n_fds; i++)
-	fds[i] = ((int *)CMSG_DATA(cmsg))[i];
-    n_fds = (msghdr.msg_controllen - sizeof(struct cmsghdr)) / sizeof(int);
-    return(n_fds);
+
+    if(msghdr.msg_flags & MSG_CTRUNC)
+	return(-1);
+
+    int count = 0;
+    for(cmsg = CMSG_FIRSTHDR(&msghdr); cmsg != NULL; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
+        if(cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+            int n = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
+            for(i = 0; i < n && count < (int)n_fds; i++) {
+                fds[count++] = ((int *)CMSG_DATA(cmsg))[i];
+            }
+        }
+    }
+    return count;
 }
 
 #ifndef SPARE_RECV_FDS

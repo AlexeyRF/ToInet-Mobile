@@ -44,15 +44,14 @@ import androidx.core.content.ContextCompat;
 
 import kotlin.Unit;
 
-@SuppressLint("VpnServicePolicy")
-public class ToInetService extends VpnService {
+public class ToInetService extends Service {
 
     static final int NOTIFY_ID = 1, ERROR_NOTIFY_ID = 3;
     public static int mPortSOCKS = -1, mPortHTTP = -1, mPortDns = -1, mPortTrans = -1;
     public static File appBinHome, appCacheHome;
     protected final ExecutorService mExecutor = Executors.newCachedThreadPool();
     ToInetRawEventListener mToInetRawEventListener;
-    Handler mHandler;
+    Handler mHandler = new Handler(android.os.Looper.getMainLooper());
     ActionBroadcastReceiver mActionBroadcastReceiver;
     protected String mCurrentStatus = STATUS_OFF;
     TorControlConnection conn = null;
@@ -61,6 +60,11 @@ public class ToInetService extends VpnService {
     private NotificationManager mNotificationManager = null;
     private NotificationCompat.Builder mNotifyBuilder;
     private static final String TAG = "ToInetService";
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 
     private boolean isTorDesired() {
         return Prefs.isProviderActive("tor");
@@ -209,11 +213,18 @@ public class ToInetService extends VpnService {
     public void onDestroy() {
         try {
             unregisterReceiver(mActionBroadcastReceiver);
-        } catch (IllegalArgumentException iae) {
+        } catch (Exception iae) {
             //not registered yet
         }
         if (mHandler != null) {
             mHandler.removeCallbacks(autoReconnectRunnable);
+        }
+        if (shouldUnbindTorService && torServiceConnection != null) {
+            try {
+                unbindService(torServiceConnection);
+            } catch (Exception ignored) {}
+            shouldUnbindTorService = false;
+            torServiceConnection = null;
         }
         super.onDestroy();
     }
@@ -608,49 +619,56 @@ public class ToInetService extends VpnService {
                 .setPackage(getPackageName()));
     }
 
+    private static int parseListenerPort(String raw) {
+        if (raw == null) return 0;
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) return 0;
+        StringTokenizer st = new StringTokenizer(trimmed, " ");
+        while (st.hasMoreTokens()) {
+            String token = st.nextToken().trim();
+            if (token.startsWith("\"") && token.endsWith("\"") && token.length() >= 2) {
+                token = token.substring(1, token.length() - 1).trim();
+            } else {
+                if (token.startsWith("\"")) token = token.substring(1);
+                if (token.endsWith("\"")) token = token.substring(0, token.length() - 1);
+            }
+            if (token.startsWith("unix:")) {
+                continue;
+            }
+            int lastColon = token.lastIndexOf(':');
+            String portStr = (lastColon != -1) ? token.substring(lastColon + 1) : token;
+            try {
+                int port = Integer.parseInt(portStr.trim());
+                if (port > 0) return port;
+            } catch (Exception ignored) {
+            }
+        }
+        return 0;
+    }
+
     private void initControlConnection() {
         if (conn == null) return;
         try {
             var confSocks = conn.getInfo("net/listeners/socks");
-            var st = new StringTokenizer(confSocks, " ");
-            if (confSocks.trim().isEmpty()) {
-                mPortSOCKS = 0;
-            } else {
-                confSocks = st.nextToken().split(":")[1];
-                confSocks = confSocks.substring(0, confSocks.length() - 1);
-                mPortSOCKS = Integer.parseInt(confSocks);
-            }
-            var confHttp = conn.getInfo("net/listeners/httptunnel").trim();
-            if (confHttp.isEmpty()) {
-                mPortHTTP = 0;
-            } else {
-                st = new StringTokenizer(confHttp, " ");
-                confHttp = st.nextToken().split(":")[1];
-                confHttp = confHttp.substring(0, confHttp.length() - 1);
-                mPortHTTP = Integer.parseInt(confHttp);
-            }
-            var confDns = conn.getInfo("net/listeners/dns");
-            st = new StringTokenizer(confDns, " ");
-            if (st.hasMoreTokens()) {
-                confDns = st.nextToken().split(":")[1];
-                confDns = confDns.substring(0, confDns.length() - 1);
-                mPortDns = Integer.parseInt(confDns);
+            mPortSOCKS = parseListenerPort(confSocks);
 
+            var confHttp = conn.getInfo("net/listeners/httptunnel");
+            mPortHTTP = parseListenerPort(confHttp);
+
+            var confDns = conn.getInfo("net/listeners/dns");
+            mPortDns = parseListenerPort(confDns);
+            if (mPortDns > 0) {
                 Prefs.setTorDnsPortResolved(mPortDns);
             }
 
             var confTrans = conn.getInfo("net/listeners/trans");
-            st = new StringTokenizer(confTrans, " ");
-            if (st.hasMoreTokens()) {
-                confTrans = st.nextToken().split(":")[1];
-                confTrans = confTrans.substring(0, confTrans.length() - 1);
-                mPortTrans = Integer.parseInt(confTrans);
-            }
+            mPortTrans = parseListenerPort(confTrans);
+
             sendCallbackPorts(mPortSOCKS, mPortHTTP, mPortDns, mPortTrans);
 
-        } catch (IOException | NullPointerException e) {
-            Log.e(TAG, e.toString());
-            stopTorOnError(e.getLocalizedMessage());
+        } catch (Throwable e) {
+            Log.e(TAG, "initControlConnection error", e);
+            stopTorOnError(e.getLocalizedMessage() != null ? e.getLocalizedMessage() : e.toString());
             conn = null;
         }
     }
@@ -692,11 +710,13 @@ public class ToInetService extends VpnService {
                 .putExtra(LOCAL_EXTRA_LOG, logMessage)
                 .setPackage(getPackageName());
 
-        if (logMessage.contains(LOG_NOTICE_HEADER)) {
-            notificationMessage = notificationMessage.substring(LOG_NOTICE_HEADER.length());
-            if (notificationMessage.contains(LOG_NOTICE_BOOTSTRAPPED)) {
+        int headerIdx = logMessage.indexOf(LOG_NOTICE_HEADER);
+        if (headerIdx != -1) {
+            notificationMessage = notificationMessage.substring(headerIdx + LOG_NOTICE_HEADER.length());
+            int bootIdx = notificationMessage.indexOf(LOG_NOTICE_BOOTSTRAPPED);
+            if (bootIdx != -1) {
                 try {
-                    var percent = notificationMessage.substring(LOG_NOTICE_BOOTSTRAPPED.length());
+                    String percent = notificationMessage.substring(bootIdx + LOG_NOTICE_BOOTSTRAPPED.length());
                     int pctIdx = percent.indexOf('%');
                     if (pctIdx != -1) {
                         percent = percent.substring(0, pctIdx).trim();
@@ -708,8 +728,8 @@ public class ToInetService extends VpnService {
                             mNotifyBuilder.setProgress(100, prog, false);
                         }
                     }
-                    int colonIdx = notificationMessage.indexOf(':');
-                    if (colonIdx != -1) {
+                    int colonIdx = notificationMessage.indexOf(':', bootIdx);
+                    if (colonIdx != -1 && colonIdx + 1 < notificationMessage.length()) {
                         notificationMessage = notificationMessage.substring(colonIdx + 1).trim();
                     }
                 } catch (Exception e) {
@@ -720,7 +740,11 @@ public class ToInetService extends VpnService {
         if (ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
             showToolbarNotification(notificationMessage, NOTIFY_ID, R.drawable.ic_stat_tor);
         }
-        mHandler.post(() -> sendBroadcast(localIntent));
+        if (mHandler != null) {
+            mHandler.post(() -> sendBroadcast(localIntent));
+        } else {
+            sendBroadcast(localIntent);
+        }
     }
 
     private void sendCallbackPorts(int socksPort, int httpPort, int dnsPort, int transPort) {

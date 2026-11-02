@@ -152,15 +152,23 @@ public class ToInetRawEventListener implements RawEventListener {
                 node.querying = true;
                 mService.mExecutor.execute(() -> {
                     try {
-                        String[] networkStatus = mService.conn.getInfo("ns/id/" + node.fingerPrint).split(" ");
-                        node.ipAddress = networkStatus[6];
-                        var countryCode = mService.conn.getInfo("ip-to-country/" + node.ipAddress).toUpperCase(Locale.getDefault());
-                        if (!countryCode.equals(TOR_CONTROLLER_COUNTRY_CODE_UNKNOWN)) {
-                            var emoji = StringUtils.convertCountryCodeToFlagEmoji(countryCode);
-                            var countryName = new Locale("", countryCode).getDisplayName();
-                            node.country = emoji + " " + countryName;
-                        } else node.country = "";
-                        mService.setNotificationSubtext(node.toString());
+                        if (mService.conn == null) return;
+                        String info = mService.conn.getInfo("ns/id/" + node.fingerPrint);
+                        if (info == null) return;
+                        String[] networkStatus = info.split(" ");
+                        if (networkStatus.length > 6) {
+                            node.ipAddress = networkStatus[6];
+                            String countryInfo = mService.conn.getInfo("ip-to-country/" + node.ipAddress);
+                            if (countryInfo != null) {
+                                var countryCode = countryInfo.toUpperCase(Locale.getDefault());
+                                if (!countryCode.equals(TOR_CONTROLLER_COUNTRY_CODE_UNKNOWN)) {
+                                    var emoji = StringUtils.convertCountryCodeToFlagEmoji(countryCode);
+                                    var countryName = new Locale("", countryCode).getDisplayName();
+                                    node.country = emoji + " " + countryName;
+                                } else node.country = "";
+                                mService.setNotificationSubtext(node.toString());
+                            }
+                        }
                     } catch (Exception ignored) {
                     }
                 });
@@ -184,9 +192,14 @@ public class ToInetRawEventListener implements RawEventListener {
             case TorControlCommands.CIRC_EVENT_BUILT -> {
                 if (ignoredInternalCircuits.contains(id))
                     return; // this circuit won't be used by user clients
+                if (path == null || path.isEmpty()) return;
                 var nodes = path.split(",");
+                if (nodes.length == 0) return;
                 var exit = nodes[nodes.length - 1];
                 var fingerprint = exit.split("~")[0];
+                if (fingerprint.startsWith("$")) {
+                    fingerprint = fingerprint.substring(1);
+                }
                 exitNodeMap.put(id, new ExitNode(fingerprint));
             }
             case TorControlCommands.CIRC_EVENT_CLOSED -> {
@@ -215,10 +228,10 @@ public class ToInetRawEventListener implements RawEventListener {
             else nodeParts = nodePath.split("~");
 
             if (nodeParts.length == 1) {
-                nodeId = nodeParts[0].substring(1);
+                nodeId = nodeParts[0].length() > 1 ? nodeParts[0].substring(1) : nodeParts[0];
                 nodeName = nodeId;
             } else if (nodeParts.length == 2) {
-                nodeId = nodeParts[0].substring(1);
+                nodeId = nodeParts[0].length() > 1 ? nodeParts[0].substring(1) : nodeParts[0];
                 nodeName = nodeParts[1];
             }
 

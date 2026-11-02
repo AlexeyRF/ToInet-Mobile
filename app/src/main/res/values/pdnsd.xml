@@ -6,10 +6,10 @@ global {
 	cache_dir="%s";
 	server_port = 8091;
 	server_ip = 0.0.0.0;
-	query_method=tcp_only;
+	query_method=tcp_udp;
 	min_ttl=15m;
 	max_ttl=1w;
-	timeout=10;
+	timeout=5;
 	daemon=on;
 	pid_file="%s/pdnsd.pid";
 }

@@ -31,6 +31,9 @@
 #ifndef ANCILLARY_H__
 #define ANCILLARY_H__
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -71,9 +74,9 @@ ancil_recv_fds_with_buffer(int, int *, unsigned, void *);
  */
 
 #define ANCIL_FD_BUFFER(n) \
-    struct { \
+    union { \
 	struct cmsghdr h; \
-	int fd[n]; \
+	char buf[CMSG_SPACE(sizeof(int) * (n))]; \
     }
 /* ANCIL_FD_BUFFER(n)
  *

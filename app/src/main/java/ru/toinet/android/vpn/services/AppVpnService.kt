@@ -269,7 +269,9 @@ class AppVpnService : LifecycleVpnService() {
         var socksAddr = "$actualHost:$actualPort"
 
         val neededProviders: MutableSet<String> = if (isAppRouting) {
-            ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().toMutableSet()
+            val set = ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().toMutableSet()
+            set.add(provider)
+            set
         } else {
             mutableSetOf(provider)
         }
@@ -467,7 +469,9 @@ class AppVpnService : LifecycleVpnService() {
 
         val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
         val stoppedProviders: Set<String> = if (isAppRouting) {
-            ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders()
+            val set = ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().toMutableSet()
+            set.add(ru.toinet.android.util.Prefs.vpnProvider)
+            set
         } else {
             setOf(ru.toinet.android.util.Prefs.vpnProvider)
         }

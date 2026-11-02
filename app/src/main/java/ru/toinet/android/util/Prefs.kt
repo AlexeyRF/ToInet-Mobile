@@ -327,7 +327,7 @@ object Prefs {
     var appRoutingEnabled: Boolean
         get() {
             if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return false
-            return cr?.getPrefBoolean("pref_app_routing_enabled", true) ?: true
+            return cr?.getPrefBoolean("pref_app_routing_enabled", false) ?: false
         }
         set(value) = cr?.putPref("pref_app_routing_enabled", value) ?: Unit
 

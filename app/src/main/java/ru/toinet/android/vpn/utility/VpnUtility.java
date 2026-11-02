@@ -73,7 +73,18 @@ public class VpnUtility {
 
     public static void makePdnsdConf(Context context, String dns, int port) {
         String dir = context.getFilesDir().getAbsolutePath();
-        String conf = String.format(context.getString(R.string.pdnsd_conf), dir, dir, dns, port);
+        String dnsList = dns;
+        if (port == 53 && dns != null && !dns.contains(",")) {
+            String trimmedDns = dns.trim();
+            if (!trimmedDns.equals("77.88.8.8") && !trimmedDns.equals("1.1.1.1")) {
+                dnsList = trimmedDns + ", 77.88.8.8, 1.1.1.1";
+            } else if (trimmedDns.equals("77.88.8.8")) {
+                dnsList = trimmedDns + ", 8.8.8.8, 1.1.1.1";
+            } else {
+                dnsList = trimmedDns + ", 77.88.8.8, 8.8.8.8";
+            }
+        }
+        String conf = String.format(context.getString(R.string.pdnsd_conf), dir, dir, dnsList, port);
         
         File f = new File(dir + "/pdnsd.conf");
         if (f.exists()) f.delete();
