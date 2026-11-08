@@ -123,6 +123,7 @@ class AppVpnService : LifecycleVpnService() {
             "ACTIVE" -> {
                 if (status == ServiceStatus.Connected) {
                     startForeground()
+                    sendLocalStatus(org.torproject.jni.TorService.STATUS_ON)
                 }
                 START_STICKY
             }
@@ -161,6 +162,7 @@ class AppVpnService : LifecycleVpnService() {
 
         try {
             startForeground()
+            sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
             mutex.withLock {
                 withContext(Dispatchers.IO) {
                     startTun2Socks()
@@ -410,16 +412,16 @@ class AppVpnService : LifecycleVpnService() {
             throw IllegalStateException("Failed to start tun2socks")
         }
 
-        var i = 0
+        var attempts = 0
         var success = false
-        while (i < 5) {
+        while (attempts < 25) {
             if (ru.toinet.android.vpn.utility.VpnSystem.sendfd(fd.fd) != -1) {
                 success = true
                 break
             }
-            i++
+            attempts++
             try {
-                Thread.sleep(1000L * i)
+                Thread.sleep(200)
             } catch (e: Exception) {}
         }
         if (!success) {
@@ -504,6 +506,18 @@ class AppVpnService : LifecycleVpnService() {
     private fun getByeDpiPreferences(): ByeDpiProxyPreferences =
         ByeDpiProxyPreferences.fromSharedPreferences(getPreferences())
 
+    private fun isTorActiveInVpn(): Boolean {
+        if (ru.toinet.android.util.Prefs.vpnProvider == "tor") return true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled) {
+            val needed = ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders()
+            if (needed.contains("tor")) return true
+        }
+        if (ru.toinet.android.util.Prefs.vpnProvider == "byedpi" && ru.toinet.android.util.Prefs.byedpiUpstreamEnabled && ru.toinet.android.util.Prefs.byedpiUpstreamProvider == "tor") {
+            return true
+        }
+        return false
+    }
+
     private fun updateStatus(newStatus: ServiceStatus) {
         Log.d(TAG, "VPN status changed from $status to $newStatus")
 
@@ -521,7 +535,7 @@ class AppVpnService : LifecycleVpnService() {
             Mode.VPN
         )
 
-        if (!ru.toinet.android.util.Prefs.torEnabled) {
+        if (!isTorActiveInVpn()) {
             val toinetStatus = when (newStatus) {
                 ServiceStatus.Connected -> org.torproject.jni.TorService.STATUS_ON
                 ServiceStatus.Disconnected, ServiceStatus.Failed -> org.torproject.jni.TorService.STATUS_OFF
@@ -541,7 +555,7 @@ class AppVpnService : LifecycleVpnService() {
     }
 
     private fun sendLocalStatus(torStatus: String) {
-        if (!ru.toinet.android.util.Prefs.torEnabled) {
+        if (!isTorActiveInVpn()) {
             val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS).apply {
                 putExtra(org.torproject.jni.TorService.EXTRA_STATUS, torStatus)
                 setPackage(packageName)
@@ -685,11 +699,9 @@ class AppVpnService : LifecycleVpnService() {
         try {
             // Always route IPv6 into TUN: if external IPv6 exists, tun2socks forwards it;
             // if IPv4-only, tun2socks omits --netif-ip6addr so all IPv6 is blackholed/blocked, preventing leaks.
+            // IPv6 DNS is not added because tun2socks dnsgw handles IPv4 UDP only; pdnsd resolves both A and AAAA.
             builder.addAddress("fdfe:dcba:9876::1", 126)
                 .addRoute("::", 0)
-            if (ipv6) {
-                builder.addDnsServer("2606:4700:4700::1111")
-            }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to configure IPv6 on VPN interface", e)
         }

@@ -888,7 +888,7 @@ int parse_args(int argc, char **argv)
     opt[o] = '\0';
     //
     if (!params.laddr.in.sin_port) {
-        params.laddr.in.sin_port = htons(1080);
+        params.laddr.in.sin_port = htons(1780);
     }
     if (!ipv6_support()) {
         params.baddr.sa.sa_family = AF_INET;

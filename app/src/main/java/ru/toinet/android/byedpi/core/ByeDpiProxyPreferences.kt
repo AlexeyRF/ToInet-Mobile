@@ -40,12 +40,7 @@ class ByeDpiProxyCmdPreferences(val args: Array<String>) : ByeDpiProxyPreference
             return 1780
         }
 
-    constructor(cmd: String) : this(
-        if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) 
-            cmdToArgs(cmd + " -i 0.0.0.0") 
-        else 
-            cmdToArgs(cmd)
-    )
+    constructor(cmd: String) : this(cmdToArgs(cmd))
 
     constructor(preferences: SharedPreferences) : this(
         preferences.getStringNotNull(
@@ -57,8 +52,30 @@ class ByeDpiProxyCmdPreferences(val args: Array<String>) : ByeDpiProxyPreference
     companion object {
         private fun cmdToArgs(cmd: String): Array<String> {
             val firstArgIndex = cmd.indexOf("-")
-            val argsStr = (if (firstArgIndex > 0) cmd.substring(firstArgIndex) else cmd).trim()
-            return arrayOf("ciadpi") + shellSplit(argsStr)
+            val argsStr = (if (firstArgIndex >= 0) cmd.substring(firstArgIndex) else cmd).trim()
+            val list = mutableListOf("ciadpi")
+            if (argsStr.isNotEmpty()) {
+                list.addAll(shellSplit(argsStr))
+            }
+            var hasPort = false
+            var hasIp = false
+            for (arg in list) {
+                if (arg == "-p" || arg == "--port" || arg.startsWith("-p") || arg.startsWith("--port=")) {
+                    hasPort = true
+                }
+                if (arg == "-i" || arg == "--ip" || arg.startsWith("-i") || arg.startsWith("--ip=")) {
+                    hasIp = true
+                }
+            }
+            if (!hasPort) {
+                list.add("-p")
+                list.add("1780")
+            }
+            if (!hasIp) {
+                list.add("-i")
+                list.add(if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1")
+            }
+            return list.toTypedArray()
         }
     }
 }

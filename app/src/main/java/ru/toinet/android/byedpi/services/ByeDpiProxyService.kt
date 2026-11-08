@@ -9,8 +9,7 @@ import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import ru.toinet.android.R
-import ru.toinet.android.byedpi.core.ByeDpiProxy
-import ru.toinet.android.byedpi.core.ByeDpiProxyPreferences
+import ru.toinet.android.byedpi.core.*
 import ru.toinet.android.vpn.data.*
 import ru.toinet.android.byedpi.utility.*
 import ru.toinet.android.vpn.utility.*
@@ -87,7 +86,7 @@ class ByeDpiProxyService : LifecycleService() {
         }
 
         try {
-            if (!ru.toinet.android.util.Prefs.torEnabled) {
+            if (!ru.toinet.android.util.Prefs.isGlobalVpnEnabled && !ru.toinet.android.util.Prefs.torEnabled) {
                 val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS)
                 statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_STARTING)
                 statusIntent.setPackage(packageName)
@@ -190,12 +189,19 @@ class ByeDpiProxyService : LifecycleService() {
         }
 
         val sharedPrefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
-        val isRouter = cmdStr.trim().startsWith("{") && cmdStr.trim().endsWith("}") && sharedPrefs.getBoolean("byedpi_enable_cmd_settings", true)
+        val isCmd = sharedPrefs.getBoolean("byedpi_enable_cmd_settings", true)
+        val isRouter = cmdStr.trim().startsWith("{") && cmdStr.trim().endsWith("}") && isCmd
+
+        val preferences = if (isCmd) {
+            ByeDpiProxyCmdPreferences(cmdStr)
+        } else {
+            ByeDpiProxyUIPreferences(sharedPrefs)
+        }
 
         if (isRouter) {
             Log.i(TAG, "Starting router")
             val ip = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
-            val port = getByeDpiPreferences().port
+            val port = preferences.port
             ru.toinet.android.byedpi.core.ByeDpiRouter.start(this, cmdStr, port, ip)
 
             proxyJob = lifecycleScope.launch(Dispatchers.IO) {
@@ -206,9 +212,11 @@ class ByeDpiProxyService : LifecycleService() {
             updateStatus(ServiceStatus.Connected)
         } else {
             proxy = ByeDpiProxy()
-            val preferences = getByeDpiPreferences()
 
             proxyJob = lifecycleScope.launch(Dispatchers.IO) {
+                withContext(Dispatchers.Main) {
+                    updateStatus(ServiceStatus.Connected)
+                }
                 val code = proxy.startProxy(preferences)
 
                 withContext(Dispatchers.Main) {
@@ -262,7 +270,7 @@ class ByeDpiProxyService : LifecycleService() {
             Mode.Proxy
         )
 
-        if (!ru.toinet.android.util.Prefs.torEnabled) {
+        if (!ru.toinet.android.util.Prefs.isGlobalVpnEnabled && !ru.toinet.android.util.Prefs.torEnabled) {
             val toinetStatus = when (newStatus) {
                 ServiceStatus.Connected -> org.torproject.jni.TorService.STATUS_ON
                 ServiceStatus.Disconnected, ServiceStatus.Failed -> org.torproject.jni.TorService.STATUS_OFF
