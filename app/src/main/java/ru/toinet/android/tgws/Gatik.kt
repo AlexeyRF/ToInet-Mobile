@@ -14,7 +14,7 @@ import java.nio.ByteBuffer
 object Gatik {
     private const val TAG = "GatikGateway"
     private const val LISTEN_PORT = 1777
-    private const val TOR_PORT = 5242
+    private const val TOR_PORT = 9853
     private const val TGWS_PORT = 1480
     private const val UPLOAD_THRESHOLD = 1024
 

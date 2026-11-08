@@ -19,5 +19,5 @@ data class DnsConfig(
     val dohUrl: String = "",
     val proxyMode: DnsProxyMode = DnsProxyMode.VPN,
     val customProxyHost: String = "127.0.0.1",
-    val customProxyPort: Int = 1080
+    val customProxyPort: Int = 1780
 )

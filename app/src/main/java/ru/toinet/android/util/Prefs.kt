@@ -361,7 +361,7 @@ object Prefs {
 
     @JvmStatic
     var easyVpnUpstreamPort: Int
-        get() = cr?.getPrefInt("pref_easyvpn_upstream_port") ?: 5242
+        get() = cr?.getPrefInt("pref_easyvpn_upstream_port") ?: 9853
         set(value) = cr?.putPref("pref_easyvpn_upstream_port", value) ?: Unit
 
     @JvmStatic
@@ -417,7 +417,7 @@ object Prefs {
 
     @JvmStatic
     var zapretPort: Int
-        get() = cr?.getPrefInt("zapret_port", 1081) ?: 1081
+        get() = cr?.getPrefInt("zapret_port", 1781) ?: 1781
         set(value) = cr?.putPref("zapret_port", value) ?: Unit
 
     @JvmStatic
@@ -500,8 +500,8 @@ object Prefs {
     @JvmStatic
     var operaProxyBindAddress: String
         get() {
-            val addr = cr?.getPrefString("operaproxy_bind_address") ?: "127.0.0.1:1888"
-            val port = addr.split(":").lastOrNull() ?: "1888"
+            val addr = cr?.getPrefString("operaproxy_bind_address") ?: "127.0.0.1:1785"
+            val port = addr.split(":").lastOrNull() ?: "1785"
             return if (openProxyOnAllInterfaces) "0.0.0.0:$port" else "127.0.0.1:$port"
         }
         set(value) = cr?.putPref("operaproxy_bind_address", value) ?: Unit
@@ -524,7 +524,7 @@ object Prefs {
 
     @JvmStatic
     var customSocksPort: Int
-        get() = cr?.getPrefInt("custom_socks_port", 1080) ?: 1080
+        get() = cr?.getPrefInt("custom_socks_port", 1780) ?: 1780
         set(value) = cr?.putPref("custom_socks_port", value) ?: Unit
 
     @JvmStatic
@@ -554,7 +554,7 @@ object Prefs {
         get() {
             val p = cr?.getPrefInt("rehabilitator_upstream_port") ?: 0
             if (p != 0) return p
-            return cr?.getPrefInt("custom_socks_port", 1080) ?: 1080
+            return cr?.getPrefInt("custom_socks_port", 1780) ?: 1780
         }
         set(value) {
             cr?.putPref("rehabilitator_upstream_port", value)
@@ -662,7 +662,7 @@ object Prefs {
 
     @JvmStatic
     var easyVpnProxyPort: Int
-        get() = cr?.getPrefInt("easyvpn_proxy_port", 1791) ?: 1791
+        get() = cr?.getPrefInt("easyvpn_proxy_port", 1790) ?: 1790
         set(value) = cr?.putPref("easyvpn_proxy_port", value) ?: Unit
 
     @JvmStatic

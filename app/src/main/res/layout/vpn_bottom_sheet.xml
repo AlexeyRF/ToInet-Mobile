@@ -69,7 +69,7 @@
                 android:layout_height="wrap_content"
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
-                android:text="ByeDPI (порт 1080)" />
+                android:text="zDPI (порт 1780)" />
 
             <RadioButton
                 android:id="@+id/rbEasyVpn"
@@ -85,7 +85,7 @@
                 android:layout_height="wrap_content"
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
-                android:text="Opera Proxy" />
+                android:text="Opera Proxy (порт 1785)" />
 
             <RadioButton
                 android:id="@+id/rbTor"
@@ -93,7 +93,7 @@
                 android:layout_height="wrap_content"
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
-                android:text="TOR (порт 5242)" />
+                android:text="TOR (порт 9853)" />
 
             <RadioButton
                 android:id="@+id/rbZapret"
@@ -101,7 +101,7 @@
                 android:layout_height="wrap_content"
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
-                android:text="Zapret (порт 1081)" />
+                android:text="Zapret (порт 1781)" />
 
             <RadioButton
                 android:id="@+id/rbRehab"

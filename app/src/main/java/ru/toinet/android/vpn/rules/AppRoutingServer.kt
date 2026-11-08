@@ -353,18 +353,18 @@ class AppRoutingServer(
                     ru.toinet.android.byedpi.core.ByeDpiProxyPreferences.fromSharedPreferences(
                         androidx.preference.PreferenceManager.getDefaultSharedPreferences(vpnService)
                     ).port
-                } catch (_: Exception) { 1080 }
+                } catch (_: Exception) { 1780 }
             }
             ProxifierRule.ACTION_EASYVPN -> Prefs.easyVpnProxyPort
-            ProxifierRule.ACTION_TOR -> 5242
+            ProxifierRule.ACTION_TOR -> 9853
             ProxifierRule.ACTION_ZAPRET -> Prefs.zapretPort
             ProxifierRule.ACTION_OPERAPROXY -> {
-                Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1888
+                Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
             }
             ProxifierRule.ACTION_REHAB -> 1788
             ProxifierRule.ACTION_FAKEVPN -> 1790
             ProxifierRule.ACTION_SVPN -> Prefs.svpnLocalPort
-            else -> 1080
+            else -> 1780
         }
     }
 

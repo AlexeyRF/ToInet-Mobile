@@ -35,7 +35,7 @@ object ToInetConstants {
     const val GEOIP6_ASSET_KEY = "geoip6"
 
     const val HTTP_PROXY_PORT_DEFAULT = "5267"
-    const val SOCKS_PROXY_PORT_DEFAULT = "5242"
+    const val SOCKS_PROXY_PORT_DEFAULT = "9853"
 
     const val TOR_DNS_PORT_DEFAULT = 9053
     const val TOR_TRANSPROXY_PORT_DEFAULT = 9040

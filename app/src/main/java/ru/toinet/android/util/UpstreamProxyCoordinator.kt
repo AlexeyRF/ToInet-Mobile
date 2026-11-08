@@ -18,11 +18,11 @@ object UpstreamProxyCoordinator {
     fun getPortForProvider(provider: String): Int {
         return when (provider) {
             PROVIDER_EASYVPN -> Prefs.easyVpnProxyPort
-            PROVIDER_BYEDPI -> 1080
-            PROVIDER_TOR -> 5242
+            PROVIDER_BYEDPI -> 1780
+            PROVIDER_TOR -> 9853
             PROVIDER_ZAPRET -> Prefs.zapretPort
             PROVIDER_REHAB -> 1788
-            else -> 1080
+            else -> 1780
         }
     }
 
@@ -38,7 +38,7 @@ object UpstreamProxyCoordinator {
                     ru.toinet.android.easyvpn.EasyVpnService.start(context)
                 }
                 PROVIDER_BYEDPI -> {
-                    Log.i(TAG, "Ensuring ByeDPI is started as upstream")
+                    Log.i(TAG, "Ensuring zDPI is started as upstream")
                     val intent = Intent(context, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
                         action = ru.toinet.android.vpn.data.START_ACTION
                     }
@@ -68,9 +68,9 @@ object UpstreamProxyCoordinator {
     fun getTorUpstreamOptions(): List<Pair<String, String>> {
         return listOf(
             PROVIDER_NONE to "Прямое соединение (без upstream)",
-            PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:10808) — для белых списков",
-            PROVIDER_BYEDPI to "ByeDPI (127.0.0.1:1080)",
-            PROVIDER_ZAPRET to "Zapret (127.0.0.1:1081)",
+            PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:${Prefs.easyVpnProxyPort}) — для белых списков",
+            PROVIDER_BYEDPI to "zDPI (127.0.0.1:1780)",
+            PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
             PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
             PROVIDER_CUSTOM to "Пользовательский SOCKS5 / HTTPS..."
         )
@@ -79,9 +79,9 @@ object UpstreamProxyCoordinator {
     fun getEasyVpnUpstreamOptions(): List<Pair<String, String>> {
         return listOf(
             PROVIDER_NONE to "Прямое соединение (без upstream)",
-            PROVIDER_TOR to "TOR (127.0.0.1:5242)",
-            PROVIDER_BYEDPI to "ByeDPI (127.0.0.1:1080)",
-            PROVIDER_ZAPRET to "Zapret (127.0.0.1:1081)",
+            PROVIDER_TOR to "TOR (127.0.0.1:9853)",
+            PROVIDER_BYEDPI to "zDPI (127.0.0.1:1780)",
+            PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
             PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
             PROVIDER_CUSTOM to "Пользовательский SOCKS5..."
         )
@@ -90,9 +90,9 @@ object UpstreamProxyCoordinator {
     fun getByeDpiUpstreamOptions(): List<Pair<String, String>> {
         return listOf(
             PROVIDER_NONE to "Прямое соединение (без upstream)",
-            PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:10808)",
-            PROVIDER_TOR to "TOR (127.0.0.1:5242)",
-            PROVIDER_ZAPRET to "Zapret (127.0.0.1:1081)",
+            PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:${Prefs.easyVpnProxyPort})",
+            PROVIDER_TOR to "TOR (127.0.0.1:9853)",
+            PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
             PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
             PROVIDER_CUSTOM to "Пользовательский SOCKS5..."
         )

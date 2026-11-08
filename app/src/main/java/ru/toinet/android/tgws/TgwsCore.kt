@@ -307,15 +307,15 @@ class TgwsCore(
         return if (useByeDpi) {
             val provider = Prefs.vpnProvider
             val targetPort = when (provider) {
-                "byedpi" -> 1080
-                "tor" -> 5242
+                "byedpi" -> 1780
+                "tor" -> 9853
                 "tgws" -> 1480
                 "rehab", "custom" -> 1788
                 "fakevpn" -> 1790
-                "operaproxy" -> Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1888
-                "easyvpn" -> 1791
+                "operaproxy" -> Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
+                "easyvpn" -> 1790
                 "zapret" -> Prefs.zapretPort
-                else -> 1080
+                else -> 1780
             }
             val targetHost = when (provider) {
                 "operaproxy" -> Prefs.operaProxyBindAddress.split(":").first()

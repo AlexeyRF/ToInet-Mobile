@@ -251,15 +251,15 @@ class AppVpnService : LifecycleVpnService() {
         val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
         val provider = ru.toinet.android.util.Prefs.vpnProvider
         var actualHost = "127.0.0.1"
-        var actualPort = 1080
+        var actualPort = 1780
         when (provider) {
             "byedpi" -> actualPort = getByeDpiPreferences().port
-            "tor" -> actualPort = 5242
+            "tor" -> actualPort = 9853
             "rehab", "custom" -> actualPort = 1788
             "fakevpn" -> actualPort = 1790
             "operaproxy" -> {
                 actualHost = "127.0.0.1"
-                actualPort = ru.toinet.android.util.Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1888
+                actualPort = ru.toinet.android.util.Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
             }
             "easyvpn" -> actualPort = ru.toinet.android.util.Prefs.easyVpnProxyPort
             "zapret" -> actualPort = ru.toinet.android.util.Prefs.zapretPort

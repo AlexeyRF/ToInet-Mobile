@@ -336,7 +336,7 @@
         <EditTextPreference
             android:key="dns_custom_proxy_port"
             android:title="Custom SOCKS5 Port"
-            android:defaultValue="1080"
+            android:defaultValue="1780"
             app:useSimpleSummaryProvider="true"
             app:iconSpaceReserved="false" />
 
@@ -348,7 +348,7 @@
         app:iconSpaceReserved="false">
 
         <EditTextPreference
-            android:defaultValue="5242"
+            android:defaultValue="9853"
             android:dialogTitle="@string/pref_socks_dialog"
             android:key="pref_socks"
             android:summary="@string/pref_socks_summary"

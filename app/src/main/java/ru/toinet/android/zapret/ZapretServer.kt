@@ -25,7 +25,7 @@ class ZapretServer(
 
         val executablePath = ZapretService.getExecutable(context)
         if (executablePath == null) {
-            Log.e(TAG, "libtpws.so not found")
+            Log.e(TAG, "zDPI binary not found")
             return
         }
 

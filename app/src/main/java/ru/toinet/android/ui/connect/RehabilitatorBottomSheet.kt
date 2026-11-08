@@ -39,7 +39,7 @@ class RehabilitatorBottomSheet : ToInetBottomSheetDialogFragment() {
             Prefs.rehabilitatorEnabled = binding.swEnabled.isChecked
             Prefs.rehabilitatorUseByeDpi = binding.swUseByeDpi.isChecked
             Prefs.rehabilitatorUpstreamHost = binding.etUpstreamHost.text.toString().trim()
-            Prefs.rehabilitatorUpstreamPort = binding.etUpstreamPort.text.toString().trim().toIntOrNull() ?: 1080
+            Prefs.rehabilitatorUpstreamPort = binding.etUpstreamPort.text.toString().trim().toIntOrNull() ?: 1780
             Prefs.rehabilitatorUsername = binding.etUsername.text.toString().trim()
             Prefs.rehabilitatorPassword = binding.etPassword.text.toString().trim()
             Prefs.rehabilitatorArgs = binding.etArgs.text.toString().trim()

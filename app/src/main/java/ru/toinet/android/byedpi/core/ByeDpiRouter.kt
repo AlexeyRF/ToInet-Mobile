@@ -49,7 +49,7 @@ object ByeDpiRouter {
 
             for (cmd in uniqueCmds) {
                 if (cmd.equals("TOR", ignoreCase = true)) {
-                    cmdToPort[cmd] = 5242
+                    cmdToPort[cmd] = 9853
                     continue
                 }
                 

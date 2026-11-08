@@ -50,7 +50,7 @@
     <string name="pref_open_proxy_on_all_interfaces_title">Открыть прокси на всех интерфейсах</string>
     <string name="pref_open_proxy_on_all_interfaces_summary">Разрешить пирам Wi-Fi, привязанным устройствам и всем, кто может подключиться к вашему IP, доступ к ToInet</string>
     <string name="pref_socks_title">ToInet SOCKS</string>
-    <string name="pref_socks_summary">Порт, на котором ToInet предоставляет свой SOCKS-прокси (по умолчанию: 5242, 0 — для отключения)</string>
+    <string name="pref_socks_summary">Порт, на котором ToInet предоставляет свой SOCKS-прокси (по умолчанию: 9853, 0 — для отключения)</string>
     <string name="pref_socks_dialog">Настройка порта SOCKS</string>
     <string name="pref_http_title">ToInet HTTP</string>
     <string name="pref_http_summary">Порт, на котором ToInet предлагает свой HTTP-прокси (по умолчанию: 8118 или 0 для отключения)</string>
@@ -213,7 +213,7 @@
     
     <string name="vpn_channel_name">VPN</string>
     <string name="proxy_channel_name">Proxy</string>
-    <string name="byedpi_notification_title">ByeDPI</string>
+    <string name="byedpi_notification_title">zDPI</string>
     <string name="vpn_notification_content">VPN запущен</string>
     <string name="proxy_notification_content">Прокси запущен</string>
 
@@ -221,19 +221,19 @@
 
     <string name="opera_proxy_notification_title">Opera Proxy</string>
     <string name="zapret_notification_title">Zapret</string>
-    <string name="pref_zapret_enabled_title">Включить Zapret (tpws)</string>
-    <string name="pref_zapret_port_title">Порт SOCKS5 (по умолчанию 1081)</string>
-    <string name="pref_zapret_args_title">Аргументы Zapret (tpws)</string>
+    <string name="pref_zapret_enabled_title">Включить Zapret (zDPI)</string>
+    <string name="pref_zapret_port_title">Порт SOCKS5 (по умолчанию 1781)</string>
+    <string name="pref_zapret_args_title">Аргументы Zapret (zDPI)</string>
     <string name="pref_zapret_flowseal_title">Стратегии от flowseal</string>
 
-    <string name="pref_byedpi_enabled_title">Включить ByeDPI</string>
-    <string name="pref_byedpi_enabled_summary">Запускать ByeDPI параллельно с Tor</string>
-    <string name="pref_byedpi_use_as_upstream_title">Использовать Byedpi как прокси для Tor</string>
-    <string name="pref_byedpi_use_as_upstream_summary">Tor будет подключаться через ByeDPI</string>
+    <string name="pref_byedpi_enabled_title">Включить zDPI</string>
+    <string name="pref_byedpi_enabled_summary">Запускать zDPI параллельно с Tor</string>
+    <string name="pref_byedpi_use_as_upstream_title">Использовать zDPI как прокси для Tor</string>
+    <string name="pref_byedpi_use_as_upstream_summary">Tor будет подключаться через zDPI</string>
     <string name="pref_byedpi_use_args_title">Использовать аргументы</string>
     <string name="pref_byedpi_use_args_summary">Вручную указать параметры командной строки</string>
     <string name="pref_byedpi_args_title">Аргументы командной строки</string>
-    <string name="pref_byedpi_args_summary">Например: --disorder 1 --split 1</string>
+    <string name="pref_byedpi_args_summary">Например: --preset general или -s midsld -f 1</string>
     <string name="tgws_proxy_channel_name">TGWS Proxy Service Channel</string>
     <string name="tgws_enabled">Enable TGWS Proxy (Telegram WebSocket)</string>
     <string name="tgws_host">TGWS Host</string>

@@ -66,7 +66,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         setSupportActionBar(findViewById(R.id.toolbar))
 
         val ip = prefs.getStringNotNull("byedpi_proxy_ip", "127.0.0.1")
-        val port = prefs.getIntStringNotNull("byedpi_proxy_port", 1080)
+        val port = prefs.getIntStringNotNull("byedpi_proxy_port", 1780)
 
         siteChecker = SiteCheckUtils(ip, port)
         cmdHistoryUtils = HistoryUtils(this)

@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <getopt.h>
 
-#include "byedpi/error.h"
+#include "error.h"
 #include "main.h"
 
 extern int server_fd;
@@ -21,8 +21,7 @@ int __wrap_daemon(__attribute__((unused)) int nochdir, __attribute__((unused)) i
     return -1;
 }
 
-JNIEXPORT jint JNICALL
-Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStartProxy(JNIEnv *env, __attribute__((unused)) jobject thiz, jobjectArray args) {
+static jint internal_start_proxy(JNIEnv *env, jobjectArray args) {
     pthread_mutex_lock(&proxy_mutex);
     if (proxy_running) {
         pthread_mutex_unlock(&proxy_mutex);
@@ -56,7 +55,7 @@ Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStartProxy(JNIEnv *env, __attr
         }
     }
 
-    LOG(LOG_S, "starting proxy with %d args", argc);
+    LOG(LOG_S, "starting zDPI proxy with %d args", argc);
     pthread_mutex_lock(&proxy_mutex);
     server_fd = -1;
     proxy_running = 1;
@@ -82,8 +81,7 @@ cleanup:
     return result;
 }
 
-JNIEXPORT jint JNICALL
-Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStopProxy(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
+static jint internal_stop_proxy(void) {
     LOG(LOG_S, "send shutdown to proxy");
     pthread_mutex_lock(&proxy_mutex);
     int result = proxy_running && server_fd >= 0 ? shutdown(server_fd, SHUT_RDWR) : -1;
@@ -91,12 +89,41 @@ Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStopProxy(__attribute__((unuse
     return result;
 }
 
-JNIEXPORT jint JNICALL
-Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniForceClose(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
+static jint internal_force_close(void) {
     LOG(LOG_S, "proxy socket force close");
     pthread_mutex_lock(&proxy_mutex);
     int result = server_fd >= 0 ? close(server_fd) : -1;
     server_fd = -1;
     pthread_mutex_unlock(&proxy_mutex);
     return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStartProxy(JNIEnv *env, __attribute__((unused)) jobject thiz, jobjectArray args) {
+    return internal_start_proxy(env, args);
+}
+
+JNIEXPORT jint JNICALL
+Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniStopProxy(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
+    return internal_stop_proxy();
+}
+
+JNIEXPORT jint JNICALL
+Java_ru_toinet_android_byedpi_core_ByeDpiProxy_jniForceClose(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
+    return internal_force_close();
+}
+
+JNIEXPORT jint JNICALL
+Java_ru_toinet_android_zdpi_core_ZdpiProxy_jniStartProxy(JNIEnv *env, __attribute__((unused)) jobject thiz, jobjectArray args) {
+    return internal_start_proxy(env, args);
+}
+
+JNIEXPORT jint JNICALL
+Java_ru_toinet_android_zdpi_core_ZdpiProxy_jniStopProxy(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
+    return internal_stop_proxy();
+}
+
+JNIEXPORT jint JNICALL
+Java_ru_toinet_android_zdpi_core_ZdpiProxy_jniForceClose(__attribute__((unused)) JNIEnv *env, __attribute__((unused)) jobject thiz) {
+    return internal_force_close();
 }

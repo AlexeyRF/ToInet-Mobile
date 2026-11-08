@@ -26,6 +26,12 @@ class ZapretBottomSheet : ToInetBottomSheetDialogFragment() {
     private data class StrategyItem(val name: String, val args: String)
 
     private val FLOWSEAL_STRATEGIES = listOf(
+        StrategyItem("zDPI Preset: General", "--preset general"),
+        StrategyItem("zDPI Preset: YouTube 4K", "--preset youtube"),
+        StrategyItem("zDPI Preset: Discord Voice/Media", "--preset discord"),
+        StrategyItem("zDPI Fake+Split midsld Google", "--dpi-desync=fake,split2 --dpi-desync-split-pos=midsld --dpi-desync-fake-tls=google --dpi-desync-ttl=3 --quic-drop"),
+        StrategyItem("zDPI Fake+Split midsld Kyber", "--dpi-desync=fake,split2 --dpi-desync-split-pos=midsld --dpi-desync-fake-tls=kyber --dpi-desync-ttl=3 --quic-drop"),
+        StrategyItem("zDPI Fake+Disorder2 pos=1", "--dpi-desync=fake,disorder2 --dpi-desync-split-pos=1 --dpi-desync-ttl=3 --quic-drop"),
         StrategyItem("general", "--split-pos=1"),
         StrategyItem("general (ALT)", "--split-pos=1 --disorder"),
         StrategyItem("general (ALT2)", "--split-pos=2"),
@@ -125,7 +131,7 @@ class ZapretBottomSheet : ToInetBottomSheetDialogFragment() {
 
         binding.btnSave.setOnClickListener {
             Prefs.zapretEnabled = binding.swEnabled.isChecked
-            Prefs.zapretPort = binding.etPort.text.toString().trim().toIntOrNull() ?: 1081
+            Prefs.zapretPort = binding.etPort.text.toString().trim().toIntOrNull() ?: 1781
             Prefs.zapretArgs = binding.etArgs.text.toString().trim()
             viewModel.triggerRefreshMenuList()
             dismiss()

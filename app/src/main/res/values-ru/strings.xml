@@ -46,7 +46,7 @@
     <string name="pref_disable_network_summary">Переводить ToInet в спящий режим при отсутствии интернета</string>
     <string name="newnym">Вы переключились на новый идентификатор!</string>
     <string name="pref_socks_title">ToInet SOCKS</string>
-    <string name="pref_socks_summary">Порт, на котором ToInet предоставляет свой SOCKS-прокси (по умолчанию: 5242, 0 — для отключения)</string>
+    <string name="pref_socks_summary">Порт, на котором ToInet предоставляет свой SOCKS-прокси (по умолчанию: 9853, 0 — для отключения)</string>
     <string name="pref_socks_dialog">Настройка порта SOCKS</string>
     <string name="pref_transport_title">Порт прозрачного прокси ToInet</string>
     <string name="pref_transport_summary">Порт, на котором ToInet предоставляет свой прозрачный прокси (по умолчанию: 9040, 0 — для отключения)</string>

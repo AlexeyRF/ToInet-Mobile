@@ -76,7 +76,7 @@ class OperaProxyServer(
 
         val cmdArgs = mutableListOf<String>()
         cmdArgs.add(executable)
-        val bindAddress = Prefs.operaProxyBindAddress.takeIf { it.isNotBlank() } ?: "127.0.0.1:1888"
+        val bindAddress = Prefs.operaProxyBindAddress.takeIf { it.isNotBlank() } ?: "127.0.0.1:1785"
         cmdArgs.add("-bind-address")
         cmdArgs.add(bindAddress)
         cmdArgs.add("-socks-mode")

@@ -477,7 +477,7 @@ public class ToInetService extends Service {
                 if (pair.getFirst() != null && "127.0.0.1".equals(pair.getFirst().getHost())) {
                     int port = pair.getFirst().getPort();
                     if (port == Prefs.getEasyVpnProxyPort()) upstream = "easyvpn";
-                    else if (port == 1080) upstream = "byedpi";
+                    else if (port == 1780) upstream = "byedpi";
                     else if (port == Prefs.getZapretPort()) upstream = "zapret";
                     else if (port == 1788) upstream = "rehab";
                 }

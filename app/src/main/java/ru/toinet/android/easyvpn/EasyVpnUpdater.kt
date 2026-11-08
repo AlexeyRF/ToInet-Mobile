@@ -121,7 +121,7 @@ object EasyVpnUpdater {
         }
         if (Prefs.easyVpnUpstreamEnabled) {
             val host = Prefs.easyVpnUpstreamHost.ifBlank { "127.0.0.1" }
-            val port = if (Prefs.easyVpnUpstreamPort in 1..65535) Prefs.easyVpnUpstreamPort else 5242
+            val port = if (Prefs.easyVpnUpstreamPort in 1..65535) Prefs.easyVpnUpstreamPort else 9853
             try {
                 Socket().use { s ->
                     s.connect(InetSocketAddress(host, port), 250)
@@ -572,7 +572,7 @@ object EasyVpnUpdater {
 
         if (ru.toinet.android.util.Prefs.easyVpnUpstreamEnabled) {
             val upstreamHost = ru.toinet.android.util.Prefs.easyVpnUpstreamHost.ifBlank { "127.0.0.1" }
-            val upstreamPort = if (ru.toinet.android.util.Prefs.easyVpnUpstreamPort in 1..65535) ru.toinet.android.util.Prefs.easyVpnUpstreamPort else 5242
+            val upstreamPort = if (ru.toinet.android.util.Prefs.easyVpnUpstreamPort in 1..65535) ru.toinet.android.util.Prefs.easyVpnUpstreamPort else 9853
             outbounds.put(JSONObject().apply {
                 put("tag", "chain-upstream")
                 put("protocol", "socks")

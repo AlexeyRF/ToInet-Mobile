@@ -50,7 +50,7 @@ class ProxyBottomSheet : ToInetBottomSheetDialogFragment() {
         val bundledOptions = listOf(
             UpstreamProxyCoordinator.PROVIDER_CUSTOM to "Пользовательский (ввести вручную)",
             UpstreamProxyCoordinator.PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:${Prefs.easyVpnProxyPort}) — для белых списков",
-            UpstreamProxyCoordinator.PROVIDER_BYEDPI to "ByeDPI (127.0.0.1:1080)",
+            UpstreamProxyCoordinator.PROVIDER_BYEDPI to "zDPI (127.0.0.1:1780)",
             UpstreamProxyCoordinator.PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
             UpstreamProxyCoordinator.PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)"
         )

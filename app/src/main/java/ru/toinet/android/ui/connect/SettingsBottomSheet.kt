@@ -44,7 +44,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             ToInetMenuAction(
                 0,
                 R.drawable.ic_server,
-                statusString = "ByeDPI: ${if (Prefs.byedpiEnabled) "ВКЛ" else "ВЫКЛ"}\n(прокси)"
+                statusString = "zDPI: ${if (Prefs.byedpiEnabled) "ВКЛ" else "ВЫКЛ"}\n(прокси)"
             ) {
                 ByeDpiBottomSheet().show(
                     requireActivity().supportFragmentManager,
@@ -141,24 +141,24 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             ) {
                 val ctx = requireContext()
                 val proxies = arrayListOf(
-                    "ByeDPI (порт 1080)",
-                    "Easy-VPN (порт 1791)"
+                    "zDPI (порт 1780)",
+                    "Easy-VPN (порт 1790)"
                 )
                 val proxyLinks = arrayListOf(
-                    "tg://socks?server=127.0.0.1&port=1080",
-                    "tg://socks?server=127.0.0.1&port=1791"
+                    "tg://socks?server=127.0.0.1&port=1780",
+                    "tg://socks?server=127.0.0.1&port=1790"
                 )
                 /*
                 if (ArchHelper.isOperaSupported) {
-                    proxies.add("Opera Proxy (порт 1888)")
-                    proxyLinks.add("tg://socks?server=127.0.0.1&port=1888")
+                    proxies.add("Opera Proxy (порт 1785)")
+                    proxyLinks.add("tg://socks?server=127.0.0.1&port=1785")
                 }
                 */
-                proxies.add("TOR (порт 5242)")
-                proxyLinks.add("tg://socks?server=127.0.0.1&port=5242")
+                proxies.add("TOR (порт 9853)")
+                proxyLinks.add("tg://socks?server=127.0.0.1&port=9853")
 
-                proxies.add("Zapret (порт 1081)")
-                proxyLinks.add("tg://socks?server=127.0.0.1&port=1081")
+                proxies.add("Zapret (порт 1781)")
+                proxyLinks.add("tg://socks?server=127.0.0.1&port=1781")
 
                 proxies.add("Socks Rehab (порт 1788)")
                 proxyLinks.add("tg://socks?server=127.0.0.1&port=1788")

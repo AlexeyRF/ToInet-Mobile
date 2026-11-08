@@ -75,7 +75,7 @@ class ZapretService : Service() {
         fun getExecutable(context: Context): String? {
             val libDir = File(context.applicationInfo.nativeLibraryDir)
             var executable = libDir.listFiles { f ->
-                f.name == "libtpws.so" || (f.name.startsWith("libtpws") && f.name.endsWith(".so"))
+                f.name == "libzdpi.so" || f.name == "libtpws.so" || (f.name.startsWith("libzdpi") && f.name.endsWith(".so")) || (f.name.startsWith("libtpws") && f.name.endsWith(".so"))
             }?.firstOrNull()
 
             if (executable != null && executable.canExecute()) {
@@ -83,7 +83,7 @@ class ZapretService : Service() {
             }
 
             try {
-                val fallbackFile = File(context.filesDir, "libtpws.so")
+                val fallbackFile = File(context.filesDir, "libzdpi.so")
                 if (executable != null && executable.exists()) {
                     executable.inputStream().use { input ->
                         FileOutputStream(fallbackFile).use { output ->

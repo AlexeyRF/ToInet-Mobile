@@ -45,8 +45,8 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         val upstreamOptions = listOf(
-            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_TOR to "TOR (127.0.0.1:5242)",
-            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_BYEDPI to "ByeDPI (127.0.0.1:1080)",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_TOR to "TOR (127.0.0.1:9853)",
+            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_BYEDPI to "zDPI (127.0.0.1:1780)",
             ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
             ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
             ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_CUSTOM to "Кастомный SOCKS5..."
@@ -128,7 +128,7 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
             if (chosenProvider == ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_CUSTOM) {
                 val custom = binding.etEasyVpnCustomHost.text.toString().trim()
                 val host = custom.substringBeforeLast(':', "127.0.0.1")
-                val port = custom.substringAfterLast(':', "1080").toIntOrNull() ?: 1080
+                val port = custom.substringAfterLast(':', "1780").toIntOrNull() ?: 1780
                 Prefs.easyVpnUpstreamHost = host
                 Prefs.easyVpnUpstreamPort = port
             } else {
