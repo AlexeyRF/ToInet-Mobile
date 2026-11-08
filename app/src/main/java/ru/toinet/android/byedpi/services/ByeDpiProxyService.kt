@@ -152,8 +152,13 @@ class ByeDpiProxyService : LifecycleService() {
         Log.i(TAG, "Starting proxy")
 
         if (proxyJob != null) {
-            Log.w(TAG, "Proxy fields not null")
-            throw IllegalStateException("Proxy fields not null")
+            Log.w(TAG, "Previous proxy job was not null, cleaning up first")
+            try {
+                ru.toinet.android.byedpi.core.ByeDpiRouter.stop(this)
+                proxy.stopProxy()
+                proxyJob?.cancel()
+                proxyJob = null
+            } catch (_: Exception) {}
         }
 
         var cmdStrOriginal = ru.toinet.android.util.Prefs.byedpiArgs

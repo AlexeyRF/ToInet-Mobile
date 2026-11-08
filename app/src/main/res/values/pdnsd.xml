@@ -9,7 +9,7 @@ global {
 	query_method=tcp_udp;
 	min_ttl=15m;
 	max_ttl=1w;
-	timeout=5;
+	timeout=4;
 	daemon=on;
 	pid_file="%s/pdnsd.pid";
 }
@@ -19,6 +19,7 @@ server {
 	ip = %s;
 	port = %d;
 	uptest = none;
+	proxy_only = on;
 }
 
 rr {

@@ -101,6 +101,7 @@
                 android:layout_height="wrap_content"
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
+                android:visibility="gone"
                 android:text="TGWS (порт 1480)" />
             <RadioButton
                 android:id="@+id/rbSvpn"

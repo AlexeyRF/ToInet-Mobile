@@ -102,6 +102,20 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             ToInetMenuAction(
                 0,
                 R.drawable.ic_send_airplane,
+                statusString = "TGWS: ${if (Prefs.tgwsEnabled) "ВКЛ" else "ВЫКЛ"}\n(порт, FakeTLS, CF)"
+            ) {
+                TgwsBottomSheet().show(
+                    requireActivity().supportFragmentManager,
+                    TgwsBottomSheet.TAG
+                )
+                dismiss()
+            }
+        )
+
+        listItems.add(
+            ToInetMenuAction(
+                0,
+                R.drawable.ic_send_airplane,
                 statusString = "Добавить прокси в Telegram"
             ) {
                 val ctx = requireContext()

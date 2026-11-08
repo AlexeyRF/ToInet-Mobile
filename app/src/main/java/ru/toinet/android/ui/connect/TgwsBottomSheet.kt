@@ -45,48 +45,7 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
             if (binding.swShareProxy.isChecked) {
                 ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
                     requireContext(),
-                    onConfirmed = {
-                        // User confirmed
-                    },
-                    onCancelled = {
-                        binding.swShareProxy.isChecked = false
-                    }
-                )
-            }
-        }
-        binding.swShareProxy.setOnClickListener {
-            if (binding.swShareProxy.isChecked) {
-                ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
-                    requireContext(),
-                    onConfirmed = {
-                        // User confirmed
-                    },
-                    onCancelled = {
-                        binding.swShareProxy.isChecked = false
-                    }
-                )
-            }
-        }
-        binding.swShareProxy.setOnClickListener {
-            if (binding.swShareProxy.isChecked) {
-                ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
-                    requireContext(),
-                    onConfirmed = {
-                        // User confirmed
-                    },
-                    onCancelled = {
-                        binding.swShareProxy.isChecked = false
-                    }
-                )
-            }
-        }
-        binding.swShareProxy.setOnClickListener {
-            if (binding.swShareProxy.isChecked) {
-                ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
-                    requireContext(),
-                    onConfirmed = {
-                        // User confirmed
-                    },
+                    onConfirmed = {},
                     onCancelled = {
                         binding.swShareProxy.isChecked = false
                     }
@@ -99,7 +58,11 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
         binding.etFakeTls.setText(Prefs.tgwsFakeTls)
         binding.etCfWorkerDomains.setText(Prefs.tgwsCfWorkerDomains.joinToString(","))
         binding.etCfProxyDomains.setText(Prefs.tgwsCfProxyDomains.joinToString(","))
-        
+        binding.etFrontingSni.setText(Prefs.tgwsFrontingSni)
+        binding.swFallbackCfProxy.isChecked = Prefs.tgwsFallbackCfProxy
+        binding.swCfProxyH2Media.isChecked = Prefs.tgwsCfProxyH2Media
+        binding.swDisableSecure.isChecked = Prefs.tgwsDisableSecure
+        binding.swForceTestDc.isChecked = Prefs.tgwsForceTestDc
         
         val mappingStr = Prefs.tgwsDcMappings.map { "${it.key}:${it.value}" }.joinToString("\n")
         binding.etMappings.setText(mappingStr)
@@ -178,8 +141,13 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
             
             Prefs.tgwsSecret = binding.etSecret.text.toString().trim()
             Prefs.tgwsFakeTls = binding.etFakeTls.text.toString().trim()
-            Prefs.tgwsCfWorkerDomains = binding.etCfWorkerDomains.text.toString().split(",").map { it.trim() }
-            Prefs.tgwsCfProxyDomains = binding.etCfProxyDomains.text.toString().split(",").map { it.trim() }
+            Prefs.tgwsCfWorkerDomains = binding.etCfWorkerDomains.text.toString().split(",").map { it.trim() }.filter { it.isNotBlank() }
+            Prefs.tgwsCfProxyDomains = binding.etCfProxyDomains.text.toString().split(",").map { it.trim() }.filter { it.isNotBlank() }
+            Prefs.tgwsFrontingSni = binding.etFrontingSni.text.toString().trim()
+            Prefs.tgwsFallbackCfProxy = binding.swFallbackCfProxy.isChecked
+            Prefs.tgwsCfProxyH2Media = binding.swCfProxyH2Media.isChecked
+            Prefs.tgwsDisableSecure = binding.swDisableSecure.isChecked
+            Prefs.tgwsForceTestDc = binding.swForceTestDc.isChecked
             
             val mappings = binding.etMappings.text.toString().split("\n")
                 .filter { it.contains(":") }
@@ -188,6 +156,11 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
                     parts[0].trim().toInt() to parts[1].trim()
                 }
             Prefs.tgwsDcMappings = mappings
+
+            if (ru.toinet.android.tgws.TgwsService.isRunning) {
+                ru.toinet.android.tgws.TgwsService.stop(requireContext())
+                ru.toinet.android.tgws.TgwsService.start(requireContext())
+            }
             
             viewModel.triggerRefreshMenuList()
             dismiss()

@@ -109,61 +109,9 @@ object EasyVpnUpdater {
         return result
     }
 
-    fun getTestingProxy(): Proxy? {
-        if (EasyVpnServer.isRunning) {
-            val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1791
-            try {
-                Socket().use { s ->
-                    s.connect(InetSocketAddress("127.0.0.1", listenPort), 250)
-                    return Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", listenPort))
-                }
-            } catch (_: Exception) {}
-        }
-        if (Prefs.easyVpnUpstreamEnabled) {
-            val host = Prefs.easyVpnUpstreamHost.ifBlank { "127.0.0.1" }
-            val port = if (Prefs.easyVpnUpstreamPort in 1..65535) Prefs.easyVpnUpstreamPort else 9853
-            try {
-                Socket().use { s ->
-                    s.connect(InetSocketAddress(host, port), 250)
-                    return Proxy(Proxy.Type.SOCKS, InetSocketAddress(host, port))
-                }
-            } catch (_: Exception) {}
-        }
-        val torPort = Prefs.proxySocksPort?.toIntOrNull() ?: 9050
-        try {
-            Socket().use { s ->
-                s.connect(InetSocketAddress("127.0.0.1", torPort), 250)
-                return Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", torPort))
-            }
-        } catch (_: Exception) {}
-
-        return null
-    }
-
-    fun isTestingProxyAvailable(): Boolean {
-        return getTestingProxy() != null
-    }
-
     suspend fun pingTestNodes(nodes: List<VlessNode>, context: Context? = null): List<VlessNode> = withContext(Dispatchers.IO) {
         val workingWithPing = mutableListOf<Pair<VlessNode, Long>>()
         val semaphore = Semaphore(30)
-
-        // Проверяем наличие активного прокси для тестирования
-        val proxy = getTestingProxy()
-        if (proxy == null) {
-            Log.w(TAG, "Готовых прокси-нод нет. Выполняется прямой пинг серверов (IP раскрывается серверам)")
-            if (context != null) {
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    try {
-                        android.widget.Toast.makeText(
-                            context,
-                            "EasyVPN: готовых нод для скрытия нет, тест серверов выполняется напрямую (возможна утечка IP)",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
-                    } catch (_: Exception) {}
-                }
-            }
-        }
 
         val deferreds = nodes.take(300).map { node ->
             async(Dispatchers.IO) {
@@ -171,8 +119,7 @@ object EasyVpnUpdater {
                     if (!coroutineContext.isActive) return@withPermit null
                     try {
                         val start = System.currentTimeMillis()
-                        val sock = if (proxy != null) Socket(proxy) else Socket()
-                        sock.use { s ->
+                        Socket().use { s ->
                             s.connect(InetSocketAddress(node.server, node.port), 3000)
                             val rtt = System.currentTimeMillis() - start
                             Pair(node, rtt)
@@ -319,7 +266,7 @@ object EasyVpnUpdater {
 
     fun buildDirectFallbackConfig(): JSONObject {
         val listenHost = Prefs.easyVpnProxyHost.ifBlank { "127.0.0.1" }
-        val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1791
+        val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1790
         return JSONObject().apply {
             put("log", JSONObject().apply { put("loglevel", "warning") })
             put("inbounds", JSONArray().apply {
@@ -368,7 +315,7 @@ object EasyVpnUpdater {
         val proxyTags = JSONArray()
 
         val listenHost = Prefs.easyVpnProxyHost.ifBlank { "127.0.0.1" }
-        val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1791
+        val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1790
 
         nodes.take(100).forEachIndexed { i, node ->
             try {

@@ -74,12 +74,15 @@ public class VpnUtility {
     public static void makePdnsdConf(Context context, String dns, int port) {
         String dir = context.getFilesDir().getAbsolutePath();
         String dnsList = dns;
-        if (port == 53 && dns != null && !dns.contains(",")) {
-            String trimmedDns = dns.trim();
-            if (!trimmedDns.equals("77.88.8.8") && !trimmedDns.equals("1.1.1.1")) {
-                dnsList = trimmedDns + ", 77.88.8.8, 1.1.1.1";
+        if (dnsList == null || dnsList.trim().isEmpty() || dnsList.trim().equals("208.67.222.222") || dnsList.trim().equals("1.1.1.1")) {
+            dnsList = "77.88.8.8";
+        }
+        if (port == 53 && !dnsList.contains(",")) {
+            String trimmedDns = dnsList.trim();
+            if (!trimmedDns.equals("77.88.8.8") && !trimmedDns.equals("77.88.8.1")) {
+                dnsList = trimmedDns + ", 77.88.8.8, 77.88.8.1";
             } else if (trimmedDns.equals("77.88.8.8")) {
-                dnsList = trimmedDns + ", 8.8.8.8, 1.1.1.1";
+                dnsList = trimmedDns + ", 77.88.8.1, 8.8.8.8";
             } else {
                 dnsList = trimmedDns + ", 77.88.8.8, 8.8.8.8";
             }

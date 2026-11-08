@@ -315,6 +315,9 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                 Log.e(TAG, "libxray.so not found in $libDir")
                 return false
             }
+            try {
+                nativeXray.setExecutable(true, false)
+            } catch (_: Exception) {}
 
             val oldProc = process
             if (oldProc != null) {

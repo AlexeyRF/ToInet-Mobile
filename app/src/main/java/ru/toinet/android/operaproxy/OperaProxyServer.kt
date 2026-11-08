@@ -32,6 +32,9 @@ class OperaProxyServer(
             val libDir = context.applicationInfo.nativeLibraryDir
             val nativeBin = File(libDir, "liboperaproxy.so")
             if (nativeBin.exists()) {
+                try {
+                    nativeBin.setExecutable(true, false)
+                } catch (_: Exception) {}
                 return nativeBin.absolutePath
             }
 
@@ -48,9 +51,11 @@ class OperaProxyServer(
 
             val destFile = File(context.filesDir, "opera-proxy")
             try {
-                context.assets.open(assetName).use { inputStream ->
-                    FileOutputStream(destFile).use { outputStream ->
-                        inputStream.copyTo(outputStream)
+                if (!destFile.exists() || destFile.length() == 0L) {
+                    context.assets.open(assetName).use { inputStream ->
+                        FileOutputStream(destFile).use { outputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
                     }
                 }
                 destFile.setExecutable(true, false)

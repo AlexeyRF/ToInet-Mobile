@@ -361,6 +361,7 @@ class AppRoutingServer(
                 Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
             }
             ProxifierRule.ACTION_SVPN -> Prefs.svpnLocalPort
+            ProxifierRule.ACTION_TGWS -> Prefs.tgwsPort
             else -> 1780
         }
     }

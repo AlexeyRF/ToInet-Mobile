@@ -19,6 +19,7 @@ data class ProxifierRule(
         const val ACTION_TOR = "tor"
         const val ACTION_OPERAPROXY = "operaproxy"
         const val ACTION_SVPN = "svpn"
+        const val ACTION_TGWS = "tgws"
 
         fun getActionTitle(action: String): String = when (action) {
             ACTION_DIRECT -> "Direct (Напрямую)"
@@ -28,6 +29,7 @@ data class ProxifierRule(
             ACTION_TOR -> "TOR (порт 9853)"
             ACTION_OPERAPROXY -> "Opera Proxy (1785)"
             ACTION_SVPN -> "SVPN / SSH (${ru.toinet.android.util.Prefs.svpnLocalPort})"
+            ACTION_TGWS -> "TGWS (порт ${ru.toinet.android.util.Prefs.tgwsPort})"
             else -> action
         }
 

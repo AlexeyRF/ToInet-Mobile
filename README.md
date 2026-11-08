@@ -48,9 +48,7 @@
 
 *   [ЛМ (Tor)](https://torproject.org)
 *   [Xray-core](https://github.com/XTLS/Xray-core)
-*   [zDPI (ByeDPI + Zapret2 hybrid engine)](https://github.com/hufrea/byedpi)
 *   [hufrea (Оригинальный ByeDPI)](https://github.com/hufrea/)
-*   [dovecoteescapee (Оригинальный ByeDPI для Android)](https://github.com/dovecoteescapee/)
 *   [bol-van (Zapret)](https://github.com/bol-van/)
 *   [romanvht (Стратегии и тестер ByeDPI)](https://github.com/romanvht/)
 *   [Flowseal (Оригинальный TGWS](https://github.com/Flowseal/)

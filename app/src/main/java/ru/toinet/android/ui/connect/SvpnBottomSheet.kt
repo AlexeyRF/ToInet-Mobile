@@ -126,7 +126,7 @@ class SvpnBottomSheet : ToInetBottomSheetDialogFragment() {
             val localPort = binding.etLocalPort.text.toString().trim().toIntOrNull() ?: 1770
             Prefs.svpnLocalPort = localPort
 
-            val dnsServer = binding.etDnsServer.text.toString().trim().ifBlank { "1.1.1.1" }
+            val dnsServer = binding.etDnsServer.text.toString().trim().ifBlank { "77.88.8.8" }
             Prefs.svpnDnsServer = dnsServer
             Prefs.svpnDnsPort = binding.etDnsPort.text.toString().trim().toIntOrNull() ?: 53
 

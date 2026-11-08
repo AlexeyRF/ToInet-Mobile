@@ -16,7 +16,6 @@ object UniversalTgProxy {
     )
 
     fun start() {
-        /*
         if (core != null) return
         try {
             val listenHost = if (Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
@@ -26,10 +25,16 @@ object UniversalTgProxy {
                 dcMappings = IP_TO_DC,
                 secret = Prefs.tgwsSecret,
                 fakeTlsDomain = Prefs.tgwsFakeTls,
-                useByeDpi = true, // this enables the vpnProvider check in createSocket!
+                useByeDpi = true,
                 disableWebSockets = false,
                 cfWorkerDomains = Prefs.tgwsCfWorkerDomains,
                 cfProxyDomains = Prefs.tgwsCfProxyDomains,
+                fallbackCfProxy = Prefs.tgwsFallbackCfProxy,
+                cfProxyH2Media = Prefs.tgwsCfProxyH2Media,
+                frontingSni = Prefs.tgwsFrontingSni,
+                disableSecure = Prefs.tgwsDisableSecure,
+                forceTestDc = Prefs.tgwsForceTestDc,
+                poolSize = Prefs.tgwsPoolSize,
                 onLog = { msg -> Log.d(TAG, msg) }
             )
             core?.start()
@@ -37,13 +42,12 @@ object UniversalTgProxy {
         } catch (e: Exception) {
             Log.e(TAG, "Error starting UniversalTgProxy", e)
         }
-        */
     }
 
     fun stop() {
         try {
             core?.stop()
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
         core = null
         Log.i(TAG, "Stopped")
     }

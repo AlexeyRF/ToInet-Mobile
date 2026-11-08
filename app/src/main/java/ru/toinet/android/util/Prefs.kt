@@ -444,6 +444,36 @@ object Prefs {
     var tgwsCfProxyDomains: List<String>
         get() = cr?.getPrefString("tgws_cf_proxy_domains")?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = cr?.putPref("tgws_cf_proxy_domains", value.joinToString(",")) ?: Unit
+
+    @JvmStatic
+    var tgwsFallbackCfProxy: Boolean
+        get() = cr?.getPrefBoolean("tgws_fallback_cfproxy", true) ?: true
+        set(value) = cr?.putPref("tgws_fallback_cfproxy", value) ?: Unit
+
+    @JvmStatic
+    var tgwsCfProxyH2Media: Boolean
+        get() = cr?.getPrefBoolean("tgws_cfproxy_h2_media", true) ?: true
+        set(value) = cr?.putPref("tgws_cfproxy_h2_media", value) ?: Unit
+
+    @JvmStatic
+    var tgwsFrontingSni: String
+        get() = cr?.getPrefString("tgws_fronting_sni") ?: ""
+        set(value) = cr?.putPref("tgws_fronting_sni", value) ?: Unit
+
+    @JvmStatic
+    var tgwsDisableSecure: Boolean
+        get() = cr?.getPrefBoolean("tgws_disable_secure", false) ?: false
+        set(value) = cr?.putPref("tgws_disable_secure", value) ?: Unit
+
+    @JvmStatic
+    var tgwsForceTestDc: Boolean
+        get() = cr?.getPrefBoolean("tgws_force_test_dc", false) ?: false
+        set(value) = cr?.putPref("tgws_force_test_dc", value) ?: Unit
+
+    @JvmStatic
+    var tgwsPoolSize: Int
+        get() = cr?.getPrefInt("tgws_pool_size", 4) ?: 4
+        set(value) = cr?.putPref("tgws_pool_size", value) ?: Unit
     @JvmStatic
     var operaProxyEnabled: Boolean
         get() = cr?.getPrefBoolean("operaproxy_enabled", false) ?: false
@@ -614,7 +644,7 @@ object Prefs {
 
     @JvmStatic
     var svpnDnsServer: String
-        get() = cr?.getPrefString("pref_svpn_dns_server") ?: "1.1.1.1"
+        get() = cr?.getPrefString("pref_svpn_dns_server") ?: "77.88.8.8"
         set(value) = cr?.putPref("pref_svpn_dns_server", value) ?: Unit
 
     @JvmStatic
@@ -645,7 +675,7 @@ object Prefs {
             "vpn" -> isGlobalVpnEnabled
             "tor" -> torEnabled || (isGlobalVpnEnabled && vpnProvider == "tor")
             "byedpi" -> byedpiEnabled || (isGlobalVpnEnabled && vpnProvider == "byedpi")
-            // "tgws" -> tgwsEnabled || (isGlobalVpnEnabled && vpnProvider == "tgws")
+            "tgws" -> tgwsEnabled
             "operaproxy" -> (operaProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "operaproxy")) && ArchHelper.isOperaSupported
             "easyvpn" -> easyVpnProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "easyvpn")
             "svpn", "ssh" -> svpnEnabled || (isGlobalVpnEnabled && (vpnProvider == "svpn" || vpnProvider == "ssh"))
@@ -673,11 +703,9 @@ object Prefs {
         if (svpnEnabled) {
             return serviceKey == "svpn"
         }
-        /*
         if (tgwsEnabled) {
             return serviceKey == "tgws"
         }
-        */
         return false
     }
 

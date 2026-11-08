@@ -129,6 +129,48 @@
                 android:inputType="textUri" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Domain Fronting SNI (опционально)"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_marginBottom="16dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etFrontingSni"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swFallbackCfProxy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cloudflare Proxy (запасной канал)"
+            android:layout_marginBottom="12dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swCfProxyH2Media"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Мультиплексирование медиа (HTTP/2)"
+            android:layout_marginBottom="12dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swDisableSecure"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Порт 80 для CF (no-secure)"
+            android:layout_marginBottom="12dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swForceTestDc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Принудительно использовать Test DC"
+            android:layout_marginBottom="16dp" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -69,46 +69,27 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         binding.btnEasyVpnUpdateNow.setOnClickListener {
-            val startUpdate = {
-                binding.btnEasyVpnUpdateNow.isEnabled = false
-                binding.btnEasyVpnUpdateNow.text = "Обновление..."
-                val appContext = requireContext().applicationContext
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val currentSubs = withContext(Dispatchers.Main) {
-                        binding.etEasyVpnSubs.text.toString().trim()
-                    }
-                    Prefs.easyVpnSubs = currentSubs
+            binding.btnEasyVpnUpdateNow.isEnabled = false
+            binding.btnEasyVpnUpdateNow.text = "Обновление..."
+            val appContext = requireContext().applicationContext
+            lifecycleScope.launch(Dispatchers.IO) {
+                val currentSubs = withContext(Dispatchers.Main) {
+                    binding.etEasyVpnSubs.text.toString().trim()
+                }
+                Prefs.easyVpnSubs = currentSubs
 
-                    val nodes = EasyVpnUpdater.updateAndTestConfigs(appContext)
-                    withContext(Dispatchers.Main) {
-                        if (!isAdded || context == null) return@withContext
-                        binding.btnEasyVpnUpdateNow.isEnabled = true
-                        binding.btnEasyVpnUpdateNow.text = "Обновить подписки сейчас"
-                        if (nodes.isNotEmpty()) {
-                            Toast.makeText(requireContext(), "Подписки успешно обновлены (${nodes.size} серверов)", Toast.LENGTH_SHORT).show()
-                            updateTimestampHeader()
-                        } else {
-                            Toast.makeText(requireContext(), "Не удалось обновить подписки", Toast.LENGTH_SHORT).show()
-                        }
+                val nodes = EasyVpnUpdater.updateAndTestConfigs(appContext)
+                withContext(Dispatchers.Main) {
+                    if (!isAdded || context == null) return@withContext
+                    binding.btnEasyVpnUpdateNow.isEnabled = true
+                    binding.btnEasyVpnUpdateNow.text = "Обновить подписки сейчас"
+                    if (nodes.isNotEmpty()) {
+                        Toast.makeText(requireContext(), "Подписки успешно обновлены (${nodes.size} серверов)", Toast.LENGTH_SHORT).show()
+                        updateTimestampHeader()
+                    } else {
+                        Toast.makeText(requireContext(), "Не удалось обновить подписки", Toast.LENGTH_SHORT).show()
                     }
                 }
-            }
-
-            if (!EasyVpnUpdater.isTestingProxyAvailable() && !Prefs.directPingWarningDismissed) {
-                androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Предупреждение: прямой тест задержки")
-                    .setMessage("Готовых прокси-нод для скрытия пинга сейчас нет. Проверка задержки будет выполнена напрямую через интернет вашего провайдера, что может раскрыть ваш реальный IP тестируемым серверам.\n\nВыполнить прямой тест?")
-                    .setPositiveButton("Выполнить") { _, _ ->
-                        startUpdate()
-                    }
-                    .setNeutralButton("Больше не предупреждать") { _, _ ->
-                        Prefs.directPingWarningDismissed = true
-                        startUpdate()
-                    }
-                    .setNegativeButton("Отмена", null)
-                    .show()
-            } else {
-                startUpdate()
             }
         }
 

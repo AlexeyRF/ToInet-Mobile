@@ -187,21 +187,6 @@ class ConnectFragment : Fragment(),
     fun attemptToStartTor() {
         val provider = Prefs.vpnProvider
         val isProviderActive = Prefs.isProviderActive(provider)
-
-        /*
-        if (provider == "tgws") {
-            android.app.AlertDialog.Builder(requireContext())
-                .setTitle("Внимание")
-                .setMessage("Павел Дуров признан террористом на территории России и в будущем возможен законодательный запрет (не просто блокировка) на использование телеграмм, поэтому использование tgws, который не маскирует трафик telegram не рекомендуется")
-                .setPositiveButton("Продолжить") { _, _ ->
-                    continueStartTor(provider, isProviderActive)
-                }
-                .setNegativeButton("Отмена", null)
-                .show()
-            return
-        }
-        */
-
         continueStartTor(provider, isProviderActive)
     }
 

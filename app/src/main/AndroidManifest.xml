@@ -156,7 +156,6 @@
         <service android:name=".byedpi.services.ByeDpiInstance5Service" android:process=":proxy5" android:exported="false" />
 
 
-        <!--
         <service
             android:name=".tgws.TgwsService"
             android:enabled="true"
@@ -167,7 +166,6 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="TGWS Proxy functionality" />
         </service>
-        -->
 
         <service
             android:name="org.torproject.jni.TorService"

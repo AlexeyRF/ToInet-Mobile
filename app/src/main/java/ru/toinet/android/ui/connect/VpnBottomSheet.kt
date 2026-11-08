@@ -60,20 +60,7 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
             "operaproxy" -> binding.rbOperaProxy.isChecked = true
             "tor" -> binding.rbTor.isChecked = true
             "svpn", "ssh" -> binding.rbSvpn.isChecked = true
-            // "tgws" -> binding.rbTgws.isChecked = true
             else -> binding.rbByedpi.isChecked = true
-        }
-        binding.rgVpnProvider.setOnCheckedChangeListener { _, checkedId ->
-            
-            /*
-            if (checkedId == binding.rbTgws.id) {
-                AlertDialog.Builder(requireContext())
-                    .setTitle("Уведомление TGWS")
-                    .setMessage("Это прокси только для Telegram. С остальным трафиком никаких манипуляций проводиться не будет!")
-                    .setPositiveButton("ОК", null)
-                    .show()
-            }
-            */
         }
 
         binding.btnApps.setOnClickListener {
@@ -91,7 +78,6 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 binding.rbEasyVpn.id -> "easyvpn"
                 binding.rbOperaProxy.id -> "operaproxy"
                 binding.rbTor.id -> "tor"
-                // binding.rbTgws.id -> "tgws"
                 binding.rbSvpn.id -> "svpn"
                 else -> "byedpi"
             }            

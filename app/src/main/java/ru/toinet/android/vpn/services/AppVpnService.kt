@@ -259,7 +259,7 @@ class AppVpnService : LifecycleVpnService() {
                 actualHost = "127.0.0.1"
                 actualPort = ru.toinet.android.util.Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
             }
-            "easyvpn" -> actualPort = ru.toinet.android.util.Prefs.easyVpnProxyPort
+            "easyvpn" -> actualPort = if (ru.toinet.android.util.Prefs.easyVpnProxyPort in 1..65535) ru.toinet.android.util.Prefs.easyVpnProxyPort else 1790
             "svpn", "ssh" -> actualPort = ru.toinet.android.util.Prefs.svpnLocalPort
             else -> actualPort = getByeDpiPreferences().port
         }
@@ -347,14 +347,28 @@ class AppVpnService : LifecycleVpnService() {
             sendIntentToService(torIntent, isForeground = false)
         }
 
-        var dns = sharedPreferences.getStringNotNull("dns_ip", "208.67.222.222")
-        if (provider == "tor" && dns == "208.67.222.222") {
-            dns = "1.1.1.1"
+        // Wait for proxy port to be open before routing traffic to it
+        if (isAppRouting) {
+            waitForPort("127.0.0.1", 10850, 3000L)
+        } else {
+            val waitTimeout = when (provider) {
+                "operaproxy" -> 5000L
+                "easyvpn" -> 4000L
+                "byedpi" -> 3000L
+                "tor" -> 3000L
+                else -> 2000L
+            }
+            waitForPort(actualHost, actualPort, waitTimeout)
+        }
+
+        var dns = sharedPreferences.getStringNotNull("dns_ip", "77.88.8.8")
+        if (dns == "208.67.222.222" || dns == "1.1.1.1" || dns.isBlank()) {
+            dns = "77.88.8.8"
         }
         if ((provider == "svpn" || provider == "ssh") && ru.toinet.android.util.Prefs.svpnDnsServer.isNotBlank()) {
             dns = ru.toinet.android.util.Prefs.svpnDnsServer
         }
-        if (dns.isBlank()) dns = "8.8.8.8"
+        if (dns.isBlank() || dns == "1.1.1.1") dns = "77.88.8.8"
 
         val hasExternalIpv6 = checkExternalIpv6()
         Log.i(TAG, "External IPv6 present: $hasExternalIpv6 (route v6: $hasExternalIpv6, block v6 if false)")
@@ -476,11 +490,9 @@ class AppVpnService : LifecycleVpnService() {
             }
         }
 
-        /*
-        if (provider == "tgws" && !ru.toinet.android.util.Prefs.tgwsEnabled) {
+        if (stoppedProviders.contains("tgws") && !ru.toinet.android.util.Prefs.tgwsEnabled) {
             ru.toinet.android.tgws.TgwsService.stop(this)
         }
-        */
 
         easyVpnServer?.stop()
         easyVpnServer = null        
@@ -552,6 +564,10 @@ class AppVpnService : LifecycleVpnService() {
         )
         intent.putExtra(SENDER, Sender.VPN.ordinal)
         sendBroadcast(intent)
+
+        if (newStatus == ServiceStatus.Connected) {
+            ru.toinet.android.util.NotificationLogger.log(this, ru.toinet.android.util.Prefs.vpnProvider, "VPN подключен (${ru.toinet.android.util.Prefs.vpnProvider})")
+        }
     }
 
     private fun sendLocalStatus(torStatus: String) {
@@ -696,14 +712,15 @@ class AppVpnService : LifecycleVpnService() {
             builder.addRoute("0.0.0.0", 0)
         }
 
-        try {
-            // Always route IPv6 into TUN: if external IPv6 exists, tun2socks forwards it;
-            // if IPv4-only, tun2socks omits --netif-ip6addr so all IPv6 is blackholed/blocked, preventing leaks.
-            // IPv6 DNS is not added because tun2socks dnsgw handles IPv4 UDP only; pdnsd resolves both A and AAAA.
-            builder.addAddress("fdfe:dcba:9876::1", 126)
-                .addRoute("::", 0)
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to configure IPv6 on VPN interface", e)
+        if (ipv6) {
+            try {
+                // Route IPv6 into TUN only if external IPv6 connectivity actually exists on the device.
+                // If IPv4-only, omitting IPv6 addresses/routes prevents Happy Eyeballs hangs on modern apps.
+                builder.addAddress("fdfe:dcba:9876::1", 126)
+                    .addRoute("::", 0)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to configure IPv6 on VPN interface", e)
+            }
         }
 
         if (dns.isNotBlank()) {
@@ -815,5 +832,25 @@ class AppVpnService : LifecycleVpnService() {
             return false
         }
         return true
+    }
+
+    private fun waitForPort(host: String, port: Int, timeoutMs: Long): Boolean {
+        if (port <= 0) return false
+        val start = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            try {
+                java.net.Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress(host, port), 200)
+                    Log.i(TAG, "Proxy port $host:$port is ready after ${System.currentTimeMillis() - start}ms")
+                    return true
+                }
+            } catch (_: Exception) {
+                try {
+                    Thread.sleep(100)
+                } catch (_: Exception) {}
+            }
+        }
+        Log.w(TAG, "Proxy port $host:$port was not ready after ${timeoutMs}ms, proceeding anyway")
+        return false
     }
 }
