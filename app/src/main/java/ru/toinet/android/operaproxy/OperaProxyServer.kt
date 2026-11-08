@@ -88,6 +88,19 @@ class OperaProxyServer(
         cmdArgs.add("-verbosity")
         cmdArgs.add(if (Prefs.operaProxyVerbose) "10" else "20")
 
+        val preset = Prefs.operaProxyPreset.trim().ifEmpty { "random" }
+        if (preset.equals("random", ignoreCase = true) ||
+            preset.equals("first", ignoreCase = true) ||
+            preset.equals("fastest", ignoreCase = true)) {
+            cmdArgs.add("-server-selection")
+            cmdArgs.add(preset.lowercase())
+        } else {
+            cmdArgs.add("-country")
+            cmdArgs.add(preset)
+            cmdArgs.add("-server-selection")
+            cmdArgs.add("random")
+        }
+
         val upstream = Prefs.operaProxyUpstream.takeIf { it.isNotBlank() }
         if (upstream != null) {
             cmdArgs.add("-proxy")

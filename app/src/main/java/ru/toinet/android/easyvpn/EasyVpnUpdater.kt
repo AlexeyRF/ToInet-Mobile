@@ -135,8 +135,19 @@ object EasyVpnUpdater {
             if (it != null) workingWithPing.add(it)
         }
 
-        // Сортировка по минимальному пингу (наиболее быстрые ноды первыми)
-        workingWithPing.sortBy { it.second }
+        // Сортировка по минимальному пингу с приоритетом VLESS-Reality и отечественных SNI (не блокируемых ТСПУ)
+        workingWithPing.sortBy { (node, rtt) ->
+            var score = rtt
+            val sni = node.sni.lowercase()
+            if (node.security.equals("reality", ignoreCase = true)) score -= 1000L
+            if (sni.contains("yandex") || sni.contains("vk.") || sni.contains("vk.com") || sni.contains("ok.ru") || sni.contains("max.ru") || sni.contains("sova")) {
+                score -= 1500L
+            }
+            if (sni.contains("papar.online")) {
+                score += 5000L
+            }
+            score
+        }
         workingWithPing.map { it.first }
     }
 
@@ -325,7 +336,7 @@ object EasyVpnUpdater {
         val listenHost = Prefs.easyVpnProxyHost.ifBlank { "127.0.0.1" }
         val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1790
 
-        nodes.take(100).forEachIndexed { i, node ->
+        nodes.take(20).forEachIndexed { i, node ->
             try {
                 if (node.server.isBlank() || node.port !in 1..65535 || node.uuid.isBlank()) {
                     Log.w(TAG, "Skipping invalid node $i: server='${node.server}', port=${node.port}, uuid='${node.uuid}'")
@@ -549,6 +560,17 @@ object EasyVpnUpdater {
             put("settings", JSONObject())
         })
 
+        // Blackhole outbound to silently drop blocked protocols like QUIC/UDP 443
+        outbounds.put(JSONObject().apply {
+            put("tag", "block")
+            put("protocol", "blackhole")
+            put("settings", JSONObject().apply {
+                put("response", JSONObject().apply {
+                    put("type", "none")
+                })
+            })
+        })
+
         val targetTag = if (activeNodeIndex in 0 until nodes.size) "proxy-$activeNodeIndex" else null
         val hasTarget = targetTag != null && (0 until proxyTags.length()).any { proxyTags.getString(it) == targetTag }
         val effectiveTargetTag = if (hasTarget) targetTag else null
@@ -570,8 +592,8 @@ object EasyVpnUpdater {
             if (proxyTags.length() > 0) {
                 put("observatory", JSONObject().apply {
                     put("subjectSelector", JSONArray().apply { put("proxy-") })
-                    put("probeURL", "https://cp.cloudflare.com/generate_204")
-                    put("probeInterval", "30s")
+                    put("probeURL", "https://www.google.com/generate_204")
+                    put("probeInterval", "20s")
                     put("enableConcurrency", true)
                 })
             }
@@ -602,14 +624,24 @@ object EasyVpnUpdater {
                 put("domainStrategy", "AsIs")
                 val rulesArray = JSONArray()
 
+                // Drop QUIC (UDP 443) traffic so browsers immediately fall back to TCP TLS without resets/hangs
+                rulesArray.put(JSONObject().apply {
+                    put("type", "field")
+                    put("inboundTag", JSONArray().apply { put("socks-in") })
+                    put("network", "udp")
+                    put("port", "443")
+                    put("outboundTag", "block")
+                })
+
                 if (proxyTags.length() > 0) {
                     put("balancers", JSONArray().apply {
                         put(JSONObject().apply {
                             put("tag", "balancer")
                             put("selector", JSONArray().apply { put("proxy-") })
                             put("strategy", JSONObject().apply {
-                                put("type", "leastPing")
+                                put("type", "random")
                             })
+                            put("fallbackTag", effectiveTargetTag ?: "proxy-0")
                         })
                     })
 
@@ -619,14 +651,13 @@ object EasyVpnUpdater {
                             put("inboundTag", JSONArray().apply { put("socks-in") })
                             put("outboundTag", effectiveTargetTag)
                         })
+                    } else {
+                        rulesArray.put(JSONObject().apply {
+                            put("type", "field")
+                            put("inboundTag", JSONArray().apply { put("socks-in") })
+                            put("balancerTag", "balancer")
+                        })
                     }
-
-                    // Fallback to balancer
-                    rulesArray.put(JSONObject().apply {
-                        put("type", "field")
-                        put("inboundTag", JSONArray().apply { put("socks-in") })
-                        put("balancerTag", "balancer")
-                    })
                 } else {
                     rulesArray.put(JSONObject().apply {
                         put("type", "field")

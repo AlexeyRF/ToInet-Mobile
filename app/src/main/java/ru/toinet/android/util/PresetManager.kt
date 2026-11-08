@@ -103,7 +103,7 @@ object PresetManager {
         }
 
         // Opera Proxy
-        if (oldJson.optBoolean("operaproxy_enabled") && (!newJson.optBoolean("operaproxy_enabled") || changed(oldJson, newJson, listOf("operaproxy_bind_address", "operaproxy_upstream", "opera_proxy_verbose", "pref_open_proxy_on_all_interfaces")))) {
+        if (oldJson.optBoolean("operaproxy_enabled") && (!newJson.optBoolean("operaproxy_enabled") || changed(oldJson, newJson, listOf("operaproxy_bind_address", "operaproxy_upstream", "operaproxy_preset", "opera_proxy_verbose", "pref_open_proxy_on_all_interfaces")))) {
             OperaProxyService.stop(context)
             needsDelay = true
         }

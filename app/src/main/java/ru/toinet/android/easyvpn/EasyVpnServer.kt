@@ -266,7 +266,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                     currentNodeIndex = 0
                     allNodes.toList()
                 }
-                val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = -1)
+                val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
                 startXrayProcess(config)
             } else {
                 Log.w(TAG, "Plan Ъ reserve nodes not available, starting with fallback direct config")

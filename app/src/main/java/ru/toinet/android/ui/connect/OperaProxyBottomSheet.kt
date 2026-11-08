@@ -27,6 +27,7 @@ class OperaProxyBottomSheet : ToInetBottomSheetDialogFragment() {
         binding.swEnabled.isChecked = Prefs.operaProxyEnabled
         binding.etBindAddress.setText(Prefs.operaProxyBindAddress)
         binding.etUpstream.setText(Prefs.operaProxyUpstream)
+        binding.etPreset.setText(Prefs.operaProxyPreset)
         binding.swVerbose.isChecked = Prefs.operaProxyVerbose
         
         val supportedAbis = Build.SUPPORTED_ABIS
@@ -44,6 +45,7 @@ class OperaProxyBottomSheet : ToInetBottomSheetDialogFragment() {
             Prefs.operaProxyEnabled = binding.swEnabled.isChecked
             Prefs.operaProxyBindAddress = binding.etBindAddress.text.toString()
             Prefs.operaProxyUpstream = binding.etUpstream.text.toString()
+            Prefs.operaProxyPreset = binding.etPreset.text.toString().trim().ifEmpty { "random" }
             Prefs.operaProxyVerbose = binding.swVerbose.isChecked
             
             viewModel.triggerRefreshMenuList()

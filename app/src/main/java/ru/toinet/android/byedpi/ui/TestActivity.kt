@@ -475,7 +475,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
             val file = File(filesDir, "proxytest_strategies.list")
             val content = if (file.exists()) {
                 val text = file.readText()
-                if (text.contains("--split-pos") || text.contains("--preset")) {
+                if (text.contains("--split-pos") && !text.contains("--preset") && !text.contains("#")) {
                     text
                 } else {
                     try { file.delete() } catch (_: Exception) {}
@@ -486,8 +486,8 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
             }
             content.replace("{sni}", "\"${sniValue}\"").lines()
         }
-        return rawLines.map { it.trim() }.filter {
-            it.isNotEmpty() && !it.startsWith("#") && !it.startsWith("//") && !it.contains("TOR", ignoreCase = true) && !it.contains("fallback", ignoreCase = true) && !it.startsWith("{")
+        return rawLines.map { it.trim().removePrefix("\uFEFF") }.filter {
+            it.isNotEmpty() && !it.startsWith("#") && !it.startsWith("//") && !it.startsWith("--preset") && !it.contains("TOR", ignoreCase = true) && !it.contains("fallback", ignoreCase = true) && !it.startsWith("{")
         }
     }
 

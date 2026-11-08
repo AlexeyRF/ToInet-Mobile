@@ -501,6 +501,11 @@ object Prefs {
         get() = cr?.getPrefBoolean("opera_proxy_verbose", false) ?: false
         set(value) = cr?.putPref("opera_proxy_verbose", value) ?: Unit
 
+    @JvmStatic
+    var operaProxyPreset: String
+        get() = cr?.getPrefString("operaproxy_preset") ?: "random"
+        set(value) = cr?.putPref("operaproxy_preset", value) ?: Unit
+
 
     @JvmStatic
     var customSocksIp: String

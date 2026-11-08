@@ -357,7 +357,7 @@ class AppVpnService : LifecycleVpnService() {
         } else {
             val waitTimeout = when (provider) {
                 "operaproxy" -> 6000L
-                "easyvpn" -> 6000L
+                "easyvpn" -> 10000L
                 "byedpi" -> 4000L
                 "tor" -> 4000L
                 else -> 3000L
