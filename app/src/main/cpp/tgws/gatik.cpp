@@ -48,7 +48,7 @@
 
 static std::atomic<bool> g_running(false);
 static std::atomic<int64_t> g_global_upload_mode_until(0);
-static SOCKET g_listen_sock = INVALID_SOCKET;
+static std::atomic<SOCKET> g_listen_sock(INVALID_SOCKET);
 static std::thread g_server_thread;
 static std::mutex g_start_mutex;
 
@@ -397,6 +397,9 @@ void run_gatik_server(const std::string& host, int port, const std::string& tor_
 
     int reuse = 1;
     setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse));
+#if defined(SO_REUSEPORT)
+    setsockopt(listen_sock, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<const char*>(&reuse), sizeof(reuse));
+#endif
 
     sockaddr_in server_addr;
     std::memset(&server_addr, 0, sizeof(server_addr));
@@ -416,7 +419,7 @@ void run_gatik_server(const std::string& host, int port, const std::string& tor_
         return;
     }
 
-    g_listen_sock = listen_sock;
+    g_listen_sock.store(listen_sock);
     g_running.store(true);
     LOGI("SOCKS5 Router started: %s:%d | TOR: %s:%d | TGWS: %s:%d",
          g_listen_host.c_str(), g_listen_port,
@@ -425,8 +428,8 @@ void run_gatik_server(const std::string& host, int port, const std::string& tor_
 
     while (g_running.load()) {
         timeval tv;
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
+        tv.tv_sec = 0;
+        tv.tv_usec = 250000;
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(listen_sock, &fds);
@@ -440,8 +443,16 @@ void run_gatik_server(const std::string& host, int port, const std::string& tor_
         }
     }
 
-    closesocket(listen_sock);
-    g_listen_sock = INVALID_SOCKET;
+    SOCKET s = g_listen_sock.exchange(INVALID_SOCKET);
+    if (s != INVALID_SOCKET) {
+#if defined(_WIN32)
+        shutdown(s, SD_BOTH);
+#else
+        shutdown(s, SHUT_RDWR);
+#endif
+        closesocket(s);
+    }
+    g_running.store(false);
 #if defined(_WIN32)
     WSACleanup();
 #endif
@@ -450,9 +461,13 @@ void run_gatik_server(const std::string& host, int port, const std::string& tor_
 
 void stop_gatik_server() {
     g_running.store(false);
-    if (g_listen_sock != INVALID_SOCKET) {
-        SOCKET s = g_listen_sock;
-        g_listen_sock = INVALID_SOCKET;
+    SOCKET s = g_listen_sock.exchange(INVALID_SOCKET);
+    if (s != INVALID_SOCKET) {
+#if defined(_WIN32)
+        shutdown(s, SD_BOTH);
+#else
+        shutdown(s, SHUT_RDWR);
+#endif
         closesocket(s);
     }
 }

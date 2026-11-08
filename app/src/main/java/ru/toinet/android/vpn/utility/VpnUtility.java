@@ -48,6 +48,22 @@ public class VpnUtility {
         }
     }
 
+    public static boolean isPidAlive(String f) {
+        File file = new File(f);
+        if (!file.exists()) return false;
+        try (InputStream i = new FileInputStream(file)) {
+            byte[] buf = new byte[512];
+            int len = i.read(buf, 0, 512);
+            if (len <= 0) return false;
+            String str = new String(buf, 0, len).trim().replace("\n", "");
+            int pid = Integer.parseInt(str);
+            File procDir = new File("/proc/" + pid);
+            return procDir.exists() && procDir.isDirectory();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static void killPidFile(String f) {
         File file = new File(f);
         if (!file.exists()) return;
@@ -63,7 +79,7 @@ public class VpnUtility {
             try {
                 android.os.Process.killProcess(pid);
             } catch (Exception e) {
-                Runtime.getRuntime().exec("kill " + pid).waitFor();
+                Runtime.getRuntime().exec("kill -9 " + pid).waitFor();
             }
             file.delete();
         } catch (Exception e) {

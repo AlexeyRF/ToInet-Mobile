@@ -1340,6 +1340,58 @@ void device_read_handler_send (void *unused, uint8_t *data, int data_len)
 }
 
 #ifdef ANDROID
+static void send_icmp_port_unreachable_ipv4 (const struct ipv4_header *orig_ip, const struct udp_header *orig_udp)
+{
+    uint8_t icmp_pkt[56];
+    memset(icmp_pkt, 0, sizeof(icmp_pkt));
+
+    struct ipv4_header ip;
+    memset(&ip, 0, sizeof(ip));
+    ip.version4_ihl4 = IPV4_MAKE_VERSION_IHL(sizeof(struct ipv4_header));
+    ip.ds = 0;
+    ip.total_length = hton16(sizeof(icmp_pkt));
+    ip.identification = 0;
+    ip.flags3_fragmentoffset13 = 0;
+    ip.ttl = 64;
+    ip.protocol = 1; // IPPROTO_ICMP
+    ip.checksum = 0;
+    ip.source_address = orig_ip->destination_address;
+    ip.destination_address = orig_ip->source_address;
+    ip.checksum = ipv4_checksum(&ip, NULL, 0);
+
+    memcpy(icmp_pkt, &ip, sizeof(ip));
+
+    uint8_t *icmp_hdr = icmp_pkt + sizeof(ip);
+    icmp_hdr[0] = 3; // ICMP Type: Destination Unreachable
+    icmp_hdr[1] = 3; // ICMP Code: Port Unreachable
+    icmp_hdr[2] = 0; // Checksum high
+    icmp_hdr[3] = 0; // Checksum low
+    icmp_hdr[4] = 0; // Unused
+    icmp_hdr[5] = 0;
+    icmp_hdr[6] = 0;
+    icmp_hdr[7] = 0;
+
+    // Payload: original IPv4 header (20 bytes) + first 8 bytes of original UDP
+    memcpy(icmp_hdr + 8, orig_ip, sizeof(struct ipv4_header));
+    memcpy(icmp_hdr + 8 + sizeof(struct ipv4_header), orig_udp, sizeof(struct udp_header));
+
+    // Calculate ICMP checksum
+    int icmp_len = sizeof(icmp_pkt) - sizeof(ip);
+    uint32_t t = 0;
+    for (int i = 0; i < icmp_len; i += 2) {
+        uint16_t word = ((uint16_t)icmp_hdr[i] << 8) + (i + 1 < icmp_len ? icmp_hdr[i + 1] : 0);
+        t += word;
+    }
+    while (t >> 16) {
+        t = (t & 0xFFFF) + (t >> 16);
+    }
+    uint16_t csum = ~t;
+    icmp_hdr[2] = (csum >> 8) & 0xFF;
+    icmp_hdr[3] = csum & 0xFF;
+
+    BTap_Send(&device, icmp_pkt, sizeof(icmp_pkt));
+}
+
 int process_device_dns_packet (uint8_t *data, int data_len)
 {
     ASSERT(data_len >= 0)
@@ -1393,8 +1445,14 @@ int process_device_dns_packet (uint8_t *data, int data_len)
             // from port 8153 is considered a DNS packet
             from_dns = udp_header.source_port == dnsgw.ipv4.port;
 
-            // if not DNS packet, just bypass it.
+            // if not DNS packet, check for QUIC (port 443) or bypass.
             if (!to_dns && !from_dns) {
+                // Instantly reject QUIC (UDP 443) with ICMP Port Unreachable so browsers (Chrome, Firefox)
+                // fall back to TCP HTTP/2 without timeout or ERR_QUIC_PROTOCOL_ERROR.
+                if (udp_header.dest_port == hton16(443)) {
+                    send_icmp_port_unreachable_ipv4(&ipv4_header, &udp_header);
+                    return 1;
+                }
                 goto fail;
             }
 

@@ -19,6 +19,7 @@ import ru.toinet.android.vpn.utility.*
 import ru.toinet.android.vpn.utility.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -37,6 +38,7 @@ class AppVpnService : LifecycleVpnService() {
     private var appRoutingServer: ru.toinet.android.vpn.rules.AppRoutingServer? = null
     private val mutex = Mutex()
     private var stopping: Boolean = false
+    private var watchdogJob: Job? = null
 
     companion object {
         private val TAG: String = AppVpnService::class.java.simpleName
@@ -86,6 +88,7 @@ class AppVpnService : LifecycleVpnService() {
     }
 
     override fun onDestroy() {
+        stopWatchdog()
         if (activeService == this) {
             activeService = null
         }
@@ -200,6 +203,7 @@ class AppVpnService : LifecycleVpnService() {
 
     private suspend fun stop() {
         Log.i(TAG, "Stopping")
+        stopWatchdog()
 
         mutex.withLock {
             stopping = true
@@ -374,8 +378,12 @@ class AppVpnService : LifecycleVpnService() {
         }
         if (dns.isBlank() || dns == "1.1.1.1") dns = "77.88.8.8"
 
-        val hasExternalIpv6 = checkExternalIpv6()
-        Log.i(TAG, "External IPv6 present: $hasExternalIpv6 (route v6: $hasExternalIpv6, block v6 if false)")
+        // Force IPv4-only on VPN interface: tun2socks and pdnsd do not support IPv6 DNS resolution
+        // (tun2socks.c: case 6: goto fail), and local proxies (ByeDPI/Opera/EasyVPN) operate on IPv4.
+        // Omitting IPv6 routes prevents browsers from attempting Happy Eyeballs IPv6 queries/connections,
+        // which caused ERR_CONNECTION_RESET / ERR_CONNECTION_CLOSED.
+        val hasExternalIpv6 = false
+        Log.i(TAG, "VPN routing configured: IPv4-only (hasExternalIpv6 forced to false)")
 
         val fd = createBuilder(dns, hasExternalIpv6).establish()
             ?: throw IllegalStateException("VPN connection failed")
@@ -448,10 +456,12 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         Log.i(TAG, "Tun2Socks started")
+        startWatchdog()
     }
 
     private fun stopTun2Socks() {
         Log.i(TAG, "Stopping tun2socks")
+        stopWatchdog()
 
         val dir = filesDir.absolutePath
         ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/tun2socks.pid")
@@ -516,6 +526,51 @@ class AppVpnService : LifecycleVpnService() {
             ru.toinet.android.svpn.SvpnService.stop(this)
         }
         Log.i(TAG, "Tun2socks stopped")
+    }
+
+    private fun startWatchdog() {
+        stopWatchdog()
+        watchdogJob = lifecycleScope.launch(Dispatchers.IO) {
+            val dir = filesDir.absolutePath
+            val tunPidFile = "$dir/tun2socks.pid"
+            val pdnsdPidFile = "$dir/pdnsd.pid"
+
+            kotlinx.coroutines.delay(4000L)
+
+            while (coroutineContext.isActive && status == ServiceStatus.Connected && !stopping) {
+                kotlinx.coroutines.delay(3000L)
+                if (status != ServiceStatus.Connected || stopping) break
+
+                val tunAlive = ru.toinet.android.vpn.utility.VpnUtility.isPidAlive(tunPidFile)
+                val pdnsdAlive = ru.toinet.android.vpn.utility.VpnUtility.isPidAlive(pdnsdPidFile)
+
+                if (!tunAlive || !pdnsdAlive) {
+                    Log.w(TAG, "Watchdog: VPN process died unexpectedly! tun2socks=$tunAlive, pdnsd=$pdnsdAlive")
+                    ru.toinet.android.util.NotificationLogger.log(
+                        this@AppVpnService,
+                        ru.toinet.android.util.Prefs.vpnProvider,
+                        "Внимание: VPN-процесс завершился (tun2socks=$tunAlive, pdnsd=$pdnsdAlive). Автоперезапуск..."
+                    )
+                    withContext(Dispatchers.Main) {
+                        if (status == ServiceStatus.Connected && !stopping) {
+                            try {
+                                stop()
+                                start()
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Watchdog auto-restart failed", e)
+                                updateStatus(ServiceStatus.Failed)
+                            }
+                        }
+                    }
+                    break
+                }
+            }
+        }
+    }
+
+    private fun stopWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = null
     }
 
 

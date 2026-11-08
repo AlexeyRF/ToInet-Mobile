@@ -637,7 +637,7 @@ static void apply_preset(struct desync_params *dp, const char *name)
     if (!strcmp(name, "youtube")) {
         dp->preset = PRESET_YOUTUBE;
         dp->fake_template = FAKE_TMPL_GOOGLE;
-        dp->ttl = 3;
+        dp->ttl = 5;
         dp->drop_quic = true;
         dp->mod_http = MH_HMIX | MH_METHODEOL;
         params.wait_send = true;
@@ -663,7 +663,7 @@ static void apply_preset(struct desync_params *dp, const char *name)
     } else if (!strcmp(name, "discord")) {
         dp->preset = PRESET_DISCORD;
         dp->fake_template = FAKE_TMPL_GOOGLE;
-        dp->ttl = 3;
+        dp->ttl = 5;
         params.udp = true;
         params.wait_send = true;
         params.await_int = 10;
@@ -689,7 +689,7 @@ static void apply_preset(struct desync_params *dp, const char *name)
     } else {
         dp->preset = PRESET_GENERAL;
         dp->fake_template = FAKE_TMPL_GOOGLE;
-        dp->ttl = 3;
+        dp->ttl = 5;
         dp->drop_quic = true;
         dp->mod_http = MH_HMIX | MH_METHODEOL;
         params.wait_send = true;

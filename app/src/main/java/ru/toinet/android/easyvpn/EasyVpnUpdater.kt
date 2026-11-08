@@ -274,7 +274,7 @@ object EasyVpnUpdater {
                     put("77.88.8.8")
                     put("77.88.8.1")
                     put("8.8.8.8")
-                    put("1.1.1.1")
+                    put("8.8.4.4")
                 })
             })
             put("inbounds", JSONArray().apply {
@@ -563,7 +563,7 @@ object EasyVpnUpdater {
                     put("77.88.8.8")
                     put("77.88.8.1")
                     put("8.8.8.8")
-                    put("1.1.1.1")
+                    put("8.8.4.4")
                 })
             })
 
