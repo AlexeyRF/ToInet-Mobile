@@ -456,16 +456,6 @@ object Prefs {
         get() = cr?.getPrefString("tgws_cf_proxy_domains")?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = cr?.putPref("tgws_cf_proxy_domains", value.joinToString(",")) ?: Unit
     @JvmStatic
-    var fakeVpnFakeTlsEnabled: Boolean
-        get() = cr?.getPrefBoolean("fakevpn_faketls_enabled", false) ?: false
-        set(value) = cr?.putPref("fakevpn_faketls_enabled", value) ?: Unit
-
-    @JvmStatic
-    var fakeVpnFakeTlsDomains: String
-        get() = cr?.getPrefString("fakevpn_faketls_domains") ?: "web.max.ru vk.com sber.ru"
-        set(value) = cr?.putPref("fakevpn_faketls_domains", value) ?: Unit
-
-    @JvmStatic
     var operaProxyEnabled: Boolean
         get() = cr?.getPrefBoolean("operaproxy_enabled", false) ?: false
         set(value) = cr?.putPref("operaproxy_enabled", value) ?: Unit
@@ -667,7 +657,6 @@ object Prefs {
             "tor" -> torEnabled || (isGlobalVpnEnabled && vpnProvider == "tor")
             "byedpi" -> byedpiEnabled || (isGlobalVpnEnabled && vpnProvider == "byedpi")
             // "tgws" -> tgwsEnabled || (isGlobalVpnEnabled && vpnProvider == "tgws")
-            "fakevpn" -> isGlobalVpnEnabled && vpnProvider == "fakevpn"
             "operaproxy" -> (operaProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "operaproxy")) && ArchHelper.isOperaSupported
             "easyvpn" -> easyVpnProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "easyvpn")
             "svpn", "ssh" -> svpnEnabled || (isGlobalVpnEnabled && (vpnProvider == "svpn" || vpnProvider == "ssh"))

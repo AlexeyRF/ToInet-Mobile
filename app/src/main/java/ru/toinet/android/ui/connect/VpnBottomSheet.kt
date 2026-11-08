@@ -61,22 +61,9 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
             "tor" -> binding.rbTor.isChecked = true
             "svpn", "ssh" -> binding.rbSvpn.isChecked = true
             // "tgws" -> binding.rbTgws.isChecked = true
-            "fakevpn" -> {
-                binding.rbFakeVpn.isChecked = true
-                binding.llFakeVpnSettings.visibility = View.VISIBLE
-            }
             else -> binding.rbByedpi.isChecked = true
         }
-
-        binding.swFakeTlsEnabled.isChecked = Prefs.fakeVpnFakeTlsEnabled
-        binding.etFakeVpnDomains.setText(Prefs.fakeVpnFakeTlsDomains)
-        binding.tilFakeVpnDomains.visibility = if (binding.swFakeTlsEnabled.isChecked) View.VISIBLE else View.GONE
-        binding.swFakeTlsEnabled.setOnCheckedChangeListener { _, isChecked ->
-            binding.tilFakeVpnDomains.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
-
         binding.rgVpnProvider.setOnCheckedChangeListener { _, checkedId ->
-            binding.llFakeVpnSettings.visibility = if (checkedId == binding.rbFakeVpn.id) View.VISIBLE else View.GONE
             
             /*
             if (checkedId == binding.rbTgws.id) {
@@ -105,16 +92,9 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 binding.rbOperaProxy.id -> "operaproxy"
                 binding.rbTor.id -> "tor"
                 // binding.rbTgws.id -> "tgws"
-                binding.rbFakeVpn.id -> "fakevpn"
                 binding.rbSvpn.id -> "svpn"
                 else -> "byedpi"
-            }
-
-            if (binding.rgVpnProvider.checkedRadioButtonId == binding.rbFakeVpn.id) {
-                Prefs.fakeVpnFakeTlsEnabled = binding.swFakeTlsEnabled.isChecked
-                Prefs.fakeVpnFakeTlsDomains = binding.etFakeVpnDomains.text.toString().trim()
-            }
-            
+            }            
             if (Prefs.isGlobalVpnEnabled && Prefs.vpnProvider == "easyvpn") {
                 requireContext().sendIntentToService("ACTIVE")
             }

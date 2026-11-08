@@ -102,15 +102,6 @@
                 android:minHeight="38dp"
                 android:paddingVertical="2dp"
                 android:text="TGWS (порт 1480)" />
-
-            <RadioButton
-                android:id="@+id/rbFakeVpn"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="FakeVPN (Напрямую)" />
-
             <RadioButton
                 android:id="@+id/rbSvpn"
                 android:layout_width="match_parent"
@@ -142,45 +133,6 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
         -->
-
-        <LinearLayout
-            android:id="@+id/llFakeVpnSettings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="FakeVPN Настройки"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-                android:layout_marginBottom="6dp" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swFakeTlsEnabled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Режим FakeTLS (подмена SNI)"
-                android:layout_marginBottom="8dp" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilFakeVpnDomains"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Домены (через пробел, например: web.max.ru sber.ru)"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etFakeVpnDomains"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="textMultiLine"
-                    android:minLines="3" />
-            </com.google.android.material.textfield.TextInputLayout>
-        </LinearLayout>
-
         <Button
             android:id="@+id/btnApps"
             style="?attr/materialButtonOutlinedStyle"

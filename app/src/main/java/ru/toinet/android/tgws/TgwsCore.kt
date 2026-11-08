@@ -310,7 +310,6 @@ class TgwsCore(
                 "byedpi" -> 1780
                 "tor" -> 9853
                 "tgws" -> 1480
-                "fakevpn" -> 1790
                 "operaproxy" -> Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
                 "easyvpn" -> 1790
                 else -> 1780

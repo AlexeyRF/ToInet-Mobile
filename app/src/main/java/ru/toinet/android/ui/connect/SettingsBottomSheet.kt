@@ -126,7 +126,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 // proxies.add("TGWS (порт 1480)")
                 // proxyLinks.add("tg://socks?server=127.0.0.1&port=1480")
 
-                proxies.add("FakeVPN (порт 1790)")
+                proxies.add("Easy-VPN (порт 1790)")
                 proxyLinks.add("tg://socks?server=127.0.0.1&port=1790")
 
                 proxies.add("SVPN / SSH (порт ${Prefs.svpnLocalPort})")

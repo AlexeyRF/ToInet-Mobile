@@ -83,7 +83,7 @@ object AddressStatusHelper {
 
         val provider = Prefs.vpnProvider
 
-        // If VPN is provided by a non-IP-changing provider (fakevpn, byedpi)
+        // If VPN is provided by a non-IP-changing provider (byedpi)
         if (!isIpChangingProvider(provider)) {
             return STATUS_VISIBLE_ALL
         }

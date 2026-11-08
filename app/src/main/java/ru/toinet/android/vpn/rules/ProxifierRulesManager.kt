@@ -102,7 +102,6 @@ object ProxifierRulesManager {
             ProxifierRule.ACTION_BYEDPI to ProxifierRule.getActionTitle(ProxifierRule.ACTION_BYEDPI),
             ProxifierRule.ACTION_EASYVPN to ProxifierRule.getActionTitle(ProxifierRule.ACTION_EASYVPN),
             ProxifierRule.ACTION_TOR to ProxifierRule.getActionTitle(ProxifierRule.ACTION_TOR),
-            ProxifierRule.ACTION_FAKEVPN to ProxifierRule.getActionTitle(ProxifierRule.ACTION_FAKEVPN),
             ProxifierRule.ACTION_SVPN to ProxifierRule.getActionTitle(ProxifierRule.ACTION_SVPN)
         )
         if (ArchHelper.isOperaSupported) {

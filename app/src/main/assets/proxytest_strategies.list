@@ -1,6 +1,9 @@
-﻿--preset general
+﻿# --- zDPI Presets ---
+--preset general
 --preset youtube
 --preset discord
+
+# --- zDPI & Zapret2 Core Strategies ---
 --dpi-desync=fake,split2 --dpi-desync-split-pos=midsld --dpi-desync-fake-tls=google --dpi-desync-ttl=3 --quic-drop
 --dpi-desync=fake,split2 --dpi-desync-split-pos=midsld --dpi-desync-fake-tls=kyber --dpi-desync-ttl=3 --quic-drop
 --dpi-desync=fake,disorder2 --dpi-desync-split-pos=1 --dpi-desync-ttl=3 --quic-drop
@@ -16,16 +19,48 @@
 -s midsld -f midsld -r midsld -t 3 --quic-drop
 -s sniext -f 1 -r sniext -t 4 --quic-drop
 -d midsld -f 1 -t 3 --quic-drop
--f-200 -Qr -s3:5+sm -a1 -As -d1 -s4+sm -s8+sh -f-300 -d6+sh -a1 -At,r,s -o2 -f-30 -As -r5 -Mh -r6+sh -f-250 -s2:7+s -s3:6+sm -a1 -At,r,s -s3:5+sm -s6+s -s7:9+s -q30+sm -a1
--d1 -d3+s -s6+s -d9+s -s12+s -d15+s -s20+s -d25+s -s30+s -d35+s -r1+s -S -a1 -As -d1 -d3+s -s6+s -d9+s -s12+s -d15+s -s20+s -d25+s -s30+s -d35+s -S -a1
+
+# --- Zapret TPWS / Flowseal Strategies ---
+--split-pos=1
+--split-pos=1 --disorder
+--split-pos=2
+--split-pos=2 --hostcase --domcase
+--split-pos=1 --disorder --oob
+--split-pos=2 --disorder
+--split-pos=1 --hostcase
+--split-pos=2,sniext+1
+--split-pos=2 --oob
+--split-pos=sni --hostcase
+--split-pos=sni --disorder
+--split-pos=1 --tlsrec=sni
+--split-pos=1 --tlsrec=sni --hostcase
+--split-pos=2 --tlsrec=sni --hostcase
+--split-pos=midsld --disorder
+--split-pos=1,midsld --disorder
+--split-pos=1 --oob
+
+# --- Zapret / zDPI Advanced & Synthesized Strategies ---
+--dpi-desync=fake,split2 --dpi-desync-split-pos=1 --dpi-desync-fake-tls=google --dpi-desync-ttl=4 --quic-drop
+--dpi-desync=fake,disorder2 --dpi-desync-split-pos=sniext --dpi-desync-fake-tls=google --dpi-desync-ttl=4 --quic-drop
+--dpi-desync=fake,split2 --dpi-desync-split-pos=1,midsld --dpi-desync-fake-tls=google --dpi-desync-ttl=3 --quic-drop
+--dpi-desync=fake,split2 --dpi-desync-split-pos=midsld --dpi-desync-ttl=4 --quic-drop
+--dpi-desync=fake,split2 --dpi-desync-split-pos=1 --dpi-desync-fake-tls=kyber --dpi-desync-ttl=3 --quic-drop
+--dpi-desync=fake,split2 --dpi-desync-split-pos=midsld --dpi-desync-fake-tls=cloudflare --dpi-desync-ttl=3 --quic-drop
+--dpi-desync=fake,disorder --dpi-desync-split-pos=midsld --dpi-desync-ttl=3 --quic-drop
+--dpi-desync=fake,multisplit --dpi-desync-split-pos=1,2,3 --dpi-desync-ttl=4 --quic-drop
+--dpi-desync=fake,split2 --dpi-desync-split-pos=midsld --dpi-desync-fake-tls=fake_default --dpi-desync-ttl=5 --quic-drop
+
+# --- ByeDPI Legacy Strategies ---
+-f-200 -Qr -s3:5+sm -a1 -As -d1 -s4+sm -s8+s -f-300 -d6+s -a1 -At,r,s -o2 -f-30 -As -r5 -Mh -r6+s -f-250 -s2:7+s -s3:6+sm -a1 -At,r,s -s3:5+sm -s6+s -s7:9+s -q30+sm -a1
+-d1 -d3+s -s6+s -d9+s -s12+s -d15+s -s20+s -d25+s -s30+s -d35+s -r1+s -a1 -As -d1 -d3+s -s6+s -d9+s -s12+s -d15+s -s20+s -d25+s -s30+s -d35+s -a1
 -q2 -s2 -s3+s -r3 -s4 -r4 -s5+s -r5+s -s6 -s7+s -r8 -s9+s -Qr -Mh,d,r -a1 -At,r -s2+s -r2 -d2 -s3 -r3 -r4 -s4 -d5+s -r5 -d6 -s7+s -d7 -a1
--o1 -d1 -a1 -At,r,s -s1 -d1 -s5+s -s10+s -s15+s -s20+s -r1+s -S -a1 -As -s1 -d1 -s5+s -s10+s -s15+s -s20+s -S -a1
+-o1 -d1 -a1 -At,r,s -s1 -d1 -s5+s -s10+s -s15+s -s20+s -r1+s -a1 -As -s1 -d1 -s5+s -s10+s -s15+s -s20+s -a1
 -n {sni} -Qr -f-204 -s1:5+sm -a1 -As -d1 -s3+s -s5+s -q7 -a1 -As -o2 -f-43 -a1 -As -r5 -Mh -s1:5+s -s3:7+sm -a1
 -n {sni} -Qr -f-205 -a1 -As -s1:3+sm -a1 -As -s5:8+sm -a1 -As -d3 -q7 -o2 -f-43 -f-85 -f-165 -r5 -Mh -a1
 -d1+s -s50+s -a1 -As -f20 -r2+s -a1 -At -d2 -s1+s -s5+s -s10+s -s15+s -s25+s -s35+s -s50+s -s60+s -a1
--o1 -a1 -At,r,s -f-1 -a1 -At,r,s -d1:11+sm -S -a1 -At,r,s -n {sni} -Qr -f1 -d1:11+sm -s1:11+sm -S -a1
+-o1 -a1 -At,r,s -f-1 -a1 -At,r,s -d1:11+sm -a1 -At,r,s -n {sni} -Qr -f1 -d1:11+sm -s1:11+sm -a1
 -d1 -s1 -q1 -a1 -Ar -s5 -o1+s -d3+s -s6+s -d9+s -s12+s -d15+s -s20+s -d25+s -s30+s -d35+s -a1
--f1+nme -t6 -a1 -As -n {sni} -Qr -s1:6+sm -a1 -As -s5:12+sm -a1 -As -d3 -q7 -r6 -Mh -a1
+-f1+nm -t6 -a1 -As -n {sni} -Qr -s1:6+sm -a1 -As -s5:12+sm -a1 -As -d3 -q7 -r6 -Mh -a1
 -d1 -s1+s -d3+s -s6+s -d9+s -s12+s -d15+s -s20+s -d25+s -s30+s -d35+s -a1
 -d1 -s1+s -d1+s -s3+s -d6+s -s12+s -d14+s -s20+s -d24+s -s30+s -a1
 -o1 -a1 -At,r,s -f-1 -a1 -Ar,s -o1 -a1 -At -r1+s -f-1 -t6 -a1
@@ -42,7 +77,7 @@
 -r5+s -s25+s -a1 -At,r,s -s50 -r5+s -s50+s -a1
 -d1 -d3+s -s6+s -d9+s -s20+s -d25+s -s30+s -a1
 -d9+s -q20+s -s25+s -t5 -a1 -At,r,s -r1+h -a1
--q1+s -s29+s -s30+s -s14+s -o5+s -f-1 -S -a1
+-q1+s -s29+s -s30+s -s14+s -o5+s -f-1 -a1
 -d1 -s1+s -r1+s -e1 -m1 -o1+s -f-1 -t2 -a1
 -d1 -o1 -a1 -Ar -o1 -a1 -At -f-1 -r1+s -a1
 -d1 -s4 -d8 -s1+s -d5+s -s10+s -d20+s -a1
@@ -50,12 +85,12 @@
 -n {sni} -Qr -d5+sm -f3+sm -o2 -t4 -a1
 -o1 -a1 -Ar -q1 -a1 -At -f-1 -r1+s -a1
 -q1 -a1 -Ar -o1 -a1 -At -f-1 -r1+s -a1
--s4+sn -r9+s -Qr -n {sni} -S -a1
--o1 -d1 -r1+s -S -s1+s -d3+s -a1
--q1+s -s29+s -o5+s -f-1 -S -a1
+-s4+s -r9+s -Qr -n {sni} -a1
+-o1 -d1 -r1+s -s1+s -d3+s -a1
+-q1+s -s29+s -o5+s -f-1 -a1
 -n {sni} -Qr -m2 -f-1 -d7 -a1
 -d1 -s1+s -r1+s -f-1 -t8 -a1
--o1 -a1 -An -f1+nme -t6 -a1
+-o1 -a1 -An -f1+nm -t6 -a1
 -n {sni} -Qr -f-1 -r1+s -a1
 -n {sni} -Qr -d1:3 -f-1 -a1
 -s1 -d3+s -a1 -At -r1+s -a1
@@ -76,3 +111,28 @@
 -d1 -s3+s -a1
 -o3 -d7 -a1
 -d7 -s2 -a1
+-l:"\xC2\x00\x00\x00\x01\x14\x2E\xE3\xE3\x5F\x6B\xBB\x23\xA8\xE6\x5D\xA9\x78\x21\xCF\xC2\x72\x4C\x8F\xC4\x5E\x14\x00\x00\x00\x00\xC5\x00\x00\x00\x00\x4C\x00\xA7\x00\x00\x00\x00\x00\x00\x44\x00\x00\x80\x00\x00\x00\x0D\xFC\xFA\x1D\xCD\x73\xBA\x2A\x90\x93\xB3\xEE\xF7\x43\xC5\x85\xDA\xFF\x45\x3C\x00\x00\x00\x00\x00\x00\x7C\x00\x9B\x00\xF6\x00\x00\xDD\x00\x00\x00\x00\x00\x00\x00\x00\x00\x59\xA8\xE4\x00\x00\x00\x00\x00\x00\x00\x00\x7B\x00\x0F\x00\x00\x00\x48\x4E\x00\x00\x00\x06\xF3\x00\x00\x00\x00\xD9\x5A\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" -a3 -t12 -d1 -s0+h -d3+s -s6+s -d5+s -s8+s -d7+s -s10+s -d3 -At,s -r3
+-f-200 -Qr -s3:5+sm -a1 -As -d1 -s4+sm -s8+sh -f-300 -d6+sh -a1 -At,r,s -o2 -f-30 -As -r5 -Mh -r6+sh -f-250 -s2:7+s -s3:6+sm -a1 -At,r,s -s3:5+sm -s6+s -s7:9+s -q30+sm -a1
+-Ku -l:"\xe3\x00\x06\xec\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" -a3 -An -f64+se -n {sni} -t5
+-f1+nme -t6 -a1 -As -n {sni} -Qr -s1:6+sm -a1 -As -s5:12+sm -a1 -As -d3 -q7 -r6 -Mh -a1
+-s1 -o1 -a1 -Ar -s5 -o1+s -a1 -At -f-1 -r1+s -a1 -As -s1 -o1+s -s-1 -a1
+-s1 -d1 -a1 -Ar -d5 -o1+s -a1 -At -f-1 -r1+s -a1 -As -d1 -o1+s -s-1 -a1
+-s1 -q1 -a1 -Ar -a1 -s5 -o2 -At -f-1 -r1+s -a1 -As -s1 -o1+s -s-1 -a1
+-s1 -q1 -a1 -Ar -s5 -o1+s -a1 -At -f-1 -d1+s -a1 -As -s1 -o1+s -s-1 -a1
+-s1 -q1 -a1 -Ar -s5 -o2 -a1 -At -f-1 -r1+s -a1 -As -s1 -o1+s -s-1 -a1
+-s1 -q1 -a1 -At -a1 -f-1 -r1+s -a1 -As -d1+s -O1 -s29+s -a1
+-s25 -r5+s -s25+s -a1 -At,r,s -s50 -r5+s -s50+s -a1
+-o2 -O4 -s1 -q1 -a2 -Ar -s5 -o1+s -f1+s -r20+s -a2
+-s1 -d1 -r1+s -a1 -Ar -o1 -a1 -At -f-1 -r1+s -a1
+-s1 -q1 -r1+s -a1 -Ar -o1 -a1 -At -f-1 -r1+s -a1
+-s1 -o1 -r1+s -a1 -Ar -o1 -a1 -At -f-1 -r1+s -a1
+-s1 -d1 -o1 -a1 -Ar -o3 -a1 -At -f-1 -r1+s -a1
+-s1 -o1 -a1 -Ar -o1 -a1 -At -f-1 -r1+s -a1
+-s1 -q1 -a1 -At,r,s -f-1 -r1+s -a1
+-s1 -o1 -a1 -At,r,s -f-1 -r1+s -a1
+-s1 -d1 -a1 -At,r,s -f-1 -r1+s -a1
+-n {sni} -Qr -f209 -s1+sm -R1-3 -a1
+-s4+sn -r9+s -Qr -n {sni} -a1
+-d1 -r1+s -f-1 -t8 -o3+s -a1
+-o1 -a1 -An -f1+nme -t6 -a1
+-f-1 -t8 -n {sni} -s1+s -a5

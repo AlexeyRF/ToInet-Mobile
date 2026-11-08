@@ -30,7 +30,6 @@ import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.sendIntentToService
 class AppVpnService : LifecycleVpnService() {
     private var tunFd: ParcelFileDescriptor? = null
-    private var fakeVpnServer: ru.toinet.android.fakevpn.DirectSocks5Server? = null
     private var dnsProxyServer: ru.toinet.android.dns.DnsProxyServer? = null
     private var easyVpnServer: ru.toinet.android.easyvpn.EasyVpnServer? = null
     private var operaProxyServer: ru.toinet.android.operaproxy.OperaProxyServer? = null
@@ -254,7 +253,6 @@ class AppVpnService : LifecycleVpnService() {
         when (provider) {
             "byedpi" -> actualPort = getByeDpiPreferences().port
             "tor" -> actualPort = 9853
-            "fakevpn" -> actualPort = 1790
             "operaproxy" -> {
                 actualHost = "127.0.0.1"
                 actualPort = ru.toinet.android.util.Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
@@ -321,14 +319,6 @@ class AppVpnService : LifecycleVpnService() {
             }
             easyVpnServer?.start()
         }
-
-        if (neededProviders.contains("fakevpn")) {
-            fakeVpnServer = ru.toinet.android.fakevpn.DirectSocks5Server(
-                java.net.InetSocketAddress("127.0.0.1", 1790)
-            )
-            fakeVpnServer?.start(lifecycleScope)
-        }
-
         if (neededProviders.contains("operaproxy") && ArchHelper.isOperaSupported) {
             operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this, lifecycleScope)
             operaProxyServer?.start()
@@ -491,11 +481,7 @@ class AppVpnService : LifecycleVpnService() {
         */
 
         easyVpnServer?.stop()
-        easyVpnServer = null
-
-        fakeVpnServer?.stop()
-        fakeVpnServer = null
-        
+        easyVpnServer = null        
         operaProxyServer?.stop()
         operaProxyServer = null
 
@@ -574,7 +560,6 @@ class AppVpnService : LifecycleVpnService() {
             "easyvpn" -> "EasyVPN"
             "svpn", "ssh" -> "SVPN (SSH)"
             "operaproxy" -> "Opera Proxy"
-            "fakevpn" -> "FakeVPN"
             "tor" -> "TOR"
             "byedpi" -> getString(R.string.byedpi_notification_title)
             else -> "VPN"
@@ -590,7 +575,6 @@ class AppVpnService : LifecycleVpnService() {
             "svpn", "ssh" -> "SVPN (SSH) запущен"
             "operaproxy" -> "Opera Proxy VPN запущен"
             "byedpi" -> "ByeDPI VPN запущен"
-            "fakevpn" -> "FakeVPN запущен"
             else -> getString(R.string.vpn_notification_content)
         }
         val content = defaultDesc
@@ -624,7 +608,6 @@ class AppVpnService : LifecycleVpnService() {
             "easyvpn" -> "EasyVPN"
             "svpn", "ssh" -> "SVPN (SSH)"
             "operaproxy" -> "Opera Proxy"
-            "fakevpn" -> "FakeVPN"
             "tor" -> "TOR"
             "byedpi" -> "ByeDPI"
             else -> "VPN"

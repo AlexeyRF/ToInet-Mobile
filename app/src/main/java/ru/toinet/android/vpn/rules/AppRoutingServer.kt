@@ -360,7 +360,6 @@ class AppRoutingServer(
             ProxifierRule.ACTION_OPERAPROXY -> {
                 Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
             }
-            ProxifierRule.ACTION_FAKEVPN -> 1790
             ProxifierRule.ACTION_SVPN -> Prefs.svpnLocalPort
             else -> 1780
         }
