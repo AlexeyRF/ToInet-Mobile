@@ -436,8 +436,16 @@ class TgwsCore(
         header.addAll(mask.toList())
         
         val maskedData = ByteArray(data.size)
-        for (i in data.indices) {
-            maskedData[i] = (data[i].toInt() xor mask[i % 4].toInt()).toByte()
+        if (TgwsAccel.isAvailable) {
+            val maskInt = (mask[0].toInt() and 0xFF) or
+                    ((mask[1].toInt() and 0xFF) shl 8) or
+                    ((mask[2].toInt() and 0xFF) shl 16) or
+                    ((mask[3].toInt() and 0xFF) shl 24)
+            TgwsAccel.nativeWsMaskCopy(data, maskedData, data.size, maskInt)
+        } else {
+            for (i in data.indices) {
+                maskedData[i] = (data[i].toInt() xor mask[i % 4].toInt()).toByte()
+            }
         }
         
         synchronized(out) {

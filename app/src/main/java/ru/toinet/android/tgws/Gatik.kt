@@ -23,40 +23,18 @@ object Gatik {
     private var globalUploadModeUntil = 0L
 
     fun start(context: Context) {
-        /* Gatik is disabled because it does not work.
-        if (job != null) return
-
-        job = CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val bindHost = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
-                serverSocket = java.net.ServerSocket(LISTEN_PORT, 50, java.net.InetAddress.getByName(bindHost))
-                Log.i(TAG, "Gatik started on port $LISTEN_PORT")
-
-                while (isActive) {
-                    val clientSocket = serverSocket?.accept() ?: break
-                    launch {
-                        handleClient(clientSocket, context)
-                    }
-                }
-            } catch (e: Exception) {
-                if (isActive) {
-                    Log.e(TAG, "Gatik Server error", e)
-                }
-            }
+        if (GatikNative.isLoaded) {
+            val bindHost = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+            GatikNative.nativeStartGatik(bindHost, LISTEN_PORT, "127.0.0.1", TOR_PORT, "127.0.0.1", TGWS_PORT)
+            Log.i(TAG, "Gatik native C++ router started on $bindHost:$LISTEN_PORT")
         }
-        */
     }
 
     fun stop() {
-        /* Gatik is disabled because it does not work.
-        job?.cancel()
-        job = null
-        try {
-            serverSocket?.close()
-        } catch (e: Exception) {}
-        serverSocket = null
-        Log.i(TAG, "Gatik stopped")
-        */
+        if (GatikNative.isLoaded) {
+            GatikNative.nativeStopGatik()
+            Log.i(TAG, "Gatik native C++ router stopped")
+        }
     }
 
     private fun isMobileData(context: Context): Boolean {

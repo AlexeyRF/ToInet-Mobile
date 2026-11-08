@@ -1,5 +1,5 @@
 # ToInet-Mobile
-**Версия для ПК:** [ToInet](https://github.com/AlexeyRF/ToInet)
+**Версия для Windows:** [ToInet](https://github.com/AlexeyRF/ToInet)
 
 **ToInet-Mobile** - приложение для Android, объединяющее в себе инструменты обхода блокировок: **zDPI** (гибридный ByeDPI + Zapret2 со стратегиями и пресетами General/YouTube/Discord), **Tor (ЛМ)**, **Opera Proxy**, **Easy-VPN**. 
 
@@ -41,6 +41,7 @@
 | **Socks-Reabilitator** | `1788` | SOCKS5     |
 | **SVPN (SSH)**         | `1770` | SOCKS5     |
 | **TGWS (Proxy)**       | `1480` | SOCKS5     |
+| **Gatik (TG Router)**  | `1777` | SOCKS5     |
 
 ---
 

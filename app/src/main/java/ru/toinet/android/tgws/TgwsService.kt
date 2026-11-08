@@ -25,7 +25,6 @@ class TgwsService : Service() {
             private set
 
         fun start(context: Context, host: String, port: Int, dcMappings: Map<Int, String>, secret: String = "", fakeTls: String = "", useByeDpi: Boolean = false, cfWorkerDomains: List<String> = emptyList(), cfProxyDomains: List<String> = emptyList()) {
-            /*
             val intent = Intent(context, TgwsService::class.java).apply {
                 putExtra("host", host)
                 putExtra("port", port)
@@ -38,18 +37,14 @@ class TgwsService : Service() {
                 putExtra("cfProxyDomains", cfProxyDomains.toTypedArray())
             }
             context.startService(intent)
-            */
         }
 
         fun stop(context: Context) {
-            // context.stopService(Intent(context, TgwsService::class.java))
+            context.stopService(Intent(context, TgwsService::class.java))
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        stopSelf()
-        return START_NOT_STICKY
-        /*
         if (intent?.action == ACTION_STOP) {
             stopSelf()
             return START_NOT_STICKY
@@ -84,7 +79,6 @@ class TgwsService : Service() {
         isRunning = true
 
         return START_STICKY
-        */
     }
 
     override fun onDestroy() {

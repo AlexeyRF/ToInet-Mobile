@@ -22,7 +22,26 @@ class MsgSplitter(private val protoInt: Int) {
         val parts = mutableListOf<ByteArray>()
         var offset = 0
 
-        while (offset < bufLen) {
+        if (TgwsAccel.isAvailable) {
+            val maxPackets = 64
+            val offsets = IntArray(maxPackets)
+            val lengths = IntArray(maxPackets)
+            val count = TgwsAccel.nativeFindPackets(protoInt, plainBytes, bufLen, offset, offsets, lengths, maxPackets)
+            if (count == -1) {
+                parts.add(cipherBytes.copyOfRange(offset, bufLen))
+                offset = bufLen
+                disabled = true
+            } else if (count > 0) {
+                for (i in 0 until count) {
+                    val pOff = offsets[i]
+                    val pLen = lengths[i]
+                    parts.add(cipherBytes.copyOfRange(pOff, pOff + pLen))
+                    offset = pOff + pLen
+                }
+            }
+        }
+
+        while (offset < bufLen && !disabled) {
             val packetLen = nextPacketLen(plainBytes, offset, bufLen - offset) ?: break
             if (packetLen <= 0) {
                 parts.add(cipherBytes.copyOfRange(offset, bufLen))

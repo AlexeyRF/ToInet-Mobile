@@ -39,3 +39,26 @@ target_include_directories(zdpi PRIVATE zdpi zdpi/crypto .)
 target_compile_options(zdpi PRIVATE -std=gnu99 -O2 -Wall -Wno-unused -Wextra -Wno-unused-parameter -ffunction-sections -fdata-sections)
 target_compile_definitions(zdpi PRIVATE ANDROID_APP __ANDROID__)
 target_link_libraries(zdpi PRIVATE log)
+
+# 4. TGWS acceleration & Gatik native JNI library (libtgws.so)
+add_library(tgws SHARED
+    tgws/tgws_accel.cpp
+    tgws/gatik.cpp
+)
+target_include_directories(tgws PRIVATE tgws .)
+target_compile_options(tgws PRIVATE -std=c++17 -O3 -Wall -Wextra -Wno-unused-parameter)
+target_compile_definitions(tgws PRIVATE ANDROID_APP __ANDROID__)
+target_link_libraries(tgws PRIVATE log)
+
+# 5. Standalone Gatik executable built as libgatik.so
+add_executable(gatik tgws/gatik.cpp)
+set_target_properties(gatik PROPERTIES
+    OUTPUT_NAME "gatik"
+    SUFFIX ".so"
+    PREFIX "lib"
+)
+target_include_directories(gatik PRIVATE tgws .)
+target_compile_options(gatik PRIVATE -std=c++17 -O3 -Wall -Wextra -Wno-unused-parameter -DSTANDALONE_GATIK_BIN)
+target_compile_definitions(gatik PRIVATE ANDROID_APP __ANDROID__)
+target_link_libraries(gatik PRIVATE log)
+
