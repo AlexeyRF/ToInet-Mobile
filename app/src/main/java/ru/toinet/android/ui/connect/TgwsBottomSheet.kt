@@ -113,23 +113,25 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
             val secret = binding.etSecret.text.toString().trim()
             val hostIp = if (binding.swShareProxy.isChecked) getLocalIpAddress() else "127.0.0.1"
             val socksLink = "tg://socks?server=$hostIp&port=$port"
+            val gatikLink = "tg://socks?server=$hostIp&port=1777"
             
+            val options = mutableListOf<Pair<String, String>>()
             if (secret.isNotEmpty()) {
                 val mtprotoLink = "tg://proxy?server=$hostIp&port=$port&secret=$secret"
-                androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Какую ссылку скопировать?")
-                    .setItems(arrayOf("MTProto", "SOCKS5")) { _, which ->
-                        val link = if (which == 0) mtprotoLink else socksLink
-                        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("TG Proxy", link))
-                        Toast.makeText(requireContext(), "Ссылка скопирована!", Toast.LENGTH_SHORT).show()
-                    }
-                    .show()
-            } else {
-                val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("TG Proxy", socksLink))
-                Toast.makeText(requireContext(), "SOCKS5 ссылка скопирована!", Toast.LENGTH_SHORT).show()
+                options.add("MTProto (порт $port)" to mtprotoLink)
             }
+            options.add("TGWS SOCKS5 (порт $port)" to socksLink)
+            options.add("Шлюз Gatik SOCKS5 (порт 1777, гибрид Tor+TGWS)" to gatikLink)
+
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Какую ссылку скопировать?")
+                .setItems(options.map { it.first }.toTypedArray()) { _, which ->
+                    val link = options[which].second
+                    val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("TG Proxy", link))
+                    Toast.makeText(requireContext(), "Ссылка скопирована!", Toast.LENGTH_SHORT).show()
+                }
+                .show()
         }
         
 

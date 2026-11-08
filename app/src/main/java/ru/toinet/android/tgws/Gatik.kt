@@ -22,18 +22,63 @@ object Gatik {
     private var job: Job? = null
     private var globalUploadModeUntil = 0L
 
-    fun start(context: Context) {
+    val isRunning: Boolean
+        get() = (GatikNative.isLoaded && GatikNative.nativeIsRunning()) || (job?.isActive == true && serverSocket?.isBound == true)
+
+    fun start(context: Context, tgwsPort: Int = ru.toinet.android.util.Prefs.tgwsPort) {
+        val bindHost = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+        val torPort = TOR_PORT
         if (GatikNative.isLoaded) {
-            val bindHost = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
-            GatikNative.nativeStartGatik(bindHost, LISTEN_PORT, "127.0.0.1", TOR_PORT, "127.0.0.1", TGWS_PORT)
-            Log.i(TAG, "Gatik native C++ router started on $bindHost:$LISTEN_PORT")
+            try {
+                val started = GatikNative.nativeStartGatik(bindHost, LISTEN_PORT, "127.0.0.1", torPort, "127.0.0.1", tgwsPort)
+                if (started) {
+                    Log.i(TAG, "Gatik native C++ router started on $bindHost:$LISTEN_PORT (Tor: $torPort, TGWS: $tgwsPort)")
+                    return
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Failed nativeStartGatik, falling back to Kotlin implementation", e)
+            }
         }
+        startFallbackServer(context, bindHost, LISTEN_PORT, torPort, tgwsPort)
     }
 
     fun stop() {
         if (GatikNative.isLoaded) {
-            GatikNative.nativeStopGatik()
-            Log.i(TAG, "Gatik native C++ router stopped")
+            try {
+                GatikNative.nativeStopGatik()
+                Log.i(TAG, "Gatik native C++ router stopped")
+            } catch (e: Throwable) {
+                Log.w(TAG, "Error stopping native Gatik", e)
+            }
+        }
+        try {
+            serverSocket?.close()
+        } catch (_: Exception) {}
+        serverSocket = null
+        job?.cancel()
+        job = null
+    }
+
+    private fun startFallbackServer(context: Context, host: String, port: Int, torPort: Int, tgwsPort: Int) {
+        if (job?.isActive == true) return
+        val appContext = context.applicationContext
+        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        job = scope.launch {
+            try {
+                val ss = java.net.ServerSocket()
+                ss.reuseAddress = true
+                ss.bind(InetSocketAddress(host, port))
+                serverSocket = ss
+                Log.i(TAG, "Gatik coroutine router started on $host:$port (Tor: $torPort, TGWS: $tgwsPort)")
+                while (isActive) {
+                    val client = ss.accept()
+                    launch { handleClient(client, appContext, torPort, tgwsPort) }
+                }
+            } catch (e: Exception) {
+                if (isActive) {
+                    Log.e(TAG, "Gatik fallback server socket error", e)
+                }
+            }
         }
     }
 
@@ -44,7 +89,7 @@ object Gatik {
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) && !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 
-    private suspend fun handleClient(clientSocket: Socket, context: Context) {
+    private suspend fun handleClient(clientSocket: Socket, context: Context, torPort: Int, tgwsPort: Int) {
         var upSocket: Socket? = null
         try {
             withContext(Dispatchers.IO) {
@@ -139,11 +184,21 @@ object Gatik {
                     isUpload = false
                 }
 
-                val upstreamPort = if (isUpload) TGWS_PORT else TOR_PORT
+                val upstreamPort = if (isUpload) tgwsPort else torPort
                 
                 // 7. Connect to Upstream SOCKS5
                 upSocket = Socket()
-                upSocket.connect(InetSocketAddress("127.0.0.1", upstreamPort), 5000)
+                try {
+                    upSocket.connect(InetSocketAddress("127.0.0.1", upstreamPort), 3000)
+                } catch (e: Exception) {
+                    if (!isUpload) {
+                        Log.i(TAG, "Tor upstream failed on port $upstreamPort, falling back to TGWS on port $tgwsPort")
+                        upSocket = Socket()
+                        upSocket.connect(InetSocketAddress("127.0.0.1", tgwsPort), 3000)
+                    } else {
+                        throw e
+                    }
+                }
                 val upInput = upSocket.getInputStream()
                 val upOutput = upSocket.getOutputStream()
 

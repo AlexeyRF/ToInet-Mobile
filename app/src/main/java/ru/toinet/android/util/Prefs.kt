@@ -391,7 +391,10 @@ object Prefs {
 
     @JvmStatic
     var byedpiArgs: String
-        get() = cr?.getPrefString("byedpi_cmd_args") ?: ""
+        get() {
+            val v = cr?.getPrefString("byedpi_cmd_args")?.trim() ?: ""
+            return if (v.isEmpty()) "--preset general" else v
+        }
         set(value) = cr?.putPref("byedpi_cmd_args", value) ?: Unit
 
     @JvmStatic

@@ -45,8 +45,8 @@ class ByeDpiProxyCmdPreferences(val args: Array<String>) : ByeDpiProxyPreference
     constructor(preferences: SharedPreferences) : this(
         preferences.getStringNotNull(
             "byedpi_cmd_args",
-            ""
-        )
+            "--preset general"
+        ).ifBlank { "--preset general" }
     )
 
     companion object {
@@ -56,6 +56,8 @@ class ByeDpiProxyCmdPreferences(val args: Array<String>) : ByeDpiProxyPreference
             val list = mutableListOf("ciadpi")
             if (argsStr.isNotEmpty()) {
                 list.addAll(shellSplit(argsStr))
+            } else {
+                list.addAll(listOf("--preset", "general"))
             }
             var hasPort = false
             var hasIp = false

@@ -142,9 +142,10 @@ fun Context.sendIntentToService(action: String) {
             ru.toinet.android.operaproxy.OperaProxyService.start(this)
         } else if (isPing && ru.toinet.android.operaproxy.OperaProxyService.isRunning) {
             try {
-                startService(Intent(this, ru.toinet.android.operaproxy.OperaProxyService::class.java).apply {
+                sendIntentToService(Intent(this, ru.toinet.android.operaproxy.OperaProxyService::class.java).apply {
                     this.action = "ACTIVE"
-                })
+                    putExtra("is_foreground", false)
+                }, isForeground = false)
             } catch (e: Exception) {
                 Log.e("ToInetService", "Failed to ping OperaProxyService", e)
             }
@@ -160,9 +161,10 @@ fun Context.sendIntentToService(action: String) {
         } else if (isPing) {
             if (ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
                 try {
-                    startService(Intent(this, ru.toinet.android.easyvpn.EasyVpnService::class.java).apply {
+                    sendIntentToService(Intent(this, ru.toinet.android.easyvpn.EasyVpnService::class.java).apply {
                         this.action = "ACTIVE"
-                    })
+                        putExtra("is_foreground", false)
+                    }, isForeground = false)
                 } catch (e: Exception) {
                     Log.e("ToInetService", "Failed to ping EasyVpnService", e)
                 }
@@ -180,9 +182,10 @@ fun Context.sendIntentToService(action: String) {
             ru.toinet.android.svpn.SvpnService.start(this)
         } else if (isPing && ru.toinet.android.svpn.SvpnService.isRunning) {
             try {
-                startService(Intent(this, ru.toinet.android.svpn.SvpnService::class.java).apply {
+                sendIntentToService(Intent(this, ru.toinet.android.svpn.SvpnService::class.java).apply {
                     this.action = "ACTIVE"
-                })
+                    putExtra("is_foreground", false)
+                }, isForeground = false)
             } catch (e: Exception) {
                 Log.e("ToInetService", "Failed to ping SvpnService", e)
             }

@@ -9,6 +9,8 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import ru.toinet.android.util.canStartForegroundServices
+import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.ToInetActivity
 import ru.toinet.android.R
 import ru.toinet.android.util.Prefs
@@ -46,8 +48,10 @@ class TgwsService : Service() {
             forceTestDc: Boolean = Prefs.tgwsForceTestDc,
             poolSize: Int = Prefs.tgwsPoolSize
         ) {
+            val isForeground = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("tgws")
             val intent = Intent(context, TgwsService::class.java).apply {
                 action = ACTION_START
+                putExtra("is_foreground", isForeground)
                 putExtra("host", host)
                 putExtra("port", port)
                 val mappingList = dcMappings.map { "${it.key}:${it.value}" }.toTypedArray()
@@ -64,30 +68,14 @@ class TgwsService : Service() {
                 putExtra("forceTestDc", forceTestDc)
                 putExtra("poolSize", poolSize)
             }
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
-            } catch (_: Exception) {
-                try {
-                    context.startService(intent)
-                } catch (_: Exception) {}
-            }
+            context.sendIntentToService(intent, isForeground = isForeground)
         }
 
         fun stop(context: Context) {
             val intent = Intent(context, TgwsService::class.java).apply {
                 action = ACTION_STOP
             }
-            try {
-                context.startService(intent)
-            } catch (_: Exception) {
-                try {
-                    context.stopService(intent)
-                } catch (_: Exception) {}
-            }
+            context.sendIntentToService(intent, isForeground = false)
         }
     }
 
@@ -98,11 +86,25 @@ class TgwsService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            Gatik.stop()
+            tgwsCore?.stop()
+            tgwsCore = null
+            isRunning = false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
             stopSelf()
             return START_NOT_STICKY
         }
 
-        startForegroundNotification()
+        val isForeground = intent?.getBooleanExtra("is_foreground", false)
+            ?: (!Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("tgws"))
+        if (isForeground) {
+            startForegroundNotification()
+        }
 
         val host = intent?.getStringExtra("host") ?: Prefs.tgwsHost
         val port = intent?.getIntExtra("port", Prefs.tgwsPort) ?: Prefs.tgwsPort
@@ -157,11 +159,13 @@ class TgwsService : Service() {
         }
         tgwsCore?.start()
         isRunning = true
+        Gatik.start(this, tgwsPort = port)
 
         return START_STICKY
     }
 
     override fun onDestroy() {
+        Gatik.stop()
         tgwsCore?.stop()
         tgwsCore = null
         isRunning = false
@@ -183,9 +187,6 @@ class TgwsService : Service() {
     }
 
     private fun startForegroundNotification() {
-        if (!Prefs.shouldServiceShowNotification("tgws") && Prefs.isGlobalVpnEnabled) {
-            return
-        }
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this, 0, notificationIntent,
@@ -199,10 +200,16 @@ class TgwsService : Service() {
             .setOngoing(true)
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            try {
+                startForeground(NOTIFICATION_ID, notification)
+            } catch (_: Exception) {}
         }
     }
 }

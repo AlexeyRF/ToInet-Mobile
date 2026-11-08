@@ -8,6 +8,7 @@ import ru.toinet.android.vpn.data.Mode
 import ru.toinet.android.vpn.data.START_ACTION
 import ru.toinet.android.vpn.data.STOP_ACTION
 import ru.toinet.android.byedpi.services.ByeDpiProxyService
+import ru.toinet.android.util.sendIntentToService
 
 object ServiceManager {
     private val TAG: String = ServiceManager::class.java.simpleName
@@ -28,14 +29,12 @@ object ServiceManager {
 
             Mode.Proxy -> {
                 Log.i(TAG, "Starting proxy")
+                val isForeground = !ru.toinet.android.util.Prefs.isGlobalVpnEnabled && ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi")
                 val intent = Intent(context, ByeDpiProxyService::class.java).apply {
                     action = START_ACTION
+                    putExtra("is_foreground", isForeground)
                 }
-                try {
-                    ContextCompat.startForegroundService(context, intent)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to start ByeDPI foreground service", e)
-                }
+                context.sendIntentToService(intent, isForeground = isForeground)
             }
         }
     }

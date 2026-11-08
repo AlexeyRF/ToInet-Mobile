@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.vpn.utility.createConnectionNotificationString
 import ru.toinet.android.vpn.utility.registerNotificationChannel
 
@@ -34,34 +35,19 @@ class EasyVpnService : Service() {
             get() = EasyVpnServer.isRunning && EasyVpnServer.activeInstance != null
 
         fun start(context: Context) {
+            val isForeground = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("easyvpn")
             val intent = Intent(context, EasyVpnService::class.java).apply {
                 action = ACTION_START
+                putExtra("is_foreground", isForeground)
             }
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to start EasyVpnService as foreground, attempting startService", e)
-                try {
-                    context.startService(intent)
-                } catch (e2: Exception) {
-                    Log.e(TAG, "Failed to start EasyVpnService", e2)
-                }
-            }
+            context.sendIntentToService(intent, isForeground = isForeground)
         }
 
         fun stop(context: Context) {
             val intent = Intent(context, EasyVpnService::class.java).apply {
                 action = ACTION_STOP
             }
-            try {
-                context.startService(intent)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to stop EasyVpnService", e)
-            }
+            context.sendIntentToService(intent, isForeground = false)
         }
     }
 
@@ -75,7 +61,11 @@ class EasyVpnService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
-                startForegroundNotification()
+                val isForeground = intent.getBooleanExtra("is_foreground", false) ||
+                        (!Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("easyvpn"))
+                if (isForeground) {
+                    startForegroundNotification()
+                }
                 if (server == null) {
                     server = EasyVpnServer(this, scope).apply {
                         onServerChanged = {
@@ -94,7 +84,8 @@ class EasyVpnService : Service() {
                 return START_STICKY
             }
             "ACTIVE" -> {
-                if (server != null) {
+                val isForeground = intent.getBooleanExtra("is_foreground", false)
+                if (server != null && isForeground) {
                     startForegroundNotification()
                 }
                 return START_STICKY
@@ -105,6 +96,7 @@ class EasyVpnService : Service() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                 } else {
+                    @Suppress("DEPRECATION")
                     stopForeground(true)
                 }
                 stopSelf()
@@ -138,7 +130,6 @@ class EasyVpnService : Service() {
     }
 
     private fun startForegroundNotification() {
-        if (Prefs.isGlobalVpnEnabled || !Prefs.isPrimaryNotificationService("easyvpn")) return
         val notification = buildNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

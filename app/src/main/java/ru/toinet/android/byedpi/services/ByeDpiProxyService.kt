@@ -25,6 +25,7 @@ class ByeDpiProxyService : LifecycleService() {
     private var proxy = ByeDpiProxy()
     private var proxyJob: Job? = null
     private val mutex = Mutex()
+    private var isForegroundService = false
 
     companion object {
         private val TAG: String = ByeDpiProxyService::class.java.simpleName
@@ -47,7 +48,11 @@ class ByeDpiProxyService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         val action = intent?.action
 
-        if (action == START_ACTION || (action == "ACTIVE" && status == ServiceStatus.Connected)) {
+        val isForeground = intent?.getBooleanExtra("is_foreground", false)
+            ?: (!ru.toinet.android.util.Prefs.isGlobalVpnEnabled && ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi"))
+        isForegroundService = isForeground
+
+        if ((action == START_ACTION && isForeground) || (action == "ACTIVE" && status == ServiceStatus.Connected && isForeground)) {
             startForeground()
         }
 
@@ -81,7 +86,9 @@ class ByeDpiProxyService : LifecycleService() {
 
         if (status == ServiceStatus.Connected) {
             Log.w(TAG, "Proxy already connected")
-            startForeground()
+            if (isForegroundService) {
+                startForeground()
+            }
             return
         }
 
@@ -93,7 +100,9 @@ class ByeDpiProxyService : LifecycleService() {
                 sendBroadcast(statusIntent)
             }
             ru.toinet.android.util.NotificationLogger.log(this, "byedpi", "Запуск ByeDPI Proxy...")
-            startForeground()
+            if (isForegroundService) {
+                startForeground()
+            }
             mutex.withLock {
                 startProxy()
             }
@@ -108,9 +117,6 @@ class ByeDpiProxyService : LifecycleService() {
     }
 
     private fun startForeground() {
-        if (ru.toinet.android.util.Prefs.isGlobalVpnEnabled || !ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi")) {
-            return
-        }
         val notification: Notification = createNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -161,7 +167,7 @@ class ByeDpiProxyService : LifecycleService() {
             } catch (_: Exception) {}
         }
 
-        var cmdStrOriginal = ru.toinet.android.util.Prefs.byedpiArgs
+        var cmdStrOriginal = ru.toinet.android.util.Prefs.byedpiArgs.ifBlank { "--preset general" }
         val subUrl = ru.toinet.android.util.Prefs.byedpiSubscriptionUrl
         if (subUrl.isNotBlank()) {
             try {

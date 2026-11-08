@@ -269,6 +269,14 @@ object EasyVpnUpdater {
         val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1790
         return JSONObject().apply {
             put("log", JSONObject().apply { put("loglevel", "warning") })
+            put("dns", JSONObject().apply {
+                put("servers", JSONArray().apply {
+                    put("77.88.8.8")
+                    put("77.88.8.1")
+                    put("8.8.8.8")
+                    put("1.1.1.1")
+                })
+            })
             put("inbounds", JSONArray().apply {
                 put(JSONObject().apply {
                     put("tag", "socks-in")
@@ -543,11 +551,20 @@ object EasyVpnUpdater {
 
         val targetTag = if (activeNodeIndex in 0 until nodes.size) "proxy-$activeNodeIndex" else null
         val hasTarget = targetTag != null && (0 until proxyTags.length()).any { proxyTags.getString(it) == targetTag }
-        val effectiveTargetTag = if (hasTarget) targetTag else if (proxyTags.length() > 0) proxyTags.getString(0) else null
+        val effectiveTargetTag = if (hasTarget) targetTag else null
 
         return JSONObject().apply {
             put("log", JSONObject().apply {
-                put("loglevel", "info")
+                put("loglevel", "warning")
+            })
+
+            put("dns", JSONObject().apply {
+                put("servers", JSONArray().apply {
+                    put("77.88.8.8")
+                    put("77.88.8.1")
+                    put("8.8.8.8")
+                    put("1.1.1.1")
+                })
             })
 
             if (proxyTags.length() > 0) {
@@ -583,40 +600,42 @@ object EasyVpnUpdater {
 
             put("routing", JSONObject().apply {
                 put("domainStrategy", "AsIs")
-                if (effectiveTargetTag != null) {
-                    put("rules", JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("type", "field")
-                            put("inboundTag", JSONArray().apply { put("socks-in") })
-                            put("outboundTag", effectiveTargetTag)
-                        })
-                    })
-                } else if (proxyTags.length() > 0) {
+                val rulesArray = JSONArray()
+
+                if (proxyTags.length() > 0) {
                     put("balancers", JSONArray().apply {
                         put(JSONObject().apply {
                             put("tag", "balancer")
                             put("selector", JSONArray().apply { put("proxy-") })
                             put("strategy", JSONObject().apply {
-                                put("type", "random")
+                                put("type", "leastPing")
                             })
                         })
                     })
-                    put("rules", JSONArray().apply {
-                        put(JSONObject().apply {
+
+                    if (effectiveTargetTag != null) {
+                        rulesArray.put(JSONObject().apply {
                             put("type", "field")
                             put("inboundTag", JSONArray().apply { put("socks-in") })
-                            put("balancerTag", "balancer")
+                            put("outboundTag", effectiveTargetTag)
                         })
+                    }
+
+                    // Fallback to balancer
+                    rulesArray.put(JSONObject().apply {
+                        put("type", "field")
+                        put("inboundTag", JSONArray().apply { put("socks-in") })
+                        put("balancerTag", "balancer")
                     })
                 } else {
-                    put("rules", JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("type", "field")
-                            put("inboundTag", JSONArray().apply { put("socks-in") })
-                            put("outboundTag", "direct")
-                        })
+                    rulesArray.put(JSONObject().apply {
+                        put("type", "field")
+                        put("inboundTag", JSONArray().apply { put("socks-in") })
+                        put("outboundTag", "direct")
                     })
                 }
+
+                put("rules", rulesArray)
             })
         }
     }

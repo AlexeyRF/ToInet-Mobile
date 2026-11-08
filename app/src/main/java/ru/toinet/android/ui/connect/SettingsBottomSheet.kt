@@ -124,6 +124,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 val svpnPort = Prefs.svpnLocalPort
 
                 val proxies = arrayListOf(
+                    "Шлюз Gatik (порт 1777, гибрид Tor+TGWS)",
                     "TGWS (порт $tgwsPort)",
                     "zDPI (порт 1780)",
                     "Easy-VPN (порт $easyVpnPort)",
@@ -131,6 +132,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                     "SVPN / SSH (порт $svpnPort)"
                 )
                 val proxyLinks = arrayListOf(
+                    "tg://socks?server=127.0.0.1&port=1777",
                     "tg://socks?server=127.0.0.1&port=$tgwsPort",
                     "tg://socks?server=127.0.0.1&port=1780",
                     "tg://socks?server=127.0.0.1&port=$easyVpnPort",

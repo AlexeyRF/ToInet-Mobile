@@ -348,17 +348,21 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         // Wait for proxy port to be open before routing traffic to it
-        if (isAppRouting) {
-            waitForPort("127.0.0.1", 10850, 3000L)
+        val isReady = if (isAppRouting) {
+            waitForPort("127.0.0.1", 10850, 4000L)
         } else {
             val waitTimeout = when (provider) {
-                "operaproxy" -> 5000L
-                "easyvpn" -> 4000L
-                "byedpi" -> 3000L
-                "tor" -> 3000L
-                else -> 2000L
+                "operaproxy" -> 6000L
+                "easyvpn" -> 6000L
+                "byedpi" -> 4000L
+                "tor" -> 4000L
+                else -> 3000L
             }
             waitForPort(actualHost, actualPort, waitTimeout)
+        }
+        if (!isReady) {
+            Log.e(TAG, "Proxy port $actualHost:$actualPort failed to start within timeout for provider $provider")
+            ru.toinet.android.util.NotificationLogger.log(this, provider, "Предупреждение: порт прокси $actualPort не ответил вовремя")
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "77.88.8.8")
@@ -738,6 +742,16 @@ class AppVpnService : LifecycleVpnService() {
                 val excludedByUser = ru.toinet.android.util.Prefs.vpnExcludedApps.toMutableSet()
                 var needsSave = false
 
+                fun isBrowserPackage(pkg: String): Boolean {
+                    val lower = pkg.lowercase()
+                    return lower.contains("browser") || lower.contains("chrome") ||
+                           lower.contains("firefox") || lower.contains("opera") ||
+                           lower.contains("yandex") || lower.contains("searchplugin") ||
+                           lower.contains("duckduckgo") || lower.contains("vivaldi") ||
+                           lower.contains("brave") || lower.contains("kiwi") ||
+                           lower.contains("edge") || lower.contains("tor")
+                }
+
                 if (!ru.toinet.android.util.Prefs.vpnLoopProtectionInitialized) {
                     for (pkg in packages) {
                         val pkgName = pkg.packageName
@@ -752,8 +766,8 @@ class AppVpnService : LifecycleVpnService() {
                 if (!ru.toinet.android.util.Prefs.vpnAppsInitialized) {
                     for (pkg in packages) {
                         val pkgName = pkg.packageName
-                        if (pkgName.contains("ru.", ignoreCase = true) || 
-                            pkgName.contains(".ru", ignoreCase = true)) {
+                        if (!isBrowserPackage(pkgName) && (pkgName.contains("ru.", ignoreCase = true) || 
+                            pkgName.contains(".ru", ignoreCase = true))) {
                             excludedByUser.add(pkgName)
                             needsSave = true
                         }
@@ -763,6 +777,9 @@ class AppVpnService : LifecycleVpnService() {
                 }
 
                 for (disallowedPkg in excludedByUser) {
+                    if (isBrowserPackage(disallowedPkg)) {
+                        continue
+                    }
                     try {
                         builder.addDisallowedApplication(disallowedPkg)
                     } catch (e: Exception) {

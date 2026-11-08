@@ -17,6 +17,7 @@ import kotlinx.coroutines.cancel
 import ru.toinet.android.R
 import ru.toinet.android.ToInetActivity
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.sendIntentToService
 
 class SvpnService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -34,34 +35,19 @@ class SvpnService : Service() {
             get() = SvpnServer.isRunning
 
         fun start(context: Context) {
+            val isForeground = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("svpn")
             val intent = Intent(context, SvpnService::class.java).apply {
                 action = ACTION_START
+                putExtra("is_foreground", isForeground)
             }
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed startForegroundService, attempting startService", e)
-                try {
-                    context.startService(intent)
-                } catch (e2: Exception) {
-                    Log.e(TAG, "Failed to start SvpnService", e2)
-                }
-            }
+            context.sendIntentToService(intent, isForeground = isForeground)
         }
 
         fun stop(context: Context) {
             val intent = Intent(context, SvpnService::class.java).apply {
                 action = ACTION_STOP
             }
-            try {
-                context.startService(intent)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to stop SvpnService", e)
-            }
+            context.sendIntentToService(intent, isForeground = false)
         }
     }
 
@@ -75,7 +61,11 @@ class SvpnService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
-                startForegroundNotification()
+                val isForeground = intent.getBooleanExtra("is_foreground", false) ||
+                        (!Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("svpn"))
+                if (isForeground) {
+                    startForegroundNotification()
+                }
                 if (server == null) {
                     server = SvpnServer(this, scope)
                 }
@@ -83,7 +73,8 @@ class SvpnService : Service() {
                 return START_STICKY
             }
             "ACTIVE" -> {
-                if (server != null) {
+                val isForeground = intent.getBooleanExtra("is_foreground", false)
+                if (server != null && isForeground) {
                     startForegroundNotification()
                 }
                 return START_STICKY
@@ -105,7 +96,6 @@ class SvpnService : Service() {
     }
 
     private fun startForegroundNotification() {
-        if (Prefs.isGlobalVpnEnabled || !Prefs.isPrimaryNotificationService("svpn")) return
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -140,10 +130,16 @@ class SvpnService : Service() {
 
         val notification = builder.build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            try {
+                startForeground(NOTIFICATION_ID, notification)
+            } catch (_: Exception) {}
         }
     }
 

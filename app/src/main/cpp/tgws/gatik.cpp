@@ -291,6 +291,12 @@ static void handle_client(SOCKET client_sock) {
 
     // 6. Connect to upstream proxy
     SOCKET upstream_sock = connect_to(upstream_host, upstream_port);
+    if (upstream_sock == INVALID_SOCKET && !is_upload) {
+        LOGI("Tor upstream failed or offline, falling back to TGWS %s:%d", g_upload_proxy_host.c_str(), g_upload_proxy_port);
+        upstream_host = g_upload_proxy_host;
+        upstream_port = g_upload_proxy_port;
+        upstream_sock = connect_to(upstream_host, upstream_port);
+    }
     if (upstream_sock == INVALID_SOCKET) {
         LOGE("Failed to connect to upstream %s:%d", upstream_host.c_str(), upstream_port);
         closesocket(client_sock);
