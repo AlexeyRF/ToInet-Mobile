@@ -853,7 +853,9 @@ void clear_params(char *line, char **argv)
     for (int i = 0; i < params.need_free_n; i++) {
         free(params.need_free[i]);
     }
-    params.need_free_n = 0;
+    if (params.need_free) {
+        free(params.need_free);
+    }
     
     struct desync_params *dp = params.dp;
     while (dp) {
@@ -869,7 +871,7 @@ void clear_params(char *line, char **argv)
         memset(t, 0, sizeof(*t));
         free(t);
     }
-    params.dp = 0;
+    memset(&params, 0, sizeof(params));
 }
 
 

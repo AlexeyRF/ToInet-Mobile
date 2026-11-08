@@ -51,7 +51,8 @@ class OperaProxyServer(
 
             val destFile = File(context.filesDir, "opera-proxy")
             try {
-                if (!destFile.exists() || destFile.length() == 0L) {
+                val assetLength = context.assets.open(assetName).use { it.available().toLong() }
+                if (!destFile.exists() || destFile.length() != assetLength) {
                     context.assets.open(assetName).use { inputStream ->
                         FileOutputStream(destFile).use { outputStream ->
                             inputStream.copyTo(outputStream)

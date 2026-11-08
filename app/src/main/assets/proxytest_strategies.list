@@ -13,23 +13,23 @@
 -s midsld -f midsld -r midsld -t 3 --quic-drop
 -s sniext -f 1 -r sniext -t 4 --quic-drop
 -d midsld -f 1 -t 3 --quic-drop
---split-pos=1
---split-pos=1 --disorder
---split-pos=2
---split-pos=2 --hostcase --domcase
---split-pos=1 --disorder --oob
---split-pos=2 --disorder
---split-pos=1 --hostcase
---split-pos=2,sniext+1
---split-pos=2 --oob
---split-pos=sni --hostcase
---split-pos=sni --disorder
---split-pos=1 --tlsrec=sni
---split-pos=1 --tlsrec=sni --hostcase
---split-pos=2 --tlsrec=sni --hostcase
---split-pos=midsld --disorder
---split-pos=1,midsld --disorder
---split-pos=1 --oob
+-s 1
+-d 1
+-s 2
+-s 2 -Mh,d
+-d 1 -o 1
+-d 2
+-s 1 -Mh
+--dpi-desync=split --dpi-desync-split-pos=2,sniext+1
+-s 2 -o 1
+-s 1+s -Mh
+-d 1+s
+-s 1 -r 1+s
+-s 1 -r 1+s -Mh
+-s 2 -r 1+s -Mh
+-d midsld
+--dpi-desync=disorder --dpi-desync-split-pos=1,midsld
+-s 1 -o 1
 --dpi-desync=fake,split2 --dpi-desync-split-pos=1 --dpi-desync-fake-tls=google --dpi-desync-ttl=4 --quic-drop
 --dpi-desync=fake,disorder2 --dpi-desync-split-pos=sniext --dpi-desync-fake-tls=google --dpi-desync-ttl=4 --quic-drop
 --dpi-desync=fake,split2 --dpi-desync-split-pos=1,midsld --dpi-desync-fake-tls=google --dpi-desync-ttl=3 --quic-drop

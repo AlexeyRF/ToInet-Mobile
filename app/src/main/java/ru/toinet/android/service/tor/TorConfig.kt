@@ -40,11 +40,8 @@ object TorConfig {
 
         conf.add("SafeSocks 0")
         conf.add("TestSocks 0")
-        if (Prefs.openProxyOnAllInterfaces) {
-            conf.add("HTTPTunnelPort 0.0.0.0:$httpPortPref $isolate")
-        } else {
-            conf.add("HTTPTunnelPort $httpPortPref $isolate")
-        }
+        // HTTP proxy disabled for Tor
+        conf.add("HTTPTunnelPort 0")
 
         if (Prefs.connectionPadding) {
             conf.add("ConnectionPadding 1")

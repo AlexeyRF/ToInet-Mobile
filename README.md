@@ -1,16 +1,16 @@
 # ToInet-Mobile
 **Версия для Windows:** [ToInet](https://github.com/AlexeyRF/ToInet)
 
-**ToInet-Mobile** - приложение для Android, объединяющее в себе инструменты обхода блокировок: **zDPI** (гибридный ByeDPI + Zapret2 со стратегиями и пресетами General/YouTube/Discord), **Tor (ЛМ)**, **Opera Proxy**, **Easy-VPN**. 
+**ToInet-Mobile** - приложение для Android, объединяющее в себе инструменты обхода блокировок: **zDPI**, **Tor (ЛМ)**, **Opera Proxy**, **Easy-VPN** и **SSH-Tunnel**. 
 
 ## Основные возможности
 *   **Easy-VPN**:
     *   Программа для использования минимизации влияния свинолётов на вашу интернет жизнь.
 *   **zDPI (ByeDPI + Zapret2)**:
     *   Гибридный движок ByeDPI с полной интеграцией Zapret2 (desync, split, disorder, fake, tlsrec, quic-drop, midsld), скомпилированный под Android.
-    *   Встроенный тестер стратегий для подбора оптимальных параметров zDPI / Zapret / ByeDpi.
+    *   Встроенный тестер стратегий для подбора оптимальных параметров.
 *   **Режим системного VPN**:
-    *   Раздельное туннелирование, можно маршрутизировать трафик отдельных приложений
+    *   Раздельное туннелирование, можно маршрутизировать трафик отдельных приложений по разным методам обхода
 *   **Tor (ЛМ)**:
     *   Встроенный луковый маршрутизатор.
 *   **Opera Proxy**:
@@ -27,14 +27,13 @@
 
 | Инструмент             | Порт   | Тип прокси | 
 |:-----------------------|:-------|:-----------|
-| **zDPI (ByeDPI)**      | `1780` | SOCKS5     |
-| **Tor Socks5**         | `9853` | SOCKS5     |
-| **Tor HTTP**           | `5267` | HTTP       |
-| **Opera-Proxy**        | `1785` | SOCKS5     | 
-| **Easy-VPN (Xray)**    | `1790` | SOCKS5     |
-| **SVPN (SSH)**         | `1770` | SOCKS5     |
 | **TGWS (Proxy)**       | `1480` | SOCKS5     |
+| **SVPN (SSH)**         | `1770` | SOCKS5     |
 | **Gatik (TG Router)**  | `1777` | SOCKS5     |
+| **zDPI (ByeDPI)**      | `1780` | SOCKS5     |
+| **Opera-Proxy**        | `1785` | SOCKS5     |
+| **Easy-VPN (Xray)**    | `1790` | SOCKS5     |
+| **Tor Socks5**         | `9853` | SOCKS5     |
 
 ---
 

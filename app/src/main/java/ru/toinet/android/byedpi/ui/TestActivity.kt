@@ -159,16 +159,28 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         }
     }
 
-    private suspend fun waitForProxyStatus(statusNeeded: AppStatus): Boolean {
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isTesting) {
+            isTesting = false
+            testJob?.cancel()
+            testJob = null
+            if (appStatus.first != AppStatus.Halted) {
+                ServiceManager.stop(this)
+            }
+        }
+    }
+
+    private suspend fun waitForProxyStatus(statusNeeded: AppStatus, timeoutMs: Long = 7000): Boolean {
         val startTime = System.currentTimeMillis()
-        while (System.currentTimeMillis() - startTime < 3000) {
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
             if (appStatus.first == statusNeeded) {
-                delay(500)
+                delay(300)
                 return true
             }
             delay(100)
         }
-        return false
+        return appStatus.first == statusNeeded
     }
 
     private suspend fun isProxyRunning(): Boolean = withContext(Dispatchers.IO) {
@@ -176,7 +188,10 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
     }
 
     private fun updateCmdArgs(cmd: String) {
-        prefs.edit(commit = true) { putString("byedpi_cmd_args", cmd) }
+        prefs.edit(commit = true) {
+            putBoolean("byedpi_enable_cmd_settings", true)
+            putString("byedpi_cmd_args", cmd)
+        }
     }
 
     private fun startTesting() {
@@ -208,9 +223,8 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
             if (appStatus.first != AppStatus.Halted) {
                 ServiceManager.stop(this@TestActivity)
-                waitForProxyStatus(AppStatus.Halted)
-                // Add a small delay to ensure the system fully destroys the service
-                delay(1000)
+                waitForProxyStatus(AppStatus.Halted, 7000)
+                delay(500)
             }
 
             val delaySec = prefs.getIntStringNotNull("byedpi_proxytest_delay", 1)
@@ -228,13 +242,34 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                     progressTextView.text = getString(R.string.test_process, cmdIndex, cmds.size)
                 }
 
+                if (appStatus.first != AppStatus.Halted) {
+                    ServiceManager.stop(this@TestActivity)
+                    waitForProxyStatus(AppStatus.Halted, 5000)
+                }
+
                 updateCmdArgs(strategy.command)
+                ServiceManager.start(this@TestActivity, Mode.Proxy)
 
-                if (appStatus.first != AppStatus.Halted) stopTesting()
-                else ServiceManager.start(this@TestActivity, Mode.Proxy)
-
-                if (!waitForProxyStatus(AppStatus.Running)) {
-                    stopTesting()
+                val started = waitForProxyStatus(AppStatus.Running, 5000)
+                if (!started) {
+                    val totalRequests = sites.size * requestsCount
+                    strategy.totalRequests = totalRequests
+                    strategy.currentProgress = totalRequests
+                    strategy.successCount = 0
+                    strategy.isCompleted = true
+                    for (site in sites) {
+                        strategy.siteResults.add(SiteResult(site, 0, requestsCount))
+                    }
+                    withContext(Dispatchers.Main) {
+                        strategyAdapter.notifyItemChanged(strategyIndex)
+                        strategyAdapter.updateStrategies(strategies, sortByPercentage = true)
+                        saveResults(strategies)
+                    }
+                    if (appStatus.first != AppStatus.Halted) {
+                        ServiceManager.stop(this@TestActivity)
+                        waitForProxyStatus(AppStatus.Halted, 3000)
+                    }
+                    continue
                 }
 
                 delay(delaySec * 500L)
@@ -270,11 +305,9 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                     saveResults(strategies)
                 }
 
-                if (appStatus.first != AppStatus.Halted) ServiceManager.stop(this@TestActivity)
-                else stopTesting()
-
-                if (!waitForProxyStatus(AppStatus.Halted)) {
-                    stopTesting()
+                if (appStatus.first != AppStatus.Halted) {
+                    ServiceManager.stop(this@TestActivity)
+                    waitForProxyStatus(AppStatus.Halted, 5000)
                 }
 
                 delay(delaySec * 500L)
@@ -472,19 +505,12 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
             val content = prefs.getStringNotNull("byedpi_proxytest_commands", "")
             content.replace("{sni}", "\"${sniValue}\"").lines()
         } else {
-            val file = File(filesDir, "proxytest_strategies.list")
-            val content = if (file.exists()) {
-                val text = file.readText()
-                if (text.contains("--split-pos") && !text.contains("--preset") && !text.contains("#")) {
-                    text
-                } else {
-                    try { file.delete() } catch (_: Exception) {}
-                    assets.open("proxytest_strategies.list").bufferedReader().readText()
-                }
-            } else {
-                assets.open("proxytest_strategies.list").bufferedReader().readText()
-            }
-            content.replace("{sni}", "\"${sniValue}\"").lines()
+            try {
+                val file = File(filesDir, "proxytest_strategies.list")
+                if (file.exists()) file.delete()
+            } catch (_: Exception) {}
+            assets.open("proxytest_strategies.list").bufferedReader().readText()
+                .replace("{sni}", "\"${sniValue}\"").lines()
         }
         return rawLines.map { it.trim().removePrefix("\uFEFF") }.filter {
             it.isNotEmpty() && !it.startsWith("#") && !it.startsWith("//") && !it.startsWith("--preset") && !it.contains("TOR", ignoreCase = true) && !it.contains("fallback", ignoreCase = true) && !it.startsWith("{")

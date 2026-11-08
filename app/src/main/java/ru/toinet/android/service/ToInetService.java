@@ -406,7 +406,7 @@ public class ToInetService extends Service {
 
         sendBroadcast(reply.setAction(LOCAL_ACTION_STATUS).setPackage(getPackageName()));
 
-        if (mPortSOCKS != -1 && mPortHTTP != -1)
+        if (mPortSOCKS != -1)
             sendCallbackPorts(mPortSOCKS, mPortHTTP, mPortDns, mPortTrans);
     }
 

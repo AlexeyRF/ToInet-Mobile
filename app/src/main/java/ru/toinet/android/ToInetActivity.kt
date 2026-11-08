@@ -255,7 +255,7 @@ class ToInetActivity : BaseActivity() {
                 ToInetConstants.LOCAL_ACTION_PORTS -> {
                     val socks = intent.getIntExtra(ToInetConstants.EXTRA_SOCKS_PROXY_PORT, -1)
                     val http = intent.getIntExtra(ToInetConstants.EXTRA_HTTP_PROXY_PORT, -1)
-                    if (http > 0 && socks > 0) {
+                    if (socks > 0) {
                         portSocks = socks
                         portHttp = http
                     }
