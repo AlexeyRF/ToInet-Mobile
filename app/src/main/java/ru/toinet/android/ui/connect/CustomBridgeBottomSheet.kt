@@ -15,7 +15,6 @@ import androidx.fragment.app.activityViewModels
 import ru.toinet.android.R
 import ru.toinet.android.databinding.CustomBridgeBottomSheetBinding
 import ru.toinet.android.service.ToInetConstants
-import ru.toinet.android.service.circumvention.MoatApi
 import ru.toinet.android.service.circumvention.Transport
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
@@ -66,7 +65,6 @@ class CustomBridgeBottomSheet() :
 
         binding.btnAction.setOnClickListener {
             Prefs.transport = Transport.CUSTOM
-            Prefs.smartConnect = false
             Prefs.bridgesList = binding.etBridges.text?.split("\n") ?: emptyList()
             viewModel.triggerRefreshMenuList()
             dismiss()

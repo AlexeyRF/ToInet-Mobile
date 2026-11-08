@@ -34,6 +34,7 @@ data class BuiltInBridges(
         const val UPDATE_FILE_NAME = "updated-bridges.json"
 
         private var instance: BuiltInBridges? = null
+        private val json = Json { ignoreUnknownKeys = true }
 
 
         fun getInstance(context: Context? = null): BuiltInBridges? {
@@ -77,9 +78,9 @@ data class BuiltInBridges(
             return File(context.cacheDir, UPDATE_FILE_NAME)
         }
 
-        private fun read(json: String): BuiltInBridges? {
+        private fun read(jsonStr: String): BuiltInBridges? {
             return try {
-                MoatApi.json.decodeFromString(json)
+                json.decodeFromString(jsonStr)
             } catch (_: Throwable) {
                 null
             }

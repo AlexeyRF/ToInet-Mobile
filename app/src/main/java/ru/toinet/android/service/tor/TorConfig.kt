@@ -2,7 +2,6 @@ package ru.toinet.android.service.tor
 
 import android.content.ContextWrapper
 import ru.toinet.android.service.ToInetConstants
-import ru.toinet.android.service.db.V3ClientAuthColumns
 import ru.toinet.android.util.NetworkUtils
 import ru.toinet.android.util.Prefs
 import java.io.File
@@ -105,12 +104,6 @@ object TorConfig {
             val reachableAddressesPorts = Prefs.reachableAddressesPorts ?: "*:80,*:443"
             conf.add("ReachableAddresses $reachableAddressesPorts")
         }
-
-        // Always add client authorization config if any entries exist.
-        val clientAuthLines = StringBuffer()
-        V3ClientAuthColumns.addClientAuthToTorrc(clientAuthLines, context,
-            V3ClientAuthColumns.createV3AuthDir(context))
-        conf.addAll(clientAuthLines.split("\n"))
 
         val custom = Prefs.customTorRc
         if (!custom.isNullOrEmpty()) conf.add(custom)

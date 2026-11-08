@@ -25,7 +25,6 @@ import net.freehaven.tor.control.TorControlCommands;
 import net.freehaven.tor.control.TorControlConnection;
 
 import ru.toinet.android.R;
-import ru.toinet.android.service.circumvention.SmartConnect;
 import ru.toinet.android.service.tor.CustomTorResourceInstaller;
 import ru.toinet.android.util.*;
 import ru.toinet.android.service.tor.TorConfig;
@@ -426,46 +425,13 @@ public class ToInetService extends Service {
         }
         showToolbarNotification("", NOTIFY_ID, R.drawable.ic_stat_tor);
 
-        SmartConnect.handle(this,
-                /* startTor: () -> Exception? */
-                () -> {
-                    try {
-                        startTorService();
-                        showTorServiceErrorMsg = true;
-                    } catch (Exception e) {
-                        return e;
-                    }
-
-                    return null;
-                },
-                /* reconfigure: () -> Boolean */
-                () -> {
-                    if (conn == null) return false;
-
-                    try {
-                        conn.resetConf(Arrays.asList("UseBridges", "ClientTransportPlugin", "Bridge"));
-                        conn.setConf(Prefs.getTransport().getTorConfig(this));
-                    } catch (IOException e) {
-                        logNotice(e.getLocalizedMessage());
-
-                        return false;
-                    }
-
-                    return true;
-                },
-                /* stopTor: (e: Exception?) -> Unit */
-                (Exception e) -> {
-                    if (e != null) {
-                        logNotice(getString(R.string.unable_to_start_tor) + " " + e.getLocalizedMessage());
-                        stopTorOnError(e.getLocalizedMessage());
-                    } else {
-                        //     stopTorAsync(true);
-                    }
-
-                    return Unit.INSTANCE;
-                },
-                /* completed: () -> Unit)  */
-                () -> Unit.INSTANCE);
+        try {
+            startTorService();
+            showTorServiceErrorMsg = true;
+        } catch (Exception e) {
+            logNotice(getString(R.string.unable_to_start_tor) + " " + e.getLocalizedMessage());
+            stopTorOnError(e.getLocalizedMessage());
+        }
     }
 
 
@@ -720,7 +686,6 @@ public class ToInetService extends Service {
                         percent = percent.substring(0, pctIdx).trim();
                         localIntent.putExtra(LOCAL_EXTRA_BOOTSTRAP_PERCENT, percent);
                         var prog = Integer.parseInt(percent);
-                        SmartConnect.updateProgress(prog);
                         ru.toinet.android.util.NetworkBlackoutMonitor.onTorProgress(prog);
                         if (mNotifyBuilder != null && ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor")) {
                             mNotifyBuilder.setProgress(100, prog, false);
@@ -832,8 +797,6 @@ public class ToInetService extends Service {
                 case ACTION_STOP -> {
                     if (mHandler != null) mHandler.removeCallbacks(autoReconnectRunnable);
                     var userIsQuittingToInet = mIntent.getBooleanExtra(ACTION_STOP_FOREGROUND_TASK, false);
-                    // When user cancels connecting, make sure, the SmartConnect timer is also cancelled.
-                    SmartConnect.cancel();
                     stopTorAsync(!userIsQuittingToInet);
                 }
                 case ACTION_STOP_FOREGROUND_TASK -> stopForeground(true);
@@ -894,12 +857,6 @@ public class ToInetService extends Service {
                         scheduleAutoReconnectIfEnabled();
                     } else if (STATUS_ON.equals(mCurrentStatus)) {
                         if (mHandler != null) mHandler.removeCallbacks(autoReconnectRunnable);
-                    }
-
-                    // Make sure, Smart Connect finishes successfully, even when, for some reason,
-                    // progress isn't received up to 100.
-                    if (STATUS_ON.equals(mCurrentStatus)) {
-                        SmartConnect.updateProgress(100);
                     }
 
                     sendBroadcast(new Intent(LOCAL_ACTION_STATUS)

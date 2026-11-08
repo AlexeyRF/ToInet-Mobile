@@ -211,7 +211,6 @@ tasks.matching {
 
 dependencies {
     implementation(libs.android.material)
-    implementation(libs.android.volley)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.localbroadcast)
@@ -223,13 +222,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.common)
     implementation(libs.androidx.lifecycle.process)
     implementation("androidx.lifecycle:lifecycle-service:2.8.4")
-    implementation(libs.retrofit.converter)
-    implementation(libs.retrofit.lib)
     implementation(libs.rootbeer.lib)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.work.kotlin)
-    implementation(libs.upnp)
     implementation(libs.iptproxy)
     implementation(libs.jsch)
 

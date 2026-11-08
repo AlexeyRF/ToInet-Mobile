@@ -31,13 +31,6 @@ obj/
 .cxx
 .externalNativeBuild
 
-# Orbot libs
-libs/jtorctl.jar
-
-# Fastlane
-/fastlane/report.xml
-/fastlane/README.md
-
 # License
 app/src/main/assets/LICENSE
 

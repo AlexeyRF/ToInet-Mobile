@@ -21,7 +21,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -250,9 +249,6 @@ class ConnectFragment : Fragment(),
     }
 
     fun doLayoutOn(context: Context) {
-        if (Prefs.smartConnect) {
-            Prefs.smartConnect = false
-        }
         binding.progressBar.visibility = View.INVISIBLE
         binding.tvTitle.text = context.getString(R.string.connected_title)
         
@@ -283,12 +279,6 @@ class ConnectFragment : Fragment(),
         animShadow.repeatMode = Animation.REVERSE
         animShadow.start()
         binding.tvTitle.text = context.getString(R.string.trying_to_connect_title)
-    }
-
-
-    private fun openConfigureTorConnection() {
-        ConfigConnectionBottomSheet()
-            .show(requireActivity().supportFragmentManager, "ConfigConnectionBttmSheet") // Используем строковое значение вместо TAG
     }
 
     override fun onExitNodeSelected(countryCode: String) {

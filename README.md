@@ -53,7 +53,7 @@
 *   [dovecoteescapee (Оригинальный ByeDPI для Android)](https://github.com/dovecoteescapee/)
 *   [bol-van (Zapret)](https://github.com/bol-van/)
 *   [romanvht (Стратегии и тестер ByeDPI)](https://github.com/romanvht/)
-*   [Flowseal (Оригинальный TGWS, стратегии Zapret-discord-youtube)](https://github.com/Flowseal/)
+*   [Flowseal (Оригинальный TGWS](https://github.com/Flowseal/)
 *   [Alexey71 (OperaProxy)](https://github.com/Alexey71/)
 *   [mwiede (JSch - SSH для SVPN)](https://github.com/mwiede/jsch)
 

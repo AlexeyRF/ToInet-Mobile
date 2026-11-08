@@ -21,8 +21,6 @@ object Prefs {
     private const val PREF_ALLOW_BACKGROUND_STARTS = "pref_allow_background_starts"
     private const val PREF_OPEN_PROXY_ON_ALL_INTERFACES = "pref_open_proxy_on_all_interfaces"
     private const val PREF_EXIT_NODES = "pref_exit_nodes"
-    private const val PREF_USE_SMART_CONNECT = "pref_use_smart_connect"
-    private const val PREF_SMART_CONNECT_TIMEOUT = "pref_smart_connect_timeout"
 
     private const val PREF_SNOWFLAKES_SERVED_COUNT = "pref_snowflakes_served"
     private const val PREF_SNOWFLAKES_SERVED_COUNT_WEEKLY = "pref_snowflakes_served_weekly"
@@ -138,15 +136,6 @@ object Prefs {
     var transport: Transport
         get() = Transport.fromId(cr?.getPrefString(PREF_CONNECTION_PATHWAY) ?: Transport.NONE.id)
         set(value) = cr?.putPref(PREF_CONNECTION_PATHWAY, value.id) ?: Unit
-
-    var smartConnect: Boolean
-        get() = cr?.getPrefBoolean(PREF_USE_SMART_CONNECT) ?: false
-        set(value) = cr?.putPref(PREF_USE_SMART_CONNECT, value) ?: Unit
-
-
-    var smartConnectTimeout: Int
-        get() = cr?.getPrefInt(PREF_SMART_CONNECT_TIMEOUT) ?: 30
-        set(value) = cr?.putPref(PREF_SMART_CONNECT_TIMEOUT, value) ?: Unit
 
     @JvmStatic
     var proxyEnabled: Boolean

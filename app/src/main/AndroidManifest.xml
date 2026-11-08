@@ -59,17 +59,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".ui.v3onionservice.clientauth.ClientAuthActivity"
-            android:label="@string/v3_client_auth_activity_title" />
-
-
-
-        <provider
-            android:name=".ui.v3onionservice.clientauth.ClientAuthContentProvider"
-            android:authorities="${applicationId}.ui.v3onionservice.clientauth"
-            android:exported="false" />
-
         <provider
             android:name=".util.PreferenceProvider"
             android:authorities="${applicationId}.provider.preferences"
