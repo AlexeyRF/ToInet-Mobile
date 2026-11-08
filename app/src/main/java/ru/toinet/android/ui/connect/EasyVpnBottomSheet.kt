@@ -47,8 +47,6 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
         val upstreamOptions = listOf(
             ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_TOR to "TOR (127.0.0.1:9853)",
             ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_BYEDPI to "zDPI (127.0.0.1:1780)",
-            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
-            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
             ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_CUSTOM to "Кастомный SOCKS5..."
         )
         val upstreamTitles = upstreamOptions.map { it.second }

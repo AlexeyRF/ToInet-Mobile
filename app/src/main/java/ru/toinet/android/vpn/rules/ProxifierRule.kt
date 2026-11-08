@@ -17,9 +17,7 @@ data class ProxifierRule(
         const val ACTION_BYEDPI = "byedpi"
         const val ACTION_EASYVPN = "easyvpn"
         const val ACTION_TOR = "tor"
-        const val ACTION_ZAPRET = "zapret"
         const val ACTION_OPERAPROXY = "operaproxy"
-        const val ACTION_REHAB = "rehab"
         const val ACTION_FAKEVPN = "fakevpn"
         const val ACTION_SVPN = "svpn"
 
@@ -29,9 +27,7 @@ data class ProxifierRule(
             ACTION_BYEDPI -> "zDPI (порт 1780)"
             ACTION_EASYVPN -> "Easy-VPN (Xray)"
             ACTION_TOR -> "TOR (порт 9853)"
-            ACTION_ZAPRET -> "Zapret (порт 1781)"
             ACTION_OPERAPROXY -> "Opera Proxy (1785)"
-            ACTION_REHAB -> "Socks Rehab (1788)"
             ACTION_FAKEVPN -> "FakeVPN (1790)"
             ACTION_SVPN -> "SVPN / SSH (${ru.toinet.android.util.Prefs.svpnLocalPort})"
             else -> action

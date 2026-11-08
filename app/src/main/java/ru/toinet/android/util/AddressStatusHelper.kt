@@ -32,15 +32,6 @@ object AddressStatusHelper {
     fun isIpChangingProvider(provider: String): Boolean {
         return when (provider) {
             "tor", "easyvpn", "operaproxy" -> true
-            "rehab", "custom" -> {
-                val host = Prefs.rehabilitatorUpstreamHost.trim()
-                if (host.isEmpty()) {
-                    false
-                } else {
-                    !isLoopbackAddress(host)
-                }
-            }
-            "fakevpn", "zapret", "byedpi" -> false
             else -> false
         }
     }
@@ -92,7 +83,7 @@ object AddressStatusHelper {
 
         val provider = Prefs.vpnProvider
 
-        // If VPN is provided by a non-IP-changing provider (fakevpn, zapret, byedpi, or rehab with loopback address)
+        // If VPN is provided by a non-IP-changing provider (fakevpn, byedpi)
         if (!isIpChangingProvider(provider)) {
             return STATUS_VISIBLE_ALL
         }

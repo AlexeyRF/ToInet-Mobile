@@ -357,11 +357,9 @@ class AppRoutingServer(
             }
             ProxifierRule.ACTION_EASYVPN -> Prefs.easyVpnProxyPort
             ProxifierRule.ACTION_TOR -> 9853
-            ProxifierRule.ACTION_ZAPRET -> Prefs.zapretPort
             ProxifierRule.ACTION_OPERAPROXY -> {
                 Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
             }
-            ProxifierRule.ACTION_REHAB -> 1788
             ProxifierRule.ACTION_FAKEVPN -> 1790
             ProxifierRule.ACTION_SVPN -> Prefs.svpnLocalPort
             else -> 1780

@@ -59,8 +59,6 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
             "easyvpn" -> binding.rbEasyVpn.isChecked = true
             "operaproxy" -> binding.rbOperaProxy.isChecked = true
             "tor" -> binding.rbTor.isChecked = true
-            "zapret" -> binding.rbZapret.isChecked = true
-            "rehab", "custom" -> binding.rbRehab.isChecked = true
             "svpn", "ssh" -> binding.rbSvpn.isChecked = true
             // "tgws" -> binding.rbTgws.isChecked = true
             "fakevpn" -> {
@@ -106,8 +104,6 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 binding.rbEasyVpn.id -> "easyvpn"
                 binding.rbOperaProxy.id -> "operaproxy"
                 binding.rbTor.id -> "tor"
-                binding.rbZapret.id -> "zapret"
-                binding.rbRehab.id -> "rehab"
                 // binding.rbTgws.id -> "tgws"
                 binding.rbFakeVpn.id -> "fakevpn"
                 binding.rbSvpn.id -> "svpn"

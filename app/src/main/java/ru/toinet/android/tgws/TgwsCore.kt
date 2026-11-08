@@ -310,11 +310,9 @@ class TgwsCore(
                 "byedpi" -> 1780
                 "tor" -> 9853
                 "tgws" -> 1480
-                "rehab", "custom" -> 1788
                 "fakevpn" -> 1790
                 "operaproxy" -> Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
                 "easyvpn" -> 1790
-                "zapret" -> Prefs.zapretPort
                 else -> 1780
             }
             val targetHost = when (provider) {

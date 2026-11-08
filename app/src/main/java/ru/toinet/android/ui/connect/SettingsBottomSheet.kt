@@ -51,41 +51,6 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                     ByeDpiBottomSheet.TAG
                 )
                 dismiss()
-            },
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_server,
-                statusString = "Zapret: ${if (Prefs.zapretEnabled) "ВКЛ" else "ВЫКЛ"}\n(прокси tpws)"
-            ) {
-                ZapretBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    ZapretBottomSheet.TAG
-                )
-                dismiss()
-            },
-            /*
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_send_airplane,
-                statusString = "TGWS: ${if (Prefs.tgwsEnabled) "ВКЛ" else "ВЫКЛ"}\n(порт, маппинги)"
-            ) {
-                TgwsBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    TgwsBottomSheet.TAG
-                )
-                dismiss()
-            },
-            */
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_add_plus,
-                statusString = "SocksRehabilitator: ${if (Prefs.rehabilitatorEnabled) "Вкл" else "Выкл"}\n(${if (Prefs.rehabilitatorUseByeDpi) "SOCKS5 через ByeDPI" else "Прямой SOCKS5"})"
-            ) {
-                RehabilitatorBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    RehabilitatorBottomSheet.TAG
-                )
-                dismiss()
             }
         )
 
@@ -157,11 +122,6 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 proxies.add("TOR (порт 9853)")
                 proxyLinks.add("tg://socks?server=127.0.0.1&port=9853")
 
-                proxies.add("Zapret (порт 1781)")
-                proxyLinks.add("tg://socks?server=127.0.0.1&port=1781")
-
-                proxies.add("Socks Rehab (порт 1788)")
-                proxyLinks.add("tg://socks?server=127.0.0.1&port=1788")
 
                 // proxies.add("TGWS (порт 1480)")
                 // proxyLinks.add("tg://socks?server=127.0.0.1&port=1480")

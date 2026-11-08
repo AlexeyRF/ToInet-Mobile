@@ -11,8 +11,6 @@ object UpstreamProxyCoordinator {
     const val PROVIDER_EASYVPN = "easyvpn"
     const val PROVIDER_BYEDPI = "byedpi"
     const val PROVIDER_TOR = "tor"
-    const val PROVIDER_ZAPRET = "zapret"
-    const val PROVIDER_REHAB = "rehab"
     const val PROVIDER_CUSTOM = "custom"
 
     fun getPortForProvider(provider: String): Int {
@@ -20,8 +18,6 @@ object UpstreamProxyCoordinator {
             PROVIDER_EASYVPN -> Prefs.easyVpnProxyPort
             PROVIDER_BYEDPI -> 1780
             PROVIDER_TOR -> 9853
-            PROVIDER_ZAPRET -> Prefs.zapretPort
-            PROVIDER_REHAB -> 1788
             else -> 1780
         }
     }
@@ -51,14 +47,6 @@ object UpstreamProxyCoordinator {
                     }
                     context.sendIntentToService(intent, isForeground = true)
                 }
-                PROVIDER_ZAPRET -> {
-                    Log.i(TAG, "Ensuring Zapret is started as upstream")
-                    ru.toinet.android.zapret.ZapretService.start(context)
-                }
-                PROVIDER_REHAB -> {
-                    Log.i(TAG, "Ensuring SocksRehabilitator is started as upstream")
-                    ru.toinet.android.rehabilitator.RehabilitatorService.start(context)
-                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start upstream service $provider", e)
@@ -70,8 +58,6 @@ object UpstreamProxyCoordinator {
             PROVIDER_NONE to "Прямое соединение (без upstream)",
             PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:${Prefs.easyVpnProxyPort}) — для белых списков",
             PROVIDER_BYEDPI to "zDPI (127.0.0.1:1780)",
-            PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
-            PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
             PROVIDER_CUSTOM to "Пользовательский SOCKS5 / HTTPS..."
         )
     }
@@ -81,8 +67,6 @@ object UpstreamProxyCoordinator {
             PROVIDER_NONE to "Прямое соединение (без upstream)",
             PROVIDER_TOR to "TOR (127.0.0.1:9853)",
             PROVIDER_BYEDPI to "zDPI (127.0.0.1:1780)",
-            PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
-            PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
             PROVIDER_CUSTOM to "Пользовательский SOCKS5..."
         )
     }
@@ -92,8 +76,6 @@ object UpstreamProxyCoordinator {
             PROVIDER_NONE to "Прямое соединение (без upstream)",
             PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:${Prefs.easyVpnProxyPort})",
             PROVIDER_TOR to "TOR (127.0.0.1:9853)",
-            PROVIDER_ZAPRET to "Zapret (127.0.0.1:${Prefs.zapretPort})",
-            PROVIDER_REHAB to "Socks Rehab (127.0.0.1:1788)",
             PROVIDER_CUSTOM to "Пользовательский SOCKS5..."
         )
     }

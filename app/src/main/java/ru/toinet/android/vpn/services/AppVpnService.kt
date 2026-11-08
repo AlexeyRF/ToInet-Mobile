@@ -33,7 +33,6 @@ class AppVpnService : LifecycleVpnService() {
     private var fakeVpnServer: ru.toinet.android.fakevpn.DirectSocks5Server? = null
     private var dnsProxyServer: ru.toinet.android.dns.DnsProxyServer? = null
     private var easyVpnServer: ru.toinet.android.easyvpn.EasyVpnServer? = null
-    private var zapretServer: ru.toinet.android.zapret.ZapretServer? = null
     private var operaProxyServer: ru.toinet.android.operaproxy.OperaProxyServer? = null
     private var svpnServer: ru.toinet.android.svpn.SvpnServer? = null
     private var appRoutingServer: ru.toinet.android.vpn.rules.AppRoutingServer? = null
@@ -255,14 +254,12 @@ class AppVpnService : LifecycleVpnService() {
         when (provider) {
             "byedpi" -> actualPort = getByeDpiPreferences().port
             "tor" -> actualPort = 9853
-            "rehab", "custom" -> actualPort = 1788
             "fakevpn" -> actualPort = 1790
             "operaproxy" -> {
                 actualHost = "127.0.0.1"
                 actualPort = ru.toinet.android.util.Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
             }
             "easyvpn" -> actualPort = ru.toinet.android.util.Prefs.easyVpnProxyPort
-            "zapret" -> actualPort = ru.toinet.android.util.Prefs.zapretPort
             "svpn", "ssh" -> actualPort = ru.toinet.android.util.Prefs.svpnLocalPort
             else -> actualPort = getByeDpiPreferences().port
         }
@@ -307,11 +304,6 @@ class AppVpnService : LifecycleVpnService() {
             }
             sendIntentToService(byedpiIntent, isForeground = false)
         }
-
-        if (neededProviders.contains("rehab") || neededProviders.contains("custom")) {
-            ru.toinet.android.rehabilitator.RehabilitatorService.start(this)
-        }
-
         if (neededProviders.contains("easyvpn")) {
             if (ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
                 ru.toinet.android.easyvpn.EasyVpnService.stop(this)
@@ -341,12 +333,6 @@ class AppVpnService : LifecycleVpnService() {
             operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this, lifecycleScope)
             operaProxyServer?.start()
         }
-
-        if (neededProviders.contains("zapret")) {
-            zapretServer = ru.toinet.android.zapret.ZapretServer(this, lifecycleScope)
-            zapretServer?.start()
-        }
-
         if (neededProviders.contains("svpn") || neededProviders.contains("ssh")) {
             val server = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope)
             svpnServer = server
@@ -519,25 +505,12 @@ class AppVpnService : LifecycleVpnService() {
         
         dnsProxyServer?.stop()
         dnsProxyServer = null
-
-        zapretServer?.stop()
-        zapretServer = null
-
-        if (ru.toinet.android.zapret.ZapretService.isRunning) {
-            ru.toinet.android.zapret.ZapretService.stop(this)
-        }
-
         svpnServer?.stop()
         svpnServer = null
 
         if (ru.toinet.android.svpn.SvpnService.isRunning) {
             ru.toinet.android.svpn.SvpnService.stop(this)
         }
-
-        if ((stoppedProviders.contains("rehab") || stoppedProviders.contains("custom")) && !ru.toinet.android.util.Prefs.rehabilitatorEnabled) {
-            ru.toinet.android.rehabilitator.RehabilitatorService.stop(this)
-        }
-
         Log.i(TAG, "Tun2socks stopped")
     }
 
@@ -599,10 +572,8 @@ class AppVpnService : LifecycleVpnService() {
             "Состояние Адреса"
         } else if (isAppRouting) "ToInet (Proxifier)" else when (provider) {
             "easyvpn" -> "EasyVPN"
-            "zapret" -> "Zapret"
             "svpn", "ssh" -> "SVPN (SSH)"
             "operaproxy" -> "Opera Proxy"
-            "rehab", "custom" -> "Socks Rehab"
             "fakevpn" -> "FakeVPN"
             "tor" -> "TOR"
             "byedpi" -> getString(R.string.byedpi_notification_title)
@@ -616,11 +587,9 @@ class AppVpnService : LifecycleVpnService() {
         } else if (isAppRouting) "Раздельное туннелирование по правилам" else when (provider) {
             "easyvpn" -> easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
             "tor" -> "Tor VPN запущен"
-            "zapret" -> "Zapret VPN запущен"
             "svpn", "ssh" -> "SVPN (SSH) запущен"
             "operaproxy" -> "Opera Proxy VPN запущен"
             "byedpi" -> "ByeDPI VPN запущен"
-            "rehab", "custom" -> "Socks Rehab VPN запущен"
             "fakevpn" -> "FakeVPN запущен"
             else -> getString(R.string.vpn_notification_content)
         }
@@ -653,10 +622,8 @@ class AppVpnService : LifecycleVpnService() {
         val provider = ru.toinet.android.util.Prefs.vpnProvider
         val sessionName = when (provider) {
             "easyvpn" -> "EasyVPN"
-            "zapret" -> "Zapret"
             "svpn", "ssh" -> "SVPN (SSH)"
             "operaproxy" -> "Opera Proxy"
-            "rehab", "custom" -> "Socks Rehab"
             "fakevpn" -> "FakeVPN"
             "tor" -> "TOR"
             "byedpi" -> "ByeDPI"

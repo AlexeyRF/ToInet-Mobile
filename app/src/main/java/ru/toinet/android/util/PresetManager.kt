@@ -10,7 +10,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import ru.toinet.android.operaproxy.OperaProxyService
-import ru.toinet.android.rehabilitator.RehabilitatorService
 import ru.toinet.android.tgws.TgwsService
 import ru.toinet.android.service.ToInetService
 
@@ -108,19 +107,6 @@ object PresetManager {
             OperaProxyService.stop(context)
             needsDelay = true
         }
-
-        // Zapret
-        if (oldJson.optBoolean("zapret_enabled") && (!newJson.optBoolean("zapret_enabled") || changed(oldJson, newJson, listOf("zapret_port", "zapret_args", "pref_open_proxy_on_all_interfaces")))) {
-            ru.toinet.android.zapret.ZapretService.stop(context)
-            needsDelay = true
-        }
-
-        // Rehabilitator
-        if (oldJson.optBoolean("rehabilitator_enabled") && (!newJson.optBoolean("rehabilitator_enabled") || changed(oldJson, newJson, listOf("rehabilitator_args", "rehabilitator_upstream_host", "rehabilitator_upstream_port", "rehabilitator_username", "rehabilitator_password", "pref_open_proxy_on_all_interfaces")))) {
-            RehabilitatorService.stop(context)
-            needsDelay = true
-        }
-
         // EasyVPN (standalone proxy)
         if (oldJson.optBoolean("easyvpn_proxy_enabled") && (!newJson.optBoolean("easyvpn_proxy_enabled") || changed(oldJson, newJson, listOf("pref_easy_vpn_subs", "pref_open_proxy_on_all_interfaces")))) {
             ru.toinet.android.easyvpn.EasyVpnService.stop(context)

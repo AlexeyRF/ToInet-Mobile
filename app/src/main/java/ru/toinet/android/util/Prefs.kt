@@ -409,27 +409,6 @@ object Prefs {
     var byedpiEnableCmdSettings: Boolean
         get() = cr?.getPrefBoolean("byedpi_enable_cmd_settings", true) ?: true
         set(value) = cr?.putPref("byedpi_enable_cmd_settings", value) ?: Unit
-
-    @JvmStatic
-    var zapretEnabled: Boolean
-        get() = cr?.getPrefBoolean("zapret_enabled", false) ?: false
-        set(value) = cr?.putPref("zapret_enabled", value) ?: Unit
-
-    @JvmStatic
-    var zapretPort: Int
-        get() = cr?.getPrefInt("zapret_port", 1781) ?: 1781
-        set(value) = cr?.putPref("zapret_port", value) ?: Unit
-
-    @JvmStatic
-    var zapretHost: String
-        get() = if (openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
-        set(value) = Unit
-
-    @JvmStatic
-    var zapretArgs: String
-        get() = cr?.getPrefString("zapret_args") ?: "--split-pos=2"
-        set(value) = cr?.putPref("zapret_args", value) ?: Unit
-
     @JvmStatic
     var tgwsEnabled: Boolean
         get() = cr?.getPrefBoolean("tgws_enabled", false) ?: false
@@ -476,12 +455,6 @@ object Prefs {
     var tgwsCfProxyDomains: List<String>
         get() = cr?.getPrefString("tgws_cf_proxy_domains")?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = cr?.putPref("tgws_cf_proxy_domains", value.joinToString(",")) ?: Unit
-
-    @JvmStatic
-    var rehabilitatorEnabled: Boolean
-        get() = cr?.getPrefBoolean("rehabilitator_enabled", false) ?: false
-        set(value) = cr?.putPref("rehabilitator_enabled", value) ?: Unit
-
     @JvmStatic
     var fakeVpnFakeTlsEnabled: Boolean
         get() = cr?.getPrefBoolean("fakevpn_faketls_enabled", false) ?: false
@@ -531,56 +504,6 @@ object Prefs {
     var notificationLogProvider: String
         get() = cr?.getPrefString("notification_log_provider") ?: "none"
         set(value) = cr?.putPref("notification_log_provider", value) ?: Unit
-
-    @JvmStatic
-    var rehabilitatorHost: String
-        get() = if (openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
-        set(value) = Unit
-
-    @JvmStatic
-    var rehabilitatorUpstreamHost: String
-        get() {
-            val s = cr?.getPrefString("rehabilitator_upstream_host")
-            if (!s.isNullOrEmpty()) return s
-            return cr?.getPrefString("custom_socks_ip") ?: ""
-        }
-        set(value) {
-            cr?.putPref("rehabilitator_upstream_host", value)
-            cr?.putPref("custom_socks_ip", value)
-        }
-
-    @JvmStatic
-    var rehabilitatorUpstreamPort: Int
-        get() {
-            val p = cr?.getPrefInt("rehabilitator_upstream_port") ?: 0
-            if (p != 0) return p
-            return cr?.getPrefInt("custom_socks_port", 1780) ?: 1780
-        }
-        set(value) {
-            cr?.putPref("rehabilitator_upstream_port", value)
-            cr?.putPref("custom_socks_port", value)
-        }
-
-    @JvmStatic
-    var rehabilitatorUsername: String
-        get() = cr?.getPrefString("rehabilitator_username") ?: ""
-        set(value) = cr?.putPref("rehabilitator_username", value) ?: Unit
-
-    @JvmStatic
-    var rehabilitatorPassword: String
-        get() = cr?.getPrefString("rehabilitator_password") ?: ""
-        set(value) = cr?.putPref("rehabilitator_password", value) ?: Unit
-
-    @JvmStatic
-    var rehabilitatorArgs: String
-        get() = cr?.getPrefString("rehabilitator_args") ?: "--disorder 1"
-        set(value) = cr?.putPref("rehabilitator_args", value) ?: Unit
-
-    @JvmStatic
-    var rehabilitatorUseByeDpi: Boolean
-        get() = cr?.getPrefBoolean("rehabilitator_use_byedpi", true) ?: true
-        set(value) = cr?.putPref("rehabilitator_use_byedpi", value) ?: Unit
-
     @JvmStatic
     var useDynamicColors: Boolean
         get() = cr?.getPrefBoolean("use_dynamic_colors", true) ?: true
@@ -745,9 +668,7 @@ object Prefs {
             "byedpi" -> byedpiEnabled || (isGlobalVpnEnabled && vpnProvider == "byedpi")
             // "tgws" -> tgwsEnabled || (isGlobalVpnEnabled && vpnProvider == "tgws")
             "fakevpn" -> isGlobalVpnEnabled && vpnProvider == "fakevpn"
-            "rehab" -> rehabilitatorEnabled || (isGlobalVpnEnabled && (vpnProvider == "rehab" || vpnProvider == "custom"))
             "operaproxy" -> (operaProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "operaproxy")) && ArchHelper.isOperaSupported
-            "zapret" -> zapretEnabled || (isGlobalVpnEnabled && vpnProvider == "zapret")
             "easyvpn" -> easyVpnProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "easyvpn")
             "svpn", "ssh" -> svpnEnabled || (isGlobalVpnEnabled && (vpnProvider == "svpn" || vpnProvider == "ssh"))
             else -> false
@@ -767,9 +688,6 @@ object Prefs {
         }
         if (easyVpnProxyEnabled) {
             return serviceKey == "easyvpn"
-        }
-        if (zapretEnabled) {
-            return serviceKey == "zapret"
         }
         if (operaProxyEnabled && ArchHelper.isOperaSupported) {
             return serviceKey == "operaproxy"

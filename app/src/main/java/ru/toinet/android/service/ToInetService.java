@@ -478,8 +478,6 @@ public class ToInetService extends Service {
                     int port = pair.getFirst().getPort();
                     if (port == Prefs.getEasyVpnProxyPort()) upstream = "easyvpn";
                     else if (port == 1780) upstream = "byedpi";
-                    else if (port == Prefs.getZapretPort()) upstream = "zapret";
-                    else if (port == 1788) upstream = "rehab";
                 }
             }
             if (upstream != null && !"none".equals(upstream) && !"custom".equals(upstream)) {

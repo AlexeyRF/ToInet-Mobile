@@ -96,22 +96,6 @@
                 android:text="TOR (порт 9853)" />
 
             <RadioButton
-                android:id="@+id/rbZapret"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="Zapret (порт 1781)" />
-
-            <RadioButton
-                android:id="@+id/rbRehab"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="38dp"
-                android:paddingVertical="2dp"
-                android:text="Socks Rehab (порт 1788)" />
-
-            <RadioButton
                 android:id="@+id/rbTgws"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

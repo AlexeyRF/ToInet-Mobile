@@ -61,9 +61,7 @@ fun Context.sendIntentToService(action: String) {
     val byedpiEnabled = Prefs.byedpiEnabled
     val byedpiMode = Prefs.byedpiMode
     val tgwsEnabled = Prefs.tgwsEnabled
-    val rehabilitatorEnabled = Prefs.rehabilitatorEnabled
     val operaProxyEnabled = Prefs.operaProxyEnabled
-    val zapretEnabled = Prefs.zapretEnabled
     val easyVpnProxyEnabled = Prefs.easyVpnProxyEnabled
     val svpnEnabled = Prefs.svpnEnabled
 
@@ -90,24 +88,6 @@ fun Context.sendIntentToService(action: String) {
             isForeground = !isPing && !isStop && !isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi")
         )
     }
-
-    if (!isGlobalVpnEnabled && zapretEnabled) {
-        if (action == org.torproject.jni.TorService.ACTION_START) {
-            ru.toinet.android.zapret.ZapretService.start(this)
-        } else if (isPing && ru.toinet.android.zapret.ZapretService.isRunning) {
-            try {
-                startService(Intent(this, ru.toinet.android.zapret.ZapretService::class.java).apply {
-                    this.action = "ACTIVE"
-                })
-            } catch (e: Exception) {
-                Log.e("ToInetService", "Failed to ping ZapretService", e)
-            }
-        }
-    }
-    if (action == org.torproject.jni.TorService.ACTION_STOP) {
-        ru.toinet.android.zapret.ZapretService.stop(this)
-    }
-
     if (isGlobalVpnEnabled || action == org.torproject.jni.TorService.ACTION_STOP) {
         val vpnAction = when (action) {
             org.torproject.jni.TorService.ACTION_START -> ru.toinet.android.vpn.data.START_ACTION
@@ -151,16 +131,7 @@ fun Context.sendIntentToService(action: String) {
             ru.toinet.android.tgws.TgwsService.stop(this)
         }
     }
-    */
-
-    if (rehabilitatorEnabled || (isGlobalVpnEnabled && (Prefs.vpnProvider == "rehab" || Prefs.vpnProvider == "custom")) || action == org.torproject.jni.TorService.ACTION_STOP) {
-        if (action == org.torproject.jni.TorService.ACTION_START) {
-            ru.toinet.android.rehabilitator.RehabilitatorService.start(this)
-        } else if (action == org.torproject.jni.TorService.ACTION_STOP) {
-            ru.toinet.android.rehabilitator.RehabilitatorService.stop(this)
-        }
-    }
-    
+    */    
     if (!isGlobalVpnEnabled && operaProxyEnabled && ArchHelper.isOperaSupported) {
         if (action == org.torproject.jni.TorService.ACTION_START) {
             ru.toinet.android.operaproxy.OperaProxyService.start(this)
@@ -221,12 +192,12 @@ fun Context.sendIntentToService(action: String) {
             val isOperaActive = operaProxyEnabled && ArchHelper.isOperaSupported
             val isEasyVpnActive = (!isGlobalVpnEnabled || Prefs.vpnProvider != "easyvpn") && easyVpnProxyEnabled
             val isSvpnActive = (!isGlobalVpnEnabled || (Prefs.vpnProvider != "svpn" && Prefs.vpnProvider != "ssh")) && svpnEnabled
-            if (!isGlobalVpnEnabled && !byedpiEnabled && (rehabilitatorEnabled || isOperaActive || zapretEnabled || isEasyVpnActive || isSvpnActive)) {
+            if (!isGlobalVpnEnabled && !byedpiEnabled && (isOperaActive || isEasyVpnActive || isSvpnActive)) {
                 val intent = Intent(ToInetConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_ON)
                 intent.setPackage(packageName)
                 sendBroadcast(intent)
-            } else if (!isGlobalVpnEnabled && !byedpiEnabled && !rehabilitatorEnabled && !operaProxyEnabled && !zapretEnabled && !isEasyVpnActive && !isSvpnActive) {
+            } else if (!isGlobalVpnEnabled && !byedpiEnabled && !operaProxyEnabled && !isEasyVpnActive && !isSvpnActive) {
                 val intent = Intent(ToInetConstants.LOCAL_ACTION_STATUS)
                 intent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_OFF)
                 intent.setPackage(packageName)

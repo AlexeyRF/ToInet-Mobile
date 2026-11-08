@@ -217,14 +217,6 @@
         <activity
             android:name=".byedpi.ui.TestSettingsActivity"
             android:label="@string/title_settings" />
-        <activity
-            android:name=".zapret.ui.ZapretTestActivity"
-            android:label="Тестирование Zapret" />
-
-        <service
-            android:name=".rehabilitator.RehabilitatorService"
-            android:exported="false" />
-
         <service
             android:name=".operaproxy.OperaProxyService"
             android:enabled="true"
@@ -235,18 +227,6 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Opera Proxy functionality" />
         </service>
-
-        <service
-            android:name=".zapret.ZapretService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="specialUse"
-            android:stopWithTask="false">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Zapret functionality" />
-        </service>
-
         <service
             android:name=".easyvpn.EasyVpnService"
             android:enabled="true"

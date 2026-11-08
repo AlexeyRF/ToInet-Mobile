@@ -13,8 +13,6 @@
     *   Раздельное туннелирование, можно маршрутизировать трафик отдельных приложений
 *   **Tor (ЛМ)**:
     *   Встроенный луковый маршрутизатор.
-*   **Socks-Reabilitator**:
-    *   Прогон SOCKS5-прокси через zDPI, доступен так же режим без десинка.
 *   **FakeVPN**:
     *   Прямое туннелирование с опциональной подменой SNI (FakeTLS).
 *   **Opera Proxy**:
@@ -32,13 +30,11 @@
 | Инструмент             | Порт   | Тип прокси | 
 |:-----------------------|:-------|:-----------|
 | **zDPI (ByeDPI)**      | `1780` | SOCKS5     |
-| **Zapret (zDPI)**      | `1781` | SOCKS5     | 
 | **Tor Socks5**         | `9853` | SOCKS5     |
 | **Tor HTTP**           | `5267` | HTTP       |
 | **Opera-Proxy**        | `1785` | SOCKS5     | 
 | **Easy-VPN (Xray)**    | `1790` | SOCKS5     |
 | **FakeVPN (VLESS)**    | `1790` | SOCKS5     |
-| **Socks-Reabilitator** | `1788` | SOCKS5     |
 | **SVPN (SSH)**         | `1770` | SOCKS5     |
 | **TGWS (Proxy)**       | `1480` | SOCKS5     |
 | **Gatik (TG Router)**  | `1777` | SOCKS5     |

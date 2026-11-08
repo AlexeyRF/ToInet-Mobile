@@ -16,18 +16,6 @@ target_compile_definitions(byedpi PRIVATE ANDROID_APP __ANDROID__)
 target_link_libraries(byedpi PRIVATE android log)
 target_link_options(byedpi PRIVATE "-Wl,--wrap=daemon")
 
-# 2. Standalone executable built as libtpws.so so ZapretService/ProcessBuilder runs zDPI directly
-add_executable(tpws ${ZDPI_SRC})
-set_target_properties(tpws PROPERTIES
-    OUTPUT_NAME "tpws"
-    SUFFIX ".so"
-    PREFIX "lib"
-)
-target_include_directories(tpws PRIVATE zdpi zdpi/crypto .)
-target_compile_options(tpws PRIVATE -std=gnu99 -O2 -Wall -Wno-unused -Wextra -Wno-unused-parameter -ffunction-sections -fdata-sections)
-target_compile_definitions(tpws PRIVATE ANDROID_APP __ANDROID__)
-target_link_libraries(tpws PRIVATE log)
-
 # 3. Standalone executable built as libzdpi.so
 add_executable(zdpi ${ZDPI_SRC})
 set_target_properties(zdpi PROPERTIES
