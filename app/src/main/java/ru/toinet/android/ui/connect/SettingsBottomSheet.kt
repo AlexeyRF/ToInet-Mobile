@@ -105,32 +105,24 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 statusString = "Добавить прокси в Telegram"
             ) {
                 val ctx = requireContext()
+                val tgwsPort = Prefs.tgwsPort
+                val easyVpnPort = Prefs.easyVpnProxyPort
+                val svpnPort = Prefs.svpnLocalPort
+
                 val proxies = arrayListOf(
+                    "TGWS (порт $tgwsPort)",
                     "zDPI (порт 1780)",
-                    "Easy-VPN (порт 1790)"
+                    "Easy-VPN (порт $easyVpnPort)",
+                    "TOR (порт 9853)",
+                    "SVPN / SSH (порт $svpnPort)"
                 )
                 val proxyLinks = arrayListOf(
+                    "tg://socks?server=127.0.0.1&port=$tgwsPort",
                     "tg://socks?server=127.0.0.1&port=1780",
-                    "tg://socks?server=127.0.0.1&port=1790"
+                    "tg://socks?server=127.0.0.1&port=$easyVpnPort",
+                    "tg://socks?server=127.0.0.1&port=9853",
+                    "tg://socks?server=127.0.0.1&port=$svpnPort"
                 )
-                /*
-                if (ArchHelper.isOperaSupported) {
-                    proxies.add("Opera Proxy (порт 1785)")
-                    proxyLinks.add("tg://socks?server=127.0.0.1&port=1785")
-                }
-                */
-                proxies.add("TOR (порт 9853)")
-                proxyLinks.add("tg://socks?server=127.0.0.1&port=9853")
-
-
-                // proxies.add("TGWS (порт 1480)")
-                // proxyLinks.add("tg://socks?server=127.0.0.1&port=1480")
-
-                proxies.add("Easy-VPN (порт 1790)")
-                proxyLinks.add("tg://socks?server=127.0.0.1&port=1790")
-
-                proxies.add("SVPN / SSH (порт ${Prefs.svpnLocalPort})")
-                proxyLinks.add("tg://socks?server=127.0.0.1&port=${Prefs.svpnLocalPort}")
 
                 AlertDialog.Builder(ctx)
                     .setTitle("Выберите прокси для добавления")
