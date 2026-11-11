@@ -49,7 +49,7 @@ object EasyVpnUpdater {
             }
             val code = connDirect.responseCode
             if (code in 200..299) {
-                val data = connDirect.inputStream.bufferedReader().readText()
+                val data = connDirect.inputStream.bufferedReader().use { it.readText() }
                 if (data.isNotBlank()) return@withContext data
             }
         } catch (e: Exception) {
@@ -72,7 +72,7 @@ object EasyVpnUpdater {
                 }
                 val code = connProxy.responseCode
                 if (code in 200..299) {
-                    val data = connProxy.inputStream.bufferedReader().readText()
+                    val data = connProxy.inputStream.bufferedReader().use { it.readText() }
                     if (data.isNotBlank()) return@withContext data
                 }
             } catch (e: Exception) {
@@ -345,7 +345,8 @@ object EasyVpnUpdater {
                 val rawType = node.type.lowercase().trim()
                 val netType = when (rawType) {
                     "raw", "", "tcp" -> "tcp"
-                    "xhttp", "splithttp" -> "splithttp"
+                    "xhttp" -> "xhttp"
+                    "splithttp" -> "splithttp"
                     "httpupgrade" -> "httpupgrade"
                     "ws", "websocket" -> "ws"
                     "grpc" -> "grpc"
@@ -390,7 +391,18 @@ object EasyVpnUpdater {
                     put("network", netType)
                     put("security", sec)
 
-                    val effectiveSni = node.sni.trim().ifEmpty { node.server.trim() }
+                    val rawSni = node.sni.trim()
+                    val isHostIp = node.server.trim().matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))
+                    val effectiveSni = if (rawSni.isNotEmpty() && !rawSni.matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))) {
+                        rawSni
+                    } else if (!isHostIp && node.server.trim().isNotEmpty()) {
+                        node.server.trim()
+                    } else if (sec == "reality") {
+                        "yandex.ru"
+                    } else {
+                        ""
+                    }
+
                     val cleanFp = node.fp.trim().lowercase()
                     val effectiveFp = when (cleanFp) {
                         "chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized" -> cleanFp
@@ -437,7 +449,7 @@ object EasyVpnUpdater {
                     val effectiveHost = node.host.trim().ifEmpty { effectiveSni }
 
                     when (netType) {
-                        "splithttp" -> {
+                        "splithttp", "xhttp" -> {
                             val shObj = JSONObject().apply {
                                 val p = node.path.trim()
                                 val effectivePath = if (p.isNotEmpty() && !p.equals("null", ignoreCase = true)) {
@@ -494,7 +506,7 @@ object EasyVpnUpdater {
                             val grpcObj = JSONObject().apply {
                                 val sName = if (node.serviceName.trim().isNotEmpty() && !node.serviceName.equals("null", ignoreCase = true)) node.serviceName.trim() else "grpc"
                                 put("serviceName", sName)
-                                put("multiMode", true)
+                                put("multiMode", node.mode.contains("multi", ignoreCase = true))
                             }
                             put("grpcSettings", grpcObj)
                         }
@@ -554,7 +566,9 @@ object EasyVpnUpdater {
         outbounds.put(JSONObject().apply {
             put("tag", "direct")
             put("protocol", "freedom")
-            put("settings", JSONObject())
+            put("settings", JSONObject().apply {
+                put("domainStrategy", "UseIP")
+            })
         })
 
         // Blackhole outbound to silently drop blocked protocols like QUIC/UDP 443
@@ -591,7 +605,7 @@ object EasyVpnUpdater {
                 put("observatory", JSONObject().apply {
                     put("subjectSelector", JSONArray().apply { put("proxy-") })
                     put("probeURL", "https://www.google.com/generate_204")
-                    put("probeInterval", "20s")
+                    put("probeInterval", "15s")
                     put("enableConcurrency", true)
                 })
             }
@@ -611,7 +625,10 @@ object EasyVpnUpdater {
                         put("destOverride", JSONArray().apply {
                             put("http")
                             put("tls")
+                            put("quic")
                         })
+                        put("metadataOnly", false)
+                        put("routeOnly", false)
                     })
                 })
             })
@@ -619,7 +636,7 @@ object EasyVpnUpdater {
             put("outbounds", outbounds)
 
             put("routing", JSONObject().apply {
-                put("domainStrategy", "AsIs")
+                put("domainStrategy", "IPIfNonMatch")
                 val rulesArray = JSONArray()
 
                 // Drop QUIC (UDP 443) traffic so browsers immediately fall back to TCP TLS without resets/hangs
@@ -631,19 +648,29 @@ object EasyVpnUpdater {
                     put("outboundTag", "block")
                 })
 
+                // Direct DNS queries
+                rulesArray.put(JSONObject().apply {
+                    put("type", "field")
+                    put("inboundTag", JSONArray().apply { put("socks-in") })
+                    put("port", "53")
+                    put("outboundTag", "direct")
+                })
+
                 if (proxyTags.length() > 0) {
                     put("balancers", JSONArray().apply {
                         put(JSONObject().apply {
                             put("tag", "balancer")
                             put("selector", JSONArray().apply { put("proxy-") })
                             put("strategy", JSONObject().apply {
-                                put("type", "random")
+                                put("type", "leastPing")
                             })
                             put("fallbackTag", effectiveTargetTag ?: firstTag ?: "direct")
                         })
                     })
 
-                    if (effectiveTargetTag != null) {
+                    // If user explicitly selected a specific server (e.g. via switch server), route to it;
+                    // otherwise (default / activeNodeIndex < 0), use balancer with leastPing for automatic resilience
+                    if (activeNodeIndex >= 0 && effectiveTargetTag != null) {
                         rulesArray.put(JSONObject().apply {
                             put("type", "field")
                             put("inboundTag", JSONArray().apply { put("socks-in") })

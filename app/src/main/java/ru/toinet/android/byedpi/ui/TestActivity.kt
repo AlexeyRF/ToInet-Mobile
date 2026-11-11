@@ -34,6 +34,12 @@ import ru.toinet.android.vpn.utility.mode
 import kotlinx.coroutines.*
 import java.io.File
 
+import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.NetworkUtils
+import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.vpn.data.ServiceStatus
+import ru.toinet.android.byedpi.services.ByeDpiProxyService
+
 class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
     private lateinit var strategiesRecyclerView: RecyclerView
@@ -77,8 +83,11 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         disclaimerTextView = findViewById(R.id.disclaimerTextView)
 
         strategyAdapter = StrategyResultAdapter(this,
-            onApply = { command ->
-                addToHistory(command)
+            onApplyWifi = { command ->
+                applyStrategyForNetwork(command, isWifi = true)
+            },
+            onApplyMobile = { command ->
+                applyStrategyForNetwork(command, isWifi = false)
             }
         )
 
@@ -409,17 +418,39 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         }
     }
 
-    private fun addToHistory(command: String) {
+    private fun applyStrategyForNetwork(command: String, isWifi: Boolean) {
         lifecycleScope.launch(Dispatchers.IO) {
             cmdHistoryUtils.addCommand(command)
-            withContext(Dispatchers.Main) {
-                if (command.contains("\"TOR\"") && !ru.toinet.android.util.Prefs.torEnabled) {
-                    Toast.makeText(applicationContext, "Внимание: используется маршрутизация через TOR, но TOR отключен в настройках!", Toast.LENGTH_LONG).show()
+
+            val targetNetworkName = if (isWifi) "Wi-Fi" else "Мобильной сети"
+            if (isWifi) {
+                Prefs.byedpiWifiArgs = command
+            } else {
+                Prefs.byedpiMobileArgs = command
+            }
+            Prefs.byedpiEnableCmdSettings = true
+
+            val isCurrentlyWifi = NetworkUtils.isWifiConnected(this@TestActivity)
+            val isCurrentNetworkTarget = (isWifi == isCurrentlyWifi)
+
+            if (isCurrentNetworkTarget) {
+                Prefs.byedpiArgs = command
+                if (ByeDpiProxyService.status == ServiceStatus.Connected) {
+                    val restartIntent = Intent(this@TestActivity, ByeDpiProxyService::class.java).apply {
+                        action = ByeDpiProxyService.ACTION_RESTART
+                        putExtra("is_foreground", !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi"))
+                    }
+                    sendIntentToService(restartIntent, isForeground = false)
                 }
-                val intent = Intent()
-                intent.putExtra("strategy", command)
-                setResult(RESULT_OK, intent)
-                finish()
+            }
+
+            withContext(Dispatchers.Main) {
+                val activeNotice = if (isCurrentNetworkTarget && ByeDpiProxyService.status == ServiceStatus.Connected) {
+                    " (перезапущен)"
+                } else if (isCurrentNetworkTarget) {
+                    " (текущая активная сеть)"
+                } else ""
+                Toast.makeText(this@TestActivity, "Стратегия сохранена для $targetNetworkName$activeNotice", Toast.LENGTH_SHORT).show()
             }
         }
     }

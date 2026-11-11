@@ -5,6 +5,7 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -20,7 +21,8 @@ import ru.toinet.android.byedpi.utility.ClipboardUtils
 
 class StrategyResultAdapter(
     private val context: Context,
-    private val onApply: (String) -> Unit
+    private val onApplyWifi: (String) -> Unit,
+    private val onApplyMobile: (String) -> Unit
 ) : RecyclerView.Adapter<StrategyResultAdapter.StrategyViewHolder>() {
 
     private var isTesting = false
@@ -34,6 +36,8 @@ class StrategyResultAdapter(
         val expandButton: LinearLayout = view.findViewById(R.id.expandButton)
         val expandTextView: TextView = view.findViewById(R.id.expandTextView)
         val expandIcon: ImageView = view.findViewById(R.id.expandIcon)
+        val btnApplyWifi: Button = view.findViewById(R.id.btnApplyWifi)
+        val btnApplyMobile: Button = view.findViewById(R.id.btnApplyMobile)
         val sitesRecyclerView: RecyclerView = view.findViewById(R.id.sitesRecyclerView)
     }
 
@@ -45,6 +49,20 @@ class StrategyResultAdapter(
             val position = holder.bindingAdapterPosition
             if (position != RecyclerView.NO_POSITION) {
                 showCommandMenu(strategies[position].command)
+            }
+        }
+
+        holder.btnApplyWifi.setOnClickListener {
+            val position = holder.bindingAdapterPosition
+            if (position != RecyclerView.NO_POSITION) {
+                onApplyWifi(strategies[position].command)
+            }
+        }
+
+        holder.btnApplyMobile.setOnClickListener {
+            val position = holder.bindingAdapterPosition
+            if (position != RecyclerView.NO_POSITION) {
+                onApplyMobile(strategies[position].command)
             }
         }
 
@@ -169,7 +187,8 @@ class StrategyResultAdapter(
 
     private fun showCommandMenu(command: String) {
         val menuItems = arrayOf(
-            context.getString(R.string.cmd_history_apply),
+            "Применить для Wi-Fi",
+            "Применить для Мобильной сети",
             context.getString(R.string.cmd_history_copy)
         )
 
@@ -177,8 +196,9 @@ class StrategyResultAdapter(
             .setTitle(context.getString(R.string.cmd_history_menu))
             .setItems(menuItems) { _, which ->
                 when (which) {
-                    0 -> onApply(command)
-                    1 -> ClipboardUtils.copy(context, command, "command")
+                    0 -> onApplyWifi(command)
+                    1 -> onApplyMobile(command)
+                    2 -> ClipboardUtils.copy(context, command, "command")
                 }
             }
             .show()

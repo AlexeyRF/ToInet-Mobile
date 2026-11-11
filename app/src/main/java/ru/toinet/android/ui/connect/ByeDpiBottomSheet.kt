@@ -1,9 +1,12 @@
 package ru.toinet.android.ui.connect
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.byedpi.services.ByeDpiProxyService
@@ -11,6 +14,7 @@ import ru.toinet.android.databinding.ByedpiBottomSheetBinding
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.NetworkUtils
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.UpstreamProxyCoordinator
 import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.vpn.data.ServiceStatus
 
@@ -46,47 +50,34 @@ class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         val upstreamOptions = listOf(
-            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:${Prefs.easyVpnProxyPort})",
-            ru.toinet.android.util.UpstreamProxyCoordinator.PROVIDER_TOR to "TOR (127.0.0.1:9853)",
+            UpstreamProxyCoordinator.PROVIDER_EASYVPN to "Easy-VPN (127.0.0.1:${Prefs.easyVpnProxyPort})",
+            UpstreamProxyCoordinator.PROVIDER_TOR to "TOR (127.0.0.1:9853)",
         )
         val upstreamTitles = upstreamOptions.map { it.second }
-        val upstreamAdapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, upstreamTitles)
+        val upstreamAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, upstreamTitles)
         binding.spByeDpiUpstreamProvider.adapter = upstreamAdapter
 
         val curProvider = Prefs.byedpiUpstreamProvider
         val curIndex = upstreamOptions.indexOfFirst { it.first == curProvider }.coerceAtLeast(0)
         binding.spByeDpiUpstreamProvider.setSelection(curIndex)
 
-        val testActivityLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == android.app.Activity.RESULT_OK) {
-                val strategy = result.data?.getStringExtra("strategy")
-                if (strategy != null) {
-                    val isCurrentWifi = NetworkUtils.isWifiConnected(requireContext())
-                    val options = arrayOf(
-                        "Для Wi-Fi${if (isCurrentWifi) " (текущая сеть)" else ""}",
-                        "Для Мобильной сети${if (!isCurrentWifi) " (текущая сеть)" else ""}",
-                        "Для обеих сетей"
-                    )
-                    AlertDialog.Builder(requireContext())
-                        .setTitle("Куда применить найденную стратегию?")
-                        .setItems(options) { _, which ->
-                            when (which) {
-                                0 -> binding.etWifiArgs.setText(strategy)
-                                1 -> binding.etMobileArgs.setText(strategy)
-                                2 -> {
-                                    binding.etWifiArgs.setText(strategy)
-                                    binding.etMobileArgs.setText(strategy)
-                                }
-                            }
-                        }
-                        .setNegativeButton("Отмена", null)
-                        .show()
-                }
-            }
+        fun saveCommonSettings() {
+            Prefs.byedpiEnabled = binding.swEnabled.isChecked
+            Prefs.byedpiEnableCmdSettings = true
+            Prefs.byedpiUpstreamEnabled = binding.swByeDpiUpstreamEnabled.isChecked
+            val chosen = upstreamOptions[binding.spByeDpiUpstreamProvider.selectedItemPosition].first
+            Prefs.byedpiUpstreamProvider = chosen
+            Prefs.byedpiUpstreamHost = "127.0.0.1"
+            Prefs.byedpiUpstreamPort = UpstreamProxyCoordinator.getPortForProvider(chosen)
+        }
+
+        val testActivityLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { _ ->
+            binding.etWifiArgs.setText(Prefs.byedpiWifiArgs)
+            binding.etMobileArgs.setText(Prefs.byedpiMobileArgs)
         }
 
         binding.btnTest.setOnClickListener {
-            val intent = android.content.Intent(requireContext(), ru.toinet.android.byedpi.ui.TestActivity::class.java)
+            val intent = Intent(requireContext(), ru.toinet.android.byedpi.ui.TestActivity::class.java)
             testActivityLauncher.launch(intent)
         }
 
@@ -97,29 +88,23 @@ class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
             val newWifiArgs = binding.etWifiArgs.text.toString().trim()
             val newMobileArgs = binding.etMobileArgs.text.toString().trim()
 
-            Prefs.byedpiEnabled = binding.swEnabled.isChecked
             Prefs.byedpiWifiArgs = newWifiArgs
             Prefs.byedpiMobileArgs = newMobileArgs
             Prefs.byedpiArgs = Prefs.getCurrentByedpiArgs(requireContext())
-            Prefs.byedpiEnableCmdSettings = true
-
-            Prefs.byedpiUpstreamEnabled = binding.swByeDpiUpstreamEnabled.isChecked
-            val chosen = upstreamOptions[binding.spByeDpiUpstreamProvider.selectedItemPosition].first
-            Prefs.byedpiUpstreamProvider = chosen
-            Prefs.byedpiUpstreamHost = "127.0.0.1"
-            Prefs.byedpiUpstreamPort = ru.toinet.android.util.UpstreamProxyCoordinator.getPortForProvider(chosen)
+            saveCommonSettings()
 
             // If zDPI is running and the active strategy changed, reload it
             val isCurrentWifi = NetworkUtils.isWifiConnected(requireContext())
             val activeChanged = if (isCurrentWifi) oldWifiArgs != newWifiArgs else oldMobileArgs != newMobileArgs
             if (ByeDpiProxyService.status == ServiceStatus.Connected && activeChanged) {
-                val restartIntent = android.content.Intent(requireContext(), ByeDpiProxyService::class.java).apply {
+                val restartIntent = Intent(requireContext(), ByeDpiProxyService::class.java).apply {
                     action = ByeDpiProxyService.ACTION_RESTART
                     putExtra("is_foreground", !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi"))
                 }
                 requireContext().sendIntentToService(restartIntent, isForeground = false)
             }
 
+            Toast.makeText(requireContext(), "Настройки zDPI сохранены", Toast.LENGTH_SHORT).show()
             viewModel.triggerRefreshMenuList()
             dismiss()
         }
