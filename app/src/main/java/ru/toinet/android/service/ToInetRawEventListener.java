@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 
+@SuppressWarnings("deprecation")
 public class ToInetRawEventListener implements RawEventListener {
     private final ToInetService mService;
     private long mTotalBandwidthWritten, mTotalBandwidthRead;
@@ -118,6 +119,7 @@ public class ToInetRawEventListener implements RawEventListener {
             return nf.format(Math.round(((float) ((int) (bitsPerSecond * 100 / 1024 / 1024)) / 100))) + context.getString(R.string.mebibyte_per_second);
     }
 
+    @SuppressWarnings("deprecation")
     private void handleBandwidth(long read, long written) {
         String message = formatBandwidthCount(mService, read) + " ↓ / " + formatBandwidthCount(mService, written) + " ↑";
 

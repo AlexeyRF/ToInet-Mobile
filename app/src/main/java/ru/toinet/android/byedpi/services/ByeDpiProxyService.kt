@@ -32,7 +32,12 @@ class ByeDpiProxyService : LifecycleService() {
         private const val FOREGROUND_SERVICE_ID: Int = 1
         private const val NOTIFICATION_CHANNEL_ID: String = "ByeDPI Proxy"
 
-        private var status: ServiceStatus = ServiceStatus.Disconnected
+        const val ACTION_RESTART = "ru.toinet.android.byedpi.RESTART"
+        var currentRunningArgs: String? = null
+            private set
+
+        var status: ServiceStatus = ServiceStatus.Disconnected
+            private set
     }
 
     override fun onCreate() {
@@ -65,6 +70,15 @@ class ByeDpiProxyService : LifecycleService() {
             STOP_ACTION -> {
                 lifecycleScope.launch { stop() }
                 START_NOT_STICKY
+            }
+
+            ACTION_RESTART -> {
+                lifecycleScope.launch {
+                    stop()
+                    kotlinx.coroutines.delay(300)
+                    start()
+                }
+                START_STICKY
             }
 
             "ACTIVE" -> {
@@ -167,7 +181,8 @@ class ByeDpiProxyService : LifecycleService() {
             } catch (_: Exception) {}
         }
 
-        var cmdStrOriginal = ru.toinet.android.util.Prefs.byedpiArgs.ifBlank { "--preset general" }
+        var cmdStrOriginal = ru.toinet.android.util.Prefs.getCurrentByedpiArgs(this).ifBlank { "--preset general" }
+        currentRunningArgs = cmdStrOriginal
         val subUrl = ru.toinet.android.util.Prefs.byedpiSubscriptionUrl
         if (subUrl.isNotBlank()) {
             try {
@@ -257,6 +272,7 @@ class ByeDpiProxyService : LifecycleService() {
         proxyJob?.cancel()
         proxyJob?.join()
         proxyJob = null
+        currentRunningArgs = null
 
         Log.i(TAG, "Proxy stopped")
     }

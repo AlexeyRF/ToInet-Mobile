@@ -360,6 +360,7 @@ public class ToInetService extends Service {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void configLanguage() {
         var config = getApplicationContext().getResources().getConfiguration();
         Prefs.setContext(getApplicationContext());
@@ -794,7 +795,7 @@ public class ToInetService extends Service {
                     var userIsQuittingToInet = mIntent.getBooleanExtra(ACTION_STOP_FOREGROUND_TASK, false);
                     stopTorAsync(!userIsQuittingToInet);
                 }
-                case ACTION_STOP_FOREGROUND_TASK -> stopForeground(true);
+                case ACTION_STOP_FOREGROUND_TASK -> ServiceCompat.stopForeground(ToInetService.this, ServiceCompat.STOP_FOREGROUND_REMOVE);
                 case ACTION_STATUS -> {
                     replyWithStatus(mIntent);
                 }

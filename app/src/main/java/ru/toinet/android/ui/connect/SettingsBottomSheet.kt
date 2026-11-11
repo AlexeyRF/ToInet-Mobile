@@ -163,7 +163,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,
-                statusString = "Настройки приложения\n(тема, оформление, уведомления, сценарии)"
+                statusString = "Настройки приложения\n(тема, оформление, уведомления)"
             ) {
                 AppSettingsBottomSheet().show(
                     parentFragmentManager,

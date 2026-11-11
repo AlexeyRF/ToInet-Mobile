@@ -89,6 +89,19 @@ class AppVpnService : LifecycleVpnService() {
 
     override fun onDestroy() {
         stopWatchdog()
+        if (tunFd != null) {
+            try {
+                tunFd?.close()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to close tunFd in onDestroy", e)
+            }
+            tunFd = null
+        }
+        val dir = filesDir.absolutePath
+        ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/tun2socks.pid")
+        ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/pdnsd.pid")
+        appRoutingServer?.stop()
+        appRoutingServer = null
         if (activeService == this) {
             activeService = null
         }
@@ -385,73 +398,86 @@ class AppVpnService : LifecycleVpnService() {
 
         this.tunFd = fd
 
-        val dnsPort = if (provider == "svpn" || provider == "ssh") ru.toinet.android.util.Prefs.svpnDnsPort else 53
-        ru.toinet.android.vpn.utility.VpnUtility.makePdnsdConf(this, dns, dnsPort)
+        var startupSuccess = false
+        try {
+            val dnsPort = if (provider == "svpn" || provider == "ssh") ru.toinet.android.util.Prefs.svpnDnsPort else 53
+            ru.toinet.android.vpn.utility.VpnUtility.makePdnsdConf(this, dns, dnsPort)
 
-        ru.toinet.android.vpn.utility.VpnUtility.exec(arrayOf(
-            "$libDir/libpdnsd.so",
-            "-c",
-            "$dir/pdnsd.conf"
-        ))
+            ru.toinet.android.vpn.utility.VpnUtility.exec(arrayOf(
+                "$libDir/libpdnsd.so",
+                "-c",
+                "$dir/pdnsd.conf"
+            ))
 
-        val command = if (isAppRouting) {
-            mutableListOf(
-                "$libDir/libtun2socks.so",
-                "--netif-ipaddr", "26.26.26.2",
-                "--netif-netmask", "255.255.255.0",
-                "--socks-server-addr", "127.0.0.1:10850",
-                "--tunfd", fd.fd.toString(),
-                "--tunmtu", "1500",
-                "--loglevel", "3",
-                "--pid", "$dir/tun2socks.pid",
-                "--dnsgw", "26.26.26.1:8091",
-                "--username", "toinet",
-                "--password", "toinet",
-                "--append-source-to-username"
-            )
-        } else {
-            mutableListOf(
-                "$libDir/libtun2socks.so",
-                "--netif-ipaddr", "26.26.26.2",
-                "--netif-netmask", "255.255.255.0",
-                "--socks-server-addr", socksAddr,
-                "--tunfd", fd.fd.toString(),
-                "--tunmtu", "1500",
-                "--loglevel", "3",
-                "--pid", "$dir/tun2socks.pid",
-                "--dnsgw", "26.26.26.1:8091"
-            )
-        }
-        
-        if (hasExternalIpv6) {
-            command.add("--netif-ip6addr")
-            command.add("fdfe:dcba:9876::2")
-        }
-
-        if (ru.toinet.android.vpn.utility.VpnUtility.exec(command.toTypedArray()) != 0) {
-            stopTun2Socks()
-            throw IllegalStateException("Failed to start tun2socks")
-        }
-
-        var attempts = 0
-        var success = false
-        while (attempts < 25) {
-            if (ru.toinet.android.vpn.utility.VpnSystem.sendfd(fd.fd) != -1) {
-                success = true
-                break
+            val command = if (isAppRouting) {
+                mutableListOf(
+                    "$libDir/libtun2socks.so",
+                    "--netif-ipaddr", "26.26.26.2",
+                    "--netif-netmask", "255.255.255.0",
+                    "--socks-server-addr", "127.0.0.1:10850",
+                    "--tunfd", fd.fd.toString(),
+                    "--tunmtu", "1500",
+                    "--loglevel", "3",
+                    "--pid", "$dir/tun2socks.pid",
+                    "--dnsgw", "26.26.26.1:8091",
+                    "--username", "toinet",
+                    "--password", "toinet",
+                    "--append-source-to-username"
+                )
+            } else {
+                mutableListOf(
+                    "$libDir/libtun2socks.so",
+                    "--netif-ipaddr", "26.26.26.2",
+                    "--netif-netmask", "255.255.255.0",
+                    "--socks-server-addr", socksAddr,
+                    "--tunfd", fd.fd.toString(),
+                    "--tunmtu", "1500",
+                    "--loglevel", "3",
+                    "--pid", "$dir/tun2socks.pid",
+                    "--dnsgw", "26.26.26.1:8091"
+                )
             }
-            attempts++
-            try {
-                Thread.sleep(200)
-            } catch (e: Exception) {}
-        }
-        if (!success) {
-            stopTun2Socks()
-            throw IllegalStateException("Failed to send fd")
-        }
+            
+            if (hasExternalIpv6) {
+                command.add("--netif-ip6addr")
+                command.add("fdfe:dcba:9876::2")
+            }
 
-        Log.i(TAG, "Tun2Socks started")
-        startWatchdog()
+            if (ru.toinet.android.vpn.utility.VpnUtility.exec(command.toTypedArray()) != 0) {
+                throw IllegalStateException("Failed to start tun2socks")
+            }
+
+            var attempts = 0
+            var success = false
+            while (attempts < 25) {
+                if (ru.toinet.android.vpn.utility.VpnSystem.sendfd(fd.fd) != -1) {
+                    success = true
+                    break
+                }
+                attempts++
+                try {
+                    Thread.sleep(200)
+                } catch (e: Exception) {}
+            }
+            if (!success) {
+                throw IllegalStateException("Failed to send fd")
+            }
+
+            Log.i(TAG, "Tun2Socks started")
+            startWatchdog()
+            startupSuccess = true
+        } finally {
+            if (!startupSuccess) {
+                Log.e(TAG, "Failed to start tun2socks, ensuring tunFd is closed and resources are freed")
+                try {
+                    fd.close()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to close fd on startup failure", e)
+                }
+                this.tunFd = null
+                stopTun2Socks()
+            }
+        }
     }
 
     private fun stopTun2Socks() {
@@ -462,8 +488,13 @@ class AppVpnService : LifecycleVpnService() {
         ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/tun2socks.pid")
         ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/pdnsd.pid")
 
-        tunFd?.close() ?: Log.w(TAG, "VPN not running")
-        tunFd = null
+        try {
+            tunFd?.close() ?: Log.w(TAG, "VPN not running")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to close tunFd", e)
+        } finally {
+            tunFd = null
+        }
 
         appRoutingServer?.stop()
         appRoutingServer = null

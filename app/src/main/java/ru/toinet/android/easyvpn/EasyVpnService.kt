@@ -9,6 +9,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -59,7 +60,30 @@ class EasyVpnService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        if (intent == null) {
+            if (Prefs.isProviderActive("easyvpn")) {
+                val isForeground = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("easyvpn")
+                if (isForeground) {
+                    startForegroundNotification()
+                }
+                if (server == null) {
+                    server = EasyVpnServer(this, scope).apply {
+                        onServerChanged = {
+                            if (Prefs.shouldServiceShowNotification("easyvpn")) {
+                                val nm = getSystemService(NotificationManager::class.java)
+                                nm?.notify(NOTIFICATION_ID, buildNotification())
+                            }
+                        }
+                    }
+                }
+                server?.start()
+                return START_STICKY
+            } else {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        }
+        when (intent.action) {
             ACTION_START -> {
                 val isForeground = intent.getBooleanExtra("is_foreground", false) ||
                         (!Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("easyvpn"))
@@ -93,12 +117,7 @@ class EasyVpnService : Service() {
             ACTION_STOP, ru.toinet.android.vpn.data.STOP_ACTION -> {
                 server?.stop()
                 server = null
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                } else {
-                    @Suppress("DEPRECATION")
-                    stopForeground(true)
-                }
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
             }

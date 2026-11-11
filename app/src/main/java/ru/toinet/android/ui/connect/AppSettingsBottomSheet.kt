@@ -107,20 +107,6 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 statusString = "Общий лог работы"
             ) {
                 showGeneralLog()
-            },
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_autorenew,
-                statusString = "Сценарии перезапуска (Wi-Fi / Мобильная)\nРежим: ${
-                    when (Prefs.networkSwitchMode) {
-                        "disabled" -> "Отключено"
-                        "restart_all" -> "Жесткий (Перезапуск)"
-                        else -> "Мягкий (Умный)"
-                    }
-                }"
-            ) {
-                NetworkPresetsBottomSheet().show(parentFragmentManager, NetworkPresetsBottomSheet.TAG)
-                dismiss()
             }
         )
 

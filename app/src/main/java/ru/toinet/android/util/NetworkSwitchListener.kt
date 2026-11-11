@@ -1,10 +1,13 @@
 package ru.toinet.android.util
 
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.util.Log
+import ru.toinet.android.byedpi.services.ByeDpiProxyService
+import ru.toinet.android.vpn.data.ServiceStatus
 
 object NetworkSwitchListener {
     private const val TAG = "NetworkSwitchListener"
@@ -19,26 +22,20 @@ object NetworkSwitchListener {
             connectivityManager.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
                     val currentType = when {
-                        networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> 0
+                        networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                                networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> 0
                         networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> 1
                         else -> -1
                     }
 
                     if (currentType != -1 && currentType != lastNetworkType) {
-                        if (lastNetworkType != -1) { // Ignore the very first callback at startup
-                            Log.i(TAG, "Default network switched! New type: ${if (currentType == 0) "WIFI" else "CELLULAR"}")
-                            if (Prefs.networkSwitchMode == "disabled") {
-                                Log.i(TAG, "Network profile switching is disabled.")
-                            } else {
-                                val presetJson = if (currentType == 0) Prefs.wifiPreset else Prefs.mobilePreset
-                                if (presetJson.isNotBlank()) {
-                                    PresetManager.applySnapshot(context, presetJson)
-                                } else {
-                                    Log.i(TAG, "No preset saved for this network type.")
-                                }
-                            }
-                        }
+                        val prevType = lastNetworkType
                         lastNetworkType = currentType
+                        if (prevType != -1) { // Ignore initial registration event
+                            val typeName = if (currentType == 0) "Wi-Fi" else "Мобильная сеть"
+                            Log.i(TAG, "Default network switched to $typeName")
+                            checkAndSwitchZdpiStrategy(context, currentType, typeName)
+                        }
                     }
                 }
 
@@ -51,5 +48,39 @@ object NetworkSwitchListener {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to register network callback", e)
         }
+    }
+
+    private fun checkAndSwitchZdpiStrategy(context: Context, networkType: Int, typeName: String) {
+        val isZdpiActive = ByeDpiProxyService.status == ServiceStatus.Connected ||
+                (Prefs.isGlobalVpnEnabled && Prefs.vpnProvider == "byedpi") ||
+                (Prefs.isGlobalVpnEnabled && Prefs.appRoutingEnabled &&
+                        try { ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().contains("byedpi") } catch (_: Throwable) { false })
+
+        if (!isZdpiActive) {
+            Log.d(TAG, "zDPI is not active, skipping strategy switch")
+            return
+        }
+
+        val newStrategy = if (networkType == 0) {
+            Prefs.byedpiWifiArgs
+        } else {
+            Prefs.byedpiMobileArgs
+        }.ifBlank { "--preset general" }
+
+        val currentStrategy = ByeDpiProxyService.currentRunningArgs
+
+        if (currentStrategy != null && currentStrategy == newStrategy) {
+            Log.i(TAG, "zDPI strategy for $typeName is already active: $newStrategy")
+            return
+        }
+
+        Log.i(TAG, "Switching zDPI strategy for $typeName to: $newStrategy")
+        NotificationLogger.log(context, "byedpi", "Смена сети на $typeName: переключение стратегии zDPI...")
+
+        val intent = Intent(context, ByeDpiProxyService::class.java).apply {
+            action = ByeDpiProxyService.ACTION_RESTART
+            putExtra("is_foreground", !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi"))
+        }
+        context.sendIntentToService(intent, isForeground = false)
     }
 }

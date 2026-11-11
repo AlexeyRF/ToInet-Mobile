@@ -504,29 +504,27 @@ object Prefs {
         set(value) = cr?.putPref("theme_mode", value) ?: Unit
 
     @JvmStatic
-    var wifiPreset: String
-        get() = cr?.getPrefString("preset_wifi") ?: ""
-        set(value) = cr?.putPref("preset_wifi", value) ?: Unit
+    var byedpiWifiArgs: String
+        get() {
+            val v = cr?.getPrefString("pref_byedpi_wifi_args")?.trim() ?: ""
+            return if (v.isEmpty()) byedpiArgs else v
+        }
+        set(value) = cr?.putPref("pref_byedpi_wifi_args", value) ?: Unit
 
     @JvmStatic
-    var mobilePreset: String
-        get() = cr?.getPrefString("preset_mobile") ?: ""
-        set(value) = cr?.putPref("preset_mobile", value) ?: Unit
+    var byedpiMobileArgs: String
+        get() {
+            val v = cr?.getPrefString("pref_byedpi_mobile_args")?.trim() ?: ""
+            return if (v.isEmpty()) byedpiArgs else v
+        }
+        set(value) = cr?.putPref("pref_byedpi_mobile_args", value) ?: Unit
 
     @JvmStatic
-    var universalTgProxyEnabled: Boolean
-        get() = cr?.getPrefBoolean("universal_tg_proxy_enabled", false) ?: false
-        set(value) = cr?.putPref("universal_tg_proxy_enabled", value) ?: Unit
-
-    @JvmStatic
-    var universalTgProxyProvider: String
-        get() = cr?.getPrefString("universal_tg_proxy_provider") ?: "tor"
-        set(value) = cr?.putPref("universal_tg_proxy_provider", value) ?: Unit
-
-    @JvmStatic
-    var networkSwitchMode: String
-        get() = cr?.getPrefString("network_switch_mode") ?: "smart_switch"
-        set(value) = cr?.putPref("network_switch_mode", value) ?: Unit
+    fun getCurrentByedpiArgs(context: Context): String {
+        val isWifi = NetworkUtils.isWifiConnected(context)
+        val preferred = if (isWifi) byedpiWifiArgs else byedpiMobileArgs
+        return if (preferred.isNotBlank()) preferred else byedpiArgs
+    }
 
     @JvmStatic
     var customVpnDns: String
@@ -604,18 +602,18 @@ object Prefs {
 
     @JvmStatic
     var svpnPassword: String
-        get() = cr?.getPrefString("pref_svpn_password") ?: ""
-        set(value) = cr?.putPref("pref_svpn_password", value) ?: Unit
+        get() = SecureStorage.decrypt(cr?.getPrefString("pref_svpn_password") ?: "")
+        set(value) = cr?.putPref("pref_svpn_password", SecureStorage.encrypt(value)) ?: Unit
 
     @JvmStatic
     var svpnPrivateKey: String
-        get() = cr?.getPrefString("pref_svpn_private_key") ?: ""
-        set(value) = cr?.putPref("pref_svpn_private_key", value) ?: Unit
+        get() = SecureStorage.decrypt(cr?.getPrefString("pref_svpn_private_key") ?: "")
+        set(value) = cr?.putPref("pref_svpn_private_key", SecureStorage.encrypt(value)) ?: Unit
 
     @JvmStatic
     var svpnKeyPassphrase: String
-        get() = cr?.getPrefString("pref_svpn_key_passphrase") ?: ""
-        set(value) = cr?.putPref("pref_svpn_key_passphrase", value) ?: Unit
+        get() = SecureStorage.decrypt(cr?.getPrefString("pref_svpn_key_passphrase") ?: "")
+        set(value) = cr?.putPref("pref_svpn_key_passphrase", SecureStorage.encrypt(value)) ?: Unit
 
     @JvmStatic
     var svpnLocalPort: Int

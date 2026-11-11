@@ -3,8 +3,6 @@ package ru.toinet.android.receivers
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
-import ru.toinet.android.util.PresetManager
-import ru.toinet.android.util.Prefs
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
