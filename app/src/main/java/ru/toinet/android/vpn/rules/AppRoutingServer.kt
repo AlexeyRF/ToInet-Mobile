@@ -45,6 +45,10 @@ class AppRoutingServer(
                 while (isActive && isRunning.get()) {
                     try {
                         val client = s.accept()
+                        if (!isRunning.get() || !isActive) {
+                            try { client.close() } catch (_: Exception) {}
+                            break
+                        }
                         scope.launch(Dispatchers.IO) {
                             handleClient(client)
                         }
@@ -222,6 +226,7 @@ class AppRoutingServer(
                             directSocket.connect(InetSocketAddress(dstHost, dstPort), 10000)
                         }
                     } catch (e: Exception) {
+                        try { directSocket.close() } catch (_: Exception) {}
                         try {
                             clientOut.write(byteArrayOf(5, 4, 0, 1, 0, 0, 0, 0, 0, 0)) // Host unreachable
                             clientOut.flush()
@@ -248,6 +253,7 @@ class AppRoutingServer(
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to connect to proxy $targetAction on port $proxyPort", e)
+                        try { proxySocket.close() } catch (_: Exception) {}
                         try {
                             clientOut.write(byteArrayOf(5, 4, 0, 1, 0, 0, 0, 0, 0, 0))
                             clientOut.flush()
@@ -355,63 +361,45 @@ class AppRoutingServer(
                     ).port
                 } catch (_: Exception) { 1780 }
             }
-            ProxifierRule.ACTION_EASYVPN -> Prefs.easyVpnProxyPort
+            ProxifierRule.ACTION_EASYVPN -> if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1790
             ProxifierRule.ACTION_TOR -> 9853
             ProxifierRule.ACTION_OPERAPROXY -> {
                 Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
             }
-            ProxifierRule.ACTION_SVPN -> Prefs.svpnLocalPort
-            ProxifierRule.ACTION_TGWS -> Prefs.tgwsPort
+            ProxifierRule.ACTION_SVPN -> if (Prefs.svpnLocalPort in 1..65535) Prefs.svpnLocalPort else 1780
+            ProxifierRule.ACTION_TGWS -> if (Prefs.tgwsPort in 1..65535) Prefs.tgwsPort else 1480
             else -> 1780
         }
     }
 
     private suspend fun pipeSockets(s1: Socket, s2: Socket) = coroutineScope {
-        val j1 = launch(Dispatchers.IO) {
-            var normalEof = false
+        fun pipeDirection(src: Socket, dst: Socket) = launch(Dispatchers.IO) {
             try {
-                val input: InputStream = s1.getInputStream()
-                val output: OutputStream = s2.getOutputStream()
+                val input: InputStream = src.getInputStream()
+                val output: OutputStream = dst.getOutputStream()
                 val buffer = ByteArray(16384)
                 var bytesRead: Int
                 while (input.read(buffer).also { bytesRead = it } != -1) {
                     output.write(buffer, 0, bytesRead)
                     output.flush()
                 }
-                normalEof = true
-                try { s2.shutdownOutput() } catch (_: Exception) {}
+                try { dst.shutdownOutput() } catch (_: Exception) {}
             } catch (_: Exception) {
-            } finally {
-                if (!normalEof) {
-                    try { s2.close() } catch (_: Exception) {}
-                }
+                try { dst.close() } catch (_: Exception) {}
             }
         }
 
-        val j2 = launch(Dispatchers.IO) {
-            try {
-                val input: InputStream = s2.getInputStream()
-                val output: OutputStream = s1.getOutputStream()
-                val buffer = ByteArray(16384)
-                var bytesRead: Int
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    output.write(buffer, 0, bytesRead)
-                    output.flush()
-                }
-                try { s1.shutdownOutput() } catch (_: Exception) {}
-            } catch (_: Exception) {
-            } finally {
-                try { s1.close() } catch (_: Exception) {}
-                try { s2.close() } catch (_: Exception) {}
-            }
-        }
+        val j1 = pipeDirection(s1, s2)
+        val j2 = pipeDirection(s2, s1)
 
         try {
+            j1.join()
             j2.join()
         } finally {
             try { s1.close() } catch (_: Exception) {}
             try { s2.close() } catch (_: Exception) {}
             j1.cancel()
+            j2.cancel()
         }
     }
 }

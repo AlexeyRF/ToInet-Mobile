@@ -4,9 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import ru.toinet.android.service.ToInetService
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.util.putNotSystem
 import ru.toinet.android.util.sendIntentToService
 import org.torproject.jni.TorService.ACTION_START
 import java.lang.RuntimeException

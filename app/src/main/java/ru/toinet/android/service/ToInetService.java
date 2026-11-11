@@ -235,11 +235,7 @@ public class ToInetService extends Service {
         stopTor();
 
         //stop the foreground priority and remove the persistent notification
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE);
-        } else {
-            stopForeground(true);
-        }
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE);
         if (mNotificationManager == null) {
             mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         }
@@ -320,7 +316,6 @@ public class ToInetService extends Service {
 
         try {
             try {
-                mHandler = new Handler();
                 appBinHome = getFilesDir();
                 if (!appBinHome.exists()) appBinHome.mkdirs();
 

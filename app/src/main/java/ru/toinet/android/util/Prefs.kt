@@ -2,15 +2,11 @@ package ru.toinet.android.util
 
 import android.content.ContentResolver
 import android.content.Context
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequest
-import androidx.work.WorkManager
 import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.service.circumvention.Transport
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 object Prefs {
     private const val PREF_BRIDGES_LIST = "pref_bridges_list"
@@ -21,9 +17,6 @@ object Prefs {
     private const val PREF_ALLOW_BACKGROUND_STARTS = "pref_allow_background_starts"
     private const val PREF_OPEN_PROXY_ON_ALL_INTERFACES = "pref_open_proxy_on_all_interfaces"
     private const val PREF_EXIT_NODES = "pref_exit_nodes"
-
-    private const val PREF_SNOWFLAKES_SERVED_COUNT = "pref_snowflakes_served"
-    private const val PREF_SNOWFLAKES_SERVED_COUNT_WEEKLY = "pref_snowflakes_served_weekly"
 
     private const val PREF_CURRENT_VERSION = "pref_current_version"
 
@@ -53,19 +46,6 @@ object Prefs {
         if (cr == null) {
             cr = context?.contentResolver
         }
-    }
-
-    fun initWeeklyWorker(context: Context) {
-        val myWorkBuilder =
-            PeriodicWorkRequest.Builder(
-                ResetSnowflakesServedWeeklyWorker::class.java,
-                7,
-                TimeUnit.DAYS
-            )
-
-        val myWork = myWorkBuilder.build()
-        WorkManager.getInstance(context)
-            .enqueueUniquePeriodicWork("prefsWeeklyWorker", ExistingPeriodicWorkPolicy.KEEP, myWork)
     }
 
     @JvmStatic
@@ -127,10 +107,6 @@ object Prefs {
     var exitNodes: String?
         get() = cr?.getPrefString(PREF_EXIT_NODES)
         set(country) = cr?.putPref(PREF_EXIT_NODES, country) ?: Unit
-
-    fun resetSnowflakesServedWeekly() {
-        cr?.putPref(PREF_SNOWFLAKES_SERVED_COUNT_WEEKLY, 0)
-    }
 
     @JvmStatic
     var transport: Transport
@@ -271,10 +247,6 @@ object Prefs {
 
     val disableIpv4: Boolean
         get() = cr?.getPrefBoolean(ToInetConstants.PREF_DISABLE_IPV4) ?: false
-
-    var torifiedApps: String
-        get() = cr?.getPrefString(ToInetConstants.PREFS_KEY_TORIFIED, "") ?: ""
-        set(value) = cr?.putPref(ToInetConstants.PREFS_KEY_TORIFIED, value) ?: Unit
 
     @JvmStatic
     var torDnsPortResolved: Int

@@ -58,9 +58,6 @@ class CustomBridgeBottomSheet() :
     ): View {
         binding = CustomBridgeBottomSheetBinding.inflate(inflater, container, false)
 
-        val uri = ToInetConstants.GET_BRIDES_BRIDGES_URI.buildUpon()
-        uri.path("/options")
-
         binding.tvCancel.setOnClickListener { dismiss() }
 
         binding.btnAction.setOnClickListener {

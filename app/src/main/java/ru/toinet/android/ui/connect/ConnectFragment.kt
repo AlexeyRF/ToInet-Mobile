@@ -21,10 +21,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import net.freehaven.tor.control.TorControlCommands
 import ru.toinet.android.ToInetActivity
 import ru.toinet.android.R
 import ru.toinet.android.util.sendIntentToService
@@ -33,7 +30,6 @@ import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.service.ToInetService
 import ru.toinet.android.service.circumvention.Transport
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.ui.ToInetMenuAction
 import org.torproject.jni.TorService
 
 private const val DEFAULT_THROTTLE_INTERVAL = 4000L
@@ -44,6 +40,14 @@ class ConnectFragment : Fragment(),
     private lateinit var binding: FragmentConnectBinding
 
     val viewModel: ConnectViewModel by activityViewModels()
+
+    private val vpnPrepareLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == AppCompatActivity.RESULT_OK) {
+            attemptToStartTorPowerUserMode()
+        }
+    }
 
     private val lastStatus: String
         get() = (activity as? ToInetActivity)?.previousReceivedTorStatus ?: ""
@@ -78,11 +82,6 @@ class ConnectFragment : Fragment(),
                         is ConnectUiState.Stopping -> {}
                     }
                 }
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             }
         }
 
@@ -161,17 +160,6 @@ class ConnectFragment : Fragment(),
         setState(TorService.ACTION_STOP)
     }
 
-    private fun stopAnimations() {
-    }
-
-    private fun sendNewnymSignal() {
-        requireContext().sendIntentToService(TorControlCommands.SIGNAL_NEWNYM)
-
-        lifecycleScope.launch(Dispatchers.Main) {
-            delay(600)
-        }
-    }
-
     fun attemptToStartTorPowerUserMode() {
         val alarmManager =
             requireContext().getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -198,7 +186,7 @@ class ConnectFragment : Fragment(),
         if (Prefs.isGlobalVpnEnabled) {
             val intent = VpnService.prepare(requireContext())
             if (intent != null) {
-                requireActivity().startActivityForResult(intent, ToInetActivity.REQUEST_CODE_VPN)
+                vpnPrepareLauncher.launch(intent)
                 return
             }
         }
@@ -225,7 +213,6 @@ class ConnectFragment : Fragment(),
 
 
     private fun doLayoutNoInternet() {
-        stopAnimations()
         binding.progressBar.visibility = View.INVISIBLE
         binding.tvTitle.text = getString(R.string.no_internet_title)
         
@@ -242,7 +229,6 @@ class ConnectFragment : Fragment(),
     }
 
     fun doLayoutOff() {
-        stopAnimations()
         binding.progressBar.visibility = View.INVISIBLE
         binding.tvTitle.text = getString(R.string.secure_your_connection_title)
         

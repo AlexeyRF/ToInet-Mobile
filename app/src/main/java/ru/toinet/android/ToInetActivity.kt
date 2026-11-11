@@ -102,8 +102,6 @@ class ToInetActivity : BaseActivity() {
 
         requestNotificationPermission()
 
-        Prefs.initWeeklyWorker(this)
-
         if (Prefs.tgwsEnabled) {
             ru.toinet.android.tgws.TgwsService.start(
                 this,
@@ -187,6 +185,14 @@ class ToInetActivity : BaseActivity() {
         }
     }
 
+    private val vpnPrepareLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            connectViewModel.triggerStartTorAndVpn()
+        }
+    }
+
     override fun onStart() {
         super.onStart()
         promptDeviceAuthenticationIfRequired()
@@ -209,7 +215,7 @@ class ToInetActivity : BaseActivity() {
             intent?.removeExtra("start_vpn")
             val vpnIntent = android.net.VpnService.prepare(this)
             if (vpnIntent != null) {
-                startActivityForResult(vpnIntent, REQUEST_CODE_VPN)
+                vpnPrepareLauncher.launch(vpnIntent)
             } else {
                 connectViewModel.triggerStartTorAndVpn()
             }
@@ -220,14 +226,6 @@ class ToInetActivity : BaseActivity() {
         super.onDestroy()
 
         unregisterReceiver(toinetServiceBroadcastReceiver)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CODE_VPN && resultCode == RESULT_OK) {
-            connectViewModel.triggerStartTorAndVpn()
-        }
     }
 
     private val toinetServiceBroadcastReceiver = object : BroadcastReceiver() {
@@ -310,7 +308,6 @@ class ToInetActivity : BaseActivity() {
 
     companion object {
         private const val KEY_TOR_STATUS = "key_tor_status"
-        const val REQUEST_CODE_VPN = 1234
 
         // Make sure this is only shown once per app-start, not on every device rotation.
         private var rootDetectionShown = false

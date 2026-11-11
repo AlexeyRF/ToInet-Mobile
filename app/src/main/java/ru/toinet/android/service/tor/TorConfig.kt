@@ -26,7 +26,6 @@ object TorConfig {
         }
 
         val socksPortPref = getPort(Prefs.proxySocksPort ?: ToInetConstants.SOCKS_PROXY_PORT_DEFAULT)
-        val httpPortPref = getPort(Prefs.proxyHttpPort ?: ToInetConstants.HTTP_PROXY_PORT_DEFAULT)
 
         val isolate = getIsolation()
         val ipv6Pref = getIpv6()

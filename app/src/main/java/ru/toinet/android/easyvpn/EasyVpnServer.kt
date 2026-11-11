@@ -141,7 +141,10 @@ data class VlessNode(
 }
 
 class EasyVpnServer(private val context: Context, private val scope: CoroutineScope) {
+    @Volatile
     private var process: Process? = null
+    @Volatile
+    private var isStopped: Boolean = false
     private val TAG = "EasyVpnServer"
     private var updateJob: Job? = null
 
@@ -151,8 +154,10 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
     var onServerChanged: (() -> Unit)? = null
 
     companion object {
+        @Volatile
         var isRunning: Boolean = false
             private set
+        @Volatile
         var activeInstance: EasyVpnServer? = null
             private set
     }
@@ -211,6 +216,9 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
 
     fun start() {
         stop()
+        synchronized(this) {
+            isStopped = false
+        }
         activeInstance = this
 
         if (ru.toinet.android.util.Prefs.easyVpnUpstreamEnabled) {
@@ -304,6 +312,10 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
 
     @Synchronized
     private fun startXrayProcess(config: JSONObject): Boolean {
+        if (isStopped) {
+            Log.w(TAG, "Cannot start Xray process: server is stopped")
+            return false
+        }
         return try {
             val configFile = File(context.filesDir, "xray_config.json")
             configFile.writeText(config.toString(2))
@@ -364,7 +376,9 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         }
     }
 
+    @Synchronized
     fun stop() {
+        isStopped = true
         updateJob?.cancel()
         updateJob = null
         if (activeInstance == this) {

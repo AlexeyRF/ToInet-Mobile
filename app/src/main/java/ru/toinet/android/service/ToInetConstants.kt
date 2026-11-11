@@ -1,7 +1,5 @@
 package ru.toinet.android.service
 
-import androidx.core.net.toUri
-
 object ToInetConstants {
     const val TAG = "ToInet"
 
@@ -26,8 +24,6 @@ object ToInetConstants {
     const val PREF_PREFER_IPV6 = "pref_prefer_ipv6"
     const val PREF_DISABLE_IPV4 = "pref_disable_ipv4"
 
-    const val APP_TOR_KEY = "_app_tor"
-
     const val DIRECTORY_TOR_DATA = "tordata"
 
     // geoip data file asset key
@@ -44,11 +40,8 @@ object ToInetConstants {
     const val LOG_NOTICE_HEADER = "NOTICE: "
     const val LOG_NOTICE_BOOTSTRAPPED = "Bootstrapped"
 
-
     const val ACTION_STOP_FOREGROUND_TASK = "ru.toinet.android.intent.action.STOP_FOREGROUND_TASK"
-
     const val ACTION_LOCAL_LOCALE_SET = "ru.toinet.android.intent.LOCAL_LOCALE_SET"
-
 
     /**
      * The SOCKS proxy settings in URL form.
@@ -85,15 +78,5 @@ object ToInetConstants {
     const val CMD_SET_EXIT = "setexit"
     const val CMD_ACTIVE = "ACTIVE"
 
-    const val V3_CLIENT_AUTH_DIR = "v3_client_auth"
-
     const val PREFS_DNS_PORT: String = "PREFS_DNS_PORT"
-
-    const val PREFS_KEY_TORIFIED: String = "PrefTord"
-
-    const val ONION_EMOJI: String = "\uD83E\uDDC5"
-
-    val GET_BRIDES_BRIDGES_URI = "https://bridges.torproject.org/".toUri()
-
-
 }

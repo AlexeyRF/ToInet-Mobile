@@ -6,10 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.widget.Toast
-import org.torproject.jni.TorService
 import ru.toinet.android.ToInetActivity
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.vpn.data.Mode
+import ru.toinet.android.vpn.services.ServiceManager
 
 class EasyVpnActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
@@ -25,7 +25,7 @@ class EasyVpnActionReceiver : BroadcastReceiver() {
                 }
                 context.startActivity(activityIntent)
             } else {
-                context.sendIntentToService(TorService.ACTION_START)
+                ServiceManager.start(context, Mode.VPN)
                 Toast.makeText(context, "Включение EasyVPN...", Toast.LENGTH_SHORT).show()
             }
 

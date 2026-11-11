@@ -14,10 +14,12 @@ class SvpnServer(
 ) {
     companion object {
         private const val TAG = "SvpnServer"
+        @Volatile
         var isRunning = false
             private set
     }
 
+    @Volatile
     private var tunnel: SshTunnel? = null
 
     val lastErrorMessage: String?

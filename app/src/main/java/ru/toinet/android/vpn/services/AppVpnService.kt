@@ -8,6 +8,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import androidx.core.app.ServiceCompat
 import androidx.lifecycle.lifecycleScope
 import ru.toinet.android.R
 import ru.toinet.android.ToInetActivity
@@ -15,7 +16,6 @@ import ru.toinet.android.byedpi.core.ByeDpiProxy
 import ru.toinet.android.byedpi.core.ByeDpiProxyPreferences
 
 import ru.toinet.android.vpn.data.*
-import ru.toinet.android.vpn.utility.*
 import ru.toinet.android.vpn.utility.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,8 +25,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
-
-import ru.toinet.android.vpn.utility.*
 import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.sendIntentToService
 class AppVpnService : LifecycleVpnService() {
@@ -37,6 +35,7 @@ class AppVpnService : LifecycleVpnService() {
     private var svpnServer: ru.toinet.android.svpn.SvpnServer? = null
     private var appRoutingServer: ru.toinet.android.vpn.rules.AppRoutingServer? = null
     private val mutex = Mutex()
+    @Volatile
     private var stopping: Boolean = false
     private var watchdogJob: Job? = null
 
@@ -46,6 +45,7 @@ class AppVpnService : LifecycleVpnService() {
         private const val NOTIFICATION_CHANNEL_ID: String = "ToInetVpn"
         const val ACTION_SWITCH_SERVER: String = "ru.toinet.android.vpn.SWITCH_SERVER"
 
+        @Volatile
         private var status: ServiceStatus = ServiceStatus.Disconnected
 
         @Volatile
@@ -219,11 +219,7 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         updateStatus(ServiceStatus.Disconnected)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            stopForeground(true)
-        }
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         val nm = getSystemService(android.app.NotificationManager::class.java)
         nm?.cancel(FOREGROUND_SERVICE_ID)
         stopSelf()
@@ -370,13 +366,12 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "77.88.8.8")
-        if (dns == "208.67.222.222" || dns == "1.1.1.1" || dns.isBlank()) {
-            dns = "77.88.8.8"
-        }
         if ((provider == "svpn" || provider == "ssh") && ru.toinet.android.util.Prefs.svpnDnsServer.isNotBlank()) {
             dns = ru.toinet.android.util.Prefs.svpnDnsServer
         }
-        if (dns.isBlank() || dns == "1.1.1.1") dns = "77.88.8.8"
+        if (dns.isBlank() || dns == "208.67.222.222" || dns == "1.1.1.1") {
+            dns = "77.88.8.8"
+        }
 
         // Force IPv4-only on VPN interface: tun2socks and pdnsd do not support IPv6 DNS resolution
         // (tun2socks.c: case 6: goto fail), and local proxies (ByeDPI/Opera/EasyVPN) operate on IPv4.
@@ -551,15 +546,20 @@ class AppVpnService : LifecycleVpnService() {
                         ru.toinet.android.util.Prefs.vpnProvider,
                         "Внимание: VPN-процесс завершился (tun2socks=$tunAlive, pdnsd=$pdnsdAlive). Автоперезапуск..."
                     )
-                    withContext(Dispatchers.Main) {
-                        if (status == ServiceStatus.Connected && !stopping) {
-                            try {
-                                stop()
-                                start()
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Watchdog auto-restart failed", e)
-                                updateStatus(ServiceStatus.Failed)
+                    try {
+                        mutex.withLock {
+                            if (status == ServiceStatus.Connected && !stopping) {
+                                withContext(Dispatchers.IO) {
+                                    stopTun2Socks()
+                                    startTun2Socks()
+                                }
                             }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Watchdog auto-restart failed", e)
+                        updateStatus(ServiceStatus.Failed)
+                        withContext(Dispatchers.Main) {
+                            stop()
                         }
                     }
                     break
@@ -857,53 +857,6 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         return builder
-    }
-
-    private fun checkExternalIpv6(): Boolean {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-                val activeNet = cm?.activeNetwork
-                val linkProps = activeNet?.let { cm.getLinkProperties(it) }
-                if (linkProps != null) {
-                    for (linkAddr in linkProps.linkAddresses) {
-                        if (isGlobalIpv6(linkAddr.address)) {
-                            return true
-                        }
-                    }
-                }
-            }
-
-            val interfaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return false
-            for (iface in interfaces) {
-                if (!iface.isUp || iface.isLoopback) continue
-                val name = iface.name.lowercase()
-                if (name.startsWith("tun") || name.startsWith("dummy") || name.startsWith("tap") || name.startsWith("p2p")) continue
-
-                for (addr in iface.inetAddresses) {
-                    if (isGlobalIpv6(addr)) {
-                        return true
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Error checking external IPv6: ${e.message}")
-        }
-        return false
-    }
-
-    private fun isGlobalIpv6(addr: java.net.InetAddress?): Boolean {
-        if (addr !is java.net.Inet6Address) return false
-        if (addr.isLoopbackAddress || addr.isLinkLocalAddress || addr.isSiteLocalAddress ||
-            addr.isAnyLocalAddress || addr.isMulticastAddress || addr.isIPv4CompatibleAddress) {
-            return false
-        }
-        val firstByte = addr.address[0].toInt() and 0xff
-        // Exclude ULA (fc00::/7)
-        if ((firstByte and 0xfe) == 0xfc) {
-            return false
-        }
-        return true
     }
 
     private fun waitForPort(host: String, port: Int, timeoutMs: Long): Boolean {

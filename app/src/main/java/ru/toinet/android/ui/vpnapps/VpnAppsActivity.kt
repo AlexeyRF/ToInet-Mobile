@@ -34,11 +34,11 @@ class VpnAppsActivity : AppCompatActivity() {
     private val appList = mutableListOf<AppItem>()
     private val filteredList = mutableListOf<AppItem>()
     private var excludedApps = mutableSetOf<String>()
+    private val iconCache = android.util.LruCache<String, android.graphics.drawable.Drawable>(60)
 
     data class AppItem(
         val name: String,
-        val packageName: String,
-        val icon: android.graphics.drawable.Drawable?
+        val packageName: String
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -129,8 +129,7 @@ class VpnAppsActivity : AppCompatActivity() {
 
                 if (!isSystem || hasLaunchIntent || isPriority || isLocked) {
                     val name = appInfo.loadLabel(pm).toString()
-                    val icon = appInfo.loadIcon(pm)
-                    apps.add(AppItem(name, appInfo.packageName, icon))
+                    apps.add(AppItem(name, appInfo.packageName))
                 }
             }
 
@@ -170,7 +169,26 @@ class VpnAppsActivity : AppCompatActivity() {
             val isLocked = Prefs.isLockedVpnPackage(app.packageName)
             val isExcluded = excludedApps.contains(app.packageName)
             holder.tvName.text = app.name
-            holder.ivIcon.setImageDrawable(app.icon)
+
+            val cachedIcon = iconCache.get(app.packageName)
+            if (cachedIcon != null) {
+                holder.ivIcon.setImageDrawable(cachedIcon)
+            } else {
+                holder.ivIcon.setImageDrawable(null)
+                holder.ivIcon.tag = app.packageName
+                val pkg = app.packageName
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        val icon = packageManager.getApplicationIcon(pkg)
+                        iconCache.put(pkg, icon)
+                        withContext(Dispatchers.Main) {
+                            if (holder.ivIcon.tag == pkg) {
+                                holder.ivIcon.setImageDrawable(icon)
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
 
             if (isLocked && isExcluded) {
                 holder.tvPackage.text = "${app.packageName} (защита от петли)"

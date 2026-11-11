@@ -60,4 +60,14 @@ data class ProxifierRule(
         obj.put("targetPackages", arr)
         return obj
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ProxifierRule) return false
+        return id == other.id
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
 }

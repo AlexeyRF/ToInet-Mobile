@@ -336,13 +336,10 @@ object EasyVpnUpdater {
         val listenHost = Prefs.easyVpnProxyHost.ifBlank { "127.0.0.1" }
         val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1790
 
-        nodes.take(20).forEachIndexed { i, node ->
-            try {
-                if (node.server.isBlank() || node.port !in 1..65535 || node.uuid.isBlank()) {
-                    Log.w(TAG, "Skipping invalid node $i: server='${node.server}', port=${node.port}, uuid='${node.uuid}'")
-                    return@forEachIndexed
-                }
+        val validNodes = nodes.filter { it.server.isNotBlank() && it.port in 1..65535 && it.uuid.isNotBlank() }.take(20)
 
+        validNodes.forEachIndexed { i, node ->
+            try {
                 val tag = "proxy-$i"
 
                 val rawType = node.type.lowercase().trim()
@@ -571,9 +568,10 @@ object EasyVpnUpdater {
             })
         })
 
-        val targetTag = if (activeNodeIndex in 0 until nodes.size) "proxy-$activeNodeIndex" else null
+        val firstTag = if (proxyTags.length() > 0) proxyTags.getString(0) else null
+        val targetTag = if (activeNodeIndex in 0 until validNodes.size) "proxy-$activeNodeIndex" else null
         val hasTarget = targetTag != null && (0 until proxyTags.length()).any { proxyTags.getString(it) == targetTag }
-        val effectiveTargetTag = if (hasTarget) targetTag else null
+        val effectiveTargetTag = if (hasTarget) targetTag else firstTag
 
         return JSONObject().apply {
             put("log", JSONObject().apply {
@@ -641,7 +639,7 @@ object EasyVpnUpdater {
                             put("strategy", JSONObject().apply {
                                 put("type", "random")
                             })
-                            put("fallbackTag", effectiveTargetTag ?: "proxy-0")
+                            put("fallbackTag", effectiveTargetTag ?: firstTag ?: "direct")
                         })
                     })
 
