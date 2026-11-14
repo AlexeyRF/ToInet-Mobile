@@ -117,8 +117,9 @@ class AppSelectDialog() : BottomSheetDialogFragment() {
 
             for (appInfo in packages) {
                 val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                val hasLaunchIntent = pm.getLaunchIntentForPackage(appInfo.packageName) != null
-                if (!isSystem || hasLaunchIntent || selectedPackages.contains(appInfo.packageName)) {
+                val isUpdatedSystem = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                val isUserApp = !isSystem || isUpdatedSystem
+                if (isUserApp || selectedPackages.contains(appInfo.packageName)) {
                     val name = appInfo.loadLabel(pm).toString()
                     apps.add(AppItem(name, appInfo.packageName))
                 }

@@ -111,7 +111,6 @@ class ToInetApp : Application() {
 
     companion object {
         var shouldRequestAuthentication: Boolean = true
-        // see https://github.com/guardianproject/toinet-android/issues/1340
         var isAuthenticationPromptOpenLegacyFlag: Boolean = false
         fun resetLockFlags() {
             shouldRequestAuthentication = true

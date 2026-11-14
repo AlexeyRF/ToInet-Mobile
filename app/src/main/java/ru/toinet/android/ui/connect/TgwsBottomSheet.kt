@@ -12,19 +12,13 @@ import ru.toinet.android.databinding.TgwsBottomSheetBinding
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.putPref
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.widget.Toast
 import java.security.SecureRandom
-import java.net.NetworkInterface
 
 class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: TgwsBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
-
-    private fun getLocalIpAddress(): String = ru.toinet.android.util.NetworkUtils.getLocalIpAddress()
 
     private val PRESETS = listOf(
         "Официальные IP" to "1:149.154.175.50\n2:149.154.167.51\n3:149.154.175.100\n4:149.154.167.91\n5:149.154.171.5\n203:91.105.192.100",
@@ -42,18 +36,6 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
         binding = TgwsBottomSheetBinding.inflate(inflater, container, false)
 
         binding.swEnabled.isChecked = Prefs.tgwsEnabled
-        binding.swShareProxy.isChecked = Prefs.openProxyOnAllInterfaces
-        binding.swShareProxy.setOnClickListener {
-            if (binding.swShareProxy.isChecked) {
-                ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
-                    requireContext(),
-                    onConfirmed = {},
-                    onCancelled = {
-                        binding.swShareProxy.isChecked = false
-                    }
-                )
-            }
-        }
         binding.etPort.setText(Prefs.tgwsPort.toString())
         
         binding.etSecret.setText(Prefs.tgwsSecret)
@@ -110,36 +92,8 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
             Toast.makeText(requireContext(), "Секрет сгенерирован", Toast.LENGTH_SHORT).show()
         }
 
-        binding.btnCopyLinks.setOnClickListener {
-            val port = binding.etPort.text.toString().toIntOrNull() ?: 1480
-            val secret = binding.etSecret.text.toString().trim()
-            val hostIp = if (binding.swShareProxy.isChecked) getLocalIpAddress() else "127.0.0.1"
-            val socksLink = "tg://socks?server=$hostIp&port=$port"
-            val gatikLink = "tg://socks?server=$hostIp&port=1777"
-            
-            val options = mutableListOf<Pair<String, String>>()
-            if (secret.isNotEmpty()) {
-                val mtprotoLink = "tg://proxy?server=$hostIp&port=$port&secret=$secret"
-                options.add("MTProto (порт $port)" to mtprotoLink)
-            }
-            options.add("TGWS SOCKS5 (порт $port)" to socksLink)
-            options.add("Шлюз Gatik SOCKS5 (порт 1777)" to gatikLink)
-
-            androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("Какую ссылку скопировать?")
-                .setItems(options.map { it.first }.toTypedArray()) { _, which ->
-                    val link = options[which].second
-                    val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("TG Proxy", link))
-                    Toast.makeText(requireContext(), "Ссылка скопирована!", Toast.LENGTH_SHORT).show()
-                }
-                .show()
-        }
-        
-
         binding.btnSave.setOnClickListener {
             Prefs.tgwsEnabled = binding.swEnabled.isChecked
-            Prefs.openProxyOnAllInterfaces = binding.swShareProxy.isChecked
             val port = binding.etPort.text.toString().toIntOrNull() ?: 1480
             Prefs.tgwsPort = port
             

@@ -380,6 +380,14 @@ class AppVpnService : LifecycleVpnService() {
 
         // Wait for proxy port to be open before routing traffic to it
         val isReady = waitForPort("127.0.0.1", 10850, 4000L)
+        if (neededProviders.contains("byedpi")) {
+            val byedpiPort = try {
+                ru.toinet.android.byedpi.core.ByeDpiProxyPreferences.fromSharedPreferences(
+                    androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+                ).port
+            } catch (_: Exception) { 1780 }
+            waitForPort("127.0.0.1", byedpiPort, 3000L)
+        }
         /*
         // Single provider wait logic (commented out):
         val isReady = if (isAppRouting) {

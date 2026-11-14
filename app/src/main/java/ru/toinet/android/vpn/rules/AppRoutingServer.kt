@@ -248,11 +248,14 @@ class AppRoutingServer(
                 return
             }
 
-            // Step 2: If package resolution fell through to default (e.g. UID == -1 for Cronet/Happy Eyeballs),
-            // inspect the TLS ClientHello / HTTP Host header for known domains (e.g. YouTube/googlevideo)
-            if (targetAction == Prefs.appRoutingDefaultAction) {
-                val detectedDomain = extractDomain(firstChunk, firstChunkLen)
-                if (detectedDomain != null) {
+            // Step 2: Inspect the TLS ClientHello / HTTP Host header for known domains (e.g. YouTube/googlevideo)
+            // Specific domain rules (e.g. YouTube -> byedpi) take precedence over general application rules (e.g. Browsers -> easyvpn)
+            val detectedDomain = extractDomain(firstChunk, firstChunkLen)
+            if (detectedDomain != null) {
+                val domainRule = ProxifierRulesManager.findRuleForDomain(detectedDomain)
+                if (domainRule != null) {
+                    targetAction = domainRule.action
+                } else if (targetAction == Prefs.appRoutingDefaultAction) {
                     val domainAction = findActionForDomain(detectedDomain)
                     if (domainAction != null) {
                         targetAction = domainAction

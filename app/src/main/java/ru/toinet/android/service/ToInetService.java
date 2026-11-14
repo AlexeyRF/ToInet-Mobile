@@ -1,6 +1,3 @@
-/* Copyright (c) 2009-2011, Nathan Freitas, ToInet / The Guardian Project - https://guardianproject.info/apps/toinet */
-/* See LICENSE for licensing information */
-
 package ru.toinet.android.service;
 
 import static ru.toinet.android.service.ToInetConstants.*;
@@ -264,7 +261,6 @@ public class ToInetService extends Service {
         scheduleAutoReconnectIfEnabled();
     }
 
-    // if someone stops during startup, we may have to wait for the conn port to be setup, so we can properly shutdown tor
     private void stopTor() {
 
         if (conn != null) {
@@ -359,7 +355,6 @@ public class ToInetService extends Service {
                 logNotice(getString(R.string.couldn_t_start_tor_process_) + " " + e.getClass().getSimpleName());
             }
         } catch (RuntimeException re) {
-            //catch this to avoid malicious launches as document Cure53 Audit: ORB-01-009 WP1/2: ToInet DoS via exported activity (High)
         }
     }
 

@@ -25,15 +25,6 @@
             android:text="Включить TGWS"
             android:layout_marginBottom="16dp" />
 
-        
-
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/swShareProxy"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Раздавать прокси в локальной сети"
-            android:layout_marginBottom="16dp" />
-
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -76,30 +67,13 @@
                 android:inputType="textUri" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <LinearLayout
+        <Button
+            android:id="@+id/btnGenerateSecret"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <Button
-                android:id="@+id/btnGenerateSecret"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:text="Сгенер. секрет" />
-
-            <Button
-                android:id="@+id/btnCopyLinks"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:text="Скопировать ссылки" />
-        </LinearLayout>
+            android:layout_marginBottom="16dp"
+            android:text="Сгенер. секрет" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"

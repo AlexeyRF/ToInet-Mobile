@@ -660,6 +660,8 @@ static void apply_preset(struct desync_params *dp, const char *name)
             p2->m = DESYNC_SPLIT;
             posmarker_parse("midsld", &p2->ppos);
         }
+        dp->detect = DETECT_TORST | DETECT_HTTP_LOCAT | DETECT_TLS_ERR;
+        params.auto_reconnect = true;
     } else if (!strcmp(name, "discord")) {
         dp->preset = PRESET_DISCORD;
         dp->fake_template = FAKE_TMPL_GOOGLE;

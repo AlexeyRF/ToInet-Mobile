@@ -4,139 +4,27 @@
     <string name="app_description">ToInet — это инструмент, который позволяет использовать интернет через прокси-сервера.</string>
     <string name="menu_settings">Настройки</string>
     <string name="menu_log">Логи</string>
-    <string name="menu_about">О приложении</string>
-    <string name="menu_exit">Выход</string>
-    <string name="pref_general_group">Общие</string>
-    <string name="pref_start_boot_title">Автоматический запуск ToInet при загрузке системы</string>
-    <string name="pref_start_boot_summary">Автоматически запускать ToInet и подключаться к сети при загрузке вашего Android-устройства</string>
-    <string name="pref_node_configuration">Конфигурация узла</string>
-    <string name="pref_node_configuration_summary">Это дополнительные настройки, которые могут снизить вашу анонимность</string>
-    <string name="pref_entrance_node">Входные узлы</string>
-    <string name="pref_entrance_node_summary">Отпечатки, псевдонимы, страны и адреса для первого прыжка</string>
-    <string name="pref_entrance_node_dialog">Введите входные узлы</string>
-    <string name="pref_allow_background_starts_title">Разрешить фоновую загрузку</string>
-    <string name="pref_allow_background_starts_summary">Позволить любому приложению требовать от ToInet запускать ToInet и относящиеся к нему службы</string>
-    <string name="pref_proxy_title">Исходящий сетевой прокси (необязательно)</string>
-    <string name="pref_proxy_type_title">Тип прокси</string>
-    <string name="pref_proxy_type_summary">Протокол для использования прокси: HTTPS, Socks4, Socks5</string>
-    <string name="pref_proxy_host_title">Хост прокси</string>
-    <string name="pref_proxy_host_summary">Имя хоста прокси</string>
-    <string name="pref_proxy_port_title">Порт прокси</string>
-    <string name="pref_proxy_port_summary">Порт прокси</string>
-    <string name="pref_proxy_username_title">Имя пользователя прокси</string>
-    <string name="pref_proxy_username_summary">Имя пользователя прокси (необязательно)</string>
-    <string name="pref_proxy_password_title">Пароль пользователя прокси</string>
-    <string name="pref_proxy_password_summary">Пароль пользователя прокси (необязательно)</string>
-    <string name="error">Ошибка</string>
-    <string name="exit_nodes">Выходные узлы</string>
-    <string name="fingerprints_nicks_countries_and_addresses_for_the_last_hop">Отпечатки, псевдонимы, страны и адреса для последнего прыжка</string>
-    <string name="enter_exit_nodes">Введите выходные узлы</string>
-    <string name="exclude_nodes">Исключённые узлы</string>
-    <string name="fingerprints_nicks_countries_and_addresses_to_exclude">Отпечатки, псевдонимы, страны и адреса для исключения</string>
-    <string name="enter_exclude_nodes">Введите исключённые узлы</string>
-    <string name="strict_nodes">Точные узлы</string>
-    <string name="strict_nodes_description">Рассматривать настройки исключённых узлов как требование для построения всех цепочек. Это может нарушить функциональность, если ни одна цепочка не сможет быть создана с вашими настройками.</string>
-    <string name="reachable_addresses">Доступные адреса</string>
-    <string name="run_as_a_client_behind_a_firewall_with_restrictive_policies">Запускать как клиент за межсетевым экраном с ограничивающими политиками</string>
-    <string name="reachable_ports">Доступные порты</string>
-    <string name="ports_reachable_behind_a_restrictive_firewall">Порты, доступные из-за ограничительного сетевого экрана</string>
-    <string name="enter_ports">Введите порты</string>
-    <string name="enable_debug_log_to_output_must_use_adb_or_alogcat_to_view_">Включить вывод журнала отладки (требует использовать adb или aLogCat для просмотра)</string>
-    <string name="version">Версия:</string>
-    <string name="set_locale_title">Язык</string>
-    <string name="pref_disable_network_title">Автозасыпание без сети</string>
-    <string name="pref_disable_network_summary">Переводить ToInet в спящий режим при отсутствии интернета</string>
     <string name="newnym">Вы переключились на новый идентификатор!</string>
-    <string name="pref_open_proxy_on_all_interfaces_title">Открыть прокси на всех интерфейсах</string>
-    <string name="pref_open_proxy_on_all_interfaces_summary">Разрешить пирам Wi-Fi, привязанным устройствам и всем, кто может подключиться к вашему IP, доступ к ToInet</string>
-    <string name="pref_socks_title">ToInet SOCKS</string>
-    <string name="pref_socks_summary">Порт, на котором ToInet предоставляет свой SOCKS-прокси (по умолчанию: 9853, 0 — для отключения)</string>
-    <string name="pref_socks_dialog">Настройка порта SOCKS</string>
-    <string name="pref_http_title">ToInet HTTP</string>
-    <string name="pref_http_summary">Порт, на котором ToInet предлагает свой HTTP-прокси (по умолчанию: 8118 или 0 для отключения)</string>
-    <string name="pref_http_dialog">Конфигурация порта HTTP</string>
-    <string name="pref_transport_title">Порт прозрачного прокси ToInet</string>
-    <string name="pref_transport_summary">Порт, на котором ToInet предоставляет свой прозрачный прокси (по умолчанию: 9040, 0 — для отключения)</string>
-    <string name="pref_transport_dialog">Настройка порта прозрачного прокси</string>
-    <string name="pref_dnsport_title">Порт DNS ToInet</string>
-    <string name="pref_dnsport_summary">Порт, на котором ToInet предоставляет свой DNS (по умолчанию: 9053, 0 — для отключения)</string>
-    <string name="pref_dnsport_dialog">Настройка порта DNS</string>
-    <string name="pref_torrc_title">Пользовательские настройки ToInetrc</string>
-    <string name="pref_torrc_summary">ТОЛЬКО ДЛЯ ЭКСПЕРТОВ: внесите настройки напрямую в строки файла конфигурации ToInetrc</string>
-    <string name="pref_torrc_dialog">Пользовательский ToInetrc</string>
     <string name="vpn_default_world">Мир (авто)</string>
-    <string name="v3_client_auth_activity_title">Авторизация клиента</string>
-    <string name="v3_key_hash">Закрытый ключ x25519 в Base32</string>
-    <string name="v3_onion">Домен .onion</string>
-    <string name="v3_backup_key">Резервная копия ключа авторизации клиента</string>
-    <string name="v3_backup_key_warning">Внимание: это может раскрыть ваш ключ другим приложениям</string>
-    <string name="v3_delete_client_authorization">Удалить ключ авторизации клиента</string>
-    <string name="v3_delete_client_authorization_confirm">Удалить авторизацию клиента</string>
-    <string name="v3_backup_name_hint">Имя файла резервной копии…</string>
-    <string name="v3_import_auth_private">Импорт .auth_private</string>
-    <string name="confirm">Подтвердить</string>
     <string name="save">Сохранить</string>
-    <string name="name">Имя</string>
-    <string name="backup_saved_at_external_storage">Резервная копия сохранена на внешнем хранилище</string>
-    <string name="backup_restored">Восстановлено из резервной копии</string>
-    <string name="please_restart_ToInet_to_enable_the_changes">Перезапустите ToInet для вступления изменения в силу</string>
-    <string name="onion" translatable="false">.onion</string>
     <string name="disable">Отключить</string>
-    <string name="enable">Включить</string>
-    <string name="pref_isolate_dest">Изолировать адреса назначения</string>
-    <string name="pref_isolate_dest_summary">Использовать разные цепочки подключения для каждого адреса назначения</string>
-    <string name="pref_isolate_port">Изолировать порты назначения</string>
-    <string name="pref_isolate_port_summary">Использовать разные цепочки подключения для каждого порта назначения</string>
-    <string name="pref_isolate_protocol">Изолировать протоколы клиентов</string>
-    <string name="pref_isolate_protocol_summary">Использовать разные цепочки подключения для каждого протокола</string>
-    <string name="pref_isolate_keep_alive">Оставлять изолированные цепочки живыми</string>
-    <string name="pref_isolate_keep_alive_summary">Оставлять те изолированные цепочки живыми, которые имеют хотя бы одну активную группу с SOCKS-аутентификацией</string>
-    <string name="pref_connection_padding">Прокладка соединения</string>
-    <string name="pref_connection_padding_summary">Всегда включает прокладку соединения для защиты от некоторых форм анализа трафика. По умолчанию: авто</string>
-    <string name="pref_reduced_connection_padding">Сокращённая прокладка соединения</string>
-    <string name="pref_reduced_connection_padding_summary">Раньше закрывает ретранслированные соединения и отправляет меньше пакетов заполнения для уменьшения объёма передаваемых данных и использования батареи</string>
-    <string name="pref_circuit_padding">Заполнение цепочки подключения</string>
-    <string name="pref_circuit_padding_summary">Использовать заполнение цепочки подключения для защиты от некоторых форм анализа трафика</string>
-    <string name="pref_reduced_circuit_padding">Уменьшенное заполнение цепочки подключения</string>
-    <string name="pref_reduced_circuit_padding_summary">Использовать алгоритмы заполнения с меньшими расходами, чтобы уменьшить расход данных и батареи</string>
-    <string name="pref_prefer_ipv6">Предпочитать соединения IPv6</string>
-    <string name="pref_prefer_ipv6_summary">Сообщать выходным узлам, что IPv6-адреса предпочтительнее</string>
-    <string name="pref_disable_ipv4">Отключить соединения IPv4</string>
-    <string name="pref_disable_ipv4_summary">Сообщать выходным узлам не использовать адреса IPv4</string>
     <string name="full_device_vpn">VPN для всего устройства</string>
     <string name="menu_new_identity">Новый идентификатор</string>
     
     <string name="custom_bridges">Конфигурация</string>
 
-    
     <string name="secure_your_connection_title">Готово к подключению</string>
     <string name="connected_title">Подключено</string>
-    <string name="btn_configure">Настроить подключение</string>
     <string name="trying_to_connect_title">Подключение…</string>
-    <string name="btn_choose_apps">Выбор приложений</string>
     <string name="btn_change_exit">Сменить выходной узел</string>
     <string name="globe" translatable="false">🌎</string>
 
-    <string name="snowflake">Snowflake</string>
-    <string name="snowflake_amp">Snowflake AMP</string>
-    <string name="snowflake_sqs">Snowflake SQS</string>
-    <string name="custom_bridges_subtitle">Получите конфиг и нажмите далее</string>
     <string name="connect">Подключить</string>
-    <string name="next">Далее</string>
-    <string name="power_user_mode">Режим опытного пользователя</string>
-    <string name="power_user_description">Для пользователей, знакомых с ToInet. Позволяет запустить ToInet без настроек VPN и показывает открытые SOCKS и HTTP порты</string>
-    <string name="app_suggested_subtitle">ToInet лучше всего работает с приложениями для обмена сообщениями и социальными сетями.</string>
-    <string name="apps_suggested_title">Рекомендуемые приложения</string>
     <string name="btn_copy_log">Копировать журнал</string>
     <string name="log_copied">Журнал скопирован</string>
     <string name="no_internet_title">Подключиться к интернету</string>
-    <string name="setting_padding">Прокладка</string>
-    <string name="setting_debug">Отладка</string>
 
     <string name="root_warning">ToInet обнаружил root-доступ на вашем устройстве, что снижает его защищённость.</string>
-    <string name="pref_detect_root_summary">Предупреждать при запуске, если на устройстве включены права root-доступа</string>
-    <string name="pref_detect_root_title">Обнаружение root</string>
-
 
     <string name="power_user_mode_permission">Запрос на разрешение</string>
     <string name="power_user_mode_permission_msg">Увы, ToInet не способен предоставлять прокси без данного разрешения, приложение НЕ будет устанавливать никакие будильники, пожалуйста, поставьте согласие, его всегда можно отозвать, но приложение не будет работать. Нажмите на ОК для перхода в меню разрешений.</string>
@@ -152,7 +40,6 @@
     <string name="enter_bridge_address">Вставьте мосты</string>
     <string name="unlock_app_msg" formatted="true">Пожалуйста разблокируйте ваше устройство, чтобы использовать %s</string>
 
-    
     <string name="status_starting_up">Запуск ToInet…</string>
     <string name="status_activated">Подключён к сети ToInet</string>
     <string name="status_disabled">ToInet отключён</string>
@@ -167,35 +54,9 @@
     <string name="kibibyte_per_second">KiB/s</string>
     <string name="mebibyte_per_second">MiB/s</string>
 
-
     <string name="log_notice_updating_torrc">Обновление пользовательских настроек torrc…</string>
-    <string name="note_snowflake_doesn_t_support_proxies">ЗАМЕТКА: Snowflake не поддерживает прокси. Настройки прокси будут игнорированы с мостами Snowflake.</string>
 
-    <string name="search_for_apps">Поиск приложений</string>
-
-    <string name="title_safety">Безопасность</string>
-    <string name="setting_block_screenshot_title">Блокировка скриншотов</string>
-    <string name="setting_block_screenshot_description">Предотвращает любого от снятия скриншотов этого приложения</string>
-    <string name="setting_unlock_pass_title">Блокировка Экрана</string>
-    <string name="setting_unlock_pass_description">Требовать ПИН-код вашего устройства, пароль, или графический ключ для открытия ToInet</string>
-    <string name="setting_unlock_with_biometrics_title">Использовать Биометрию (опционально)</string>
-    <string name="setting_unlock_with_biometrics_description">Разблокировка ToInet вашим отпечатком пальца, или Face ID, если они настроены на вашем устройстве.</string>
     <string name="status_connected_control_port">Начался запуск службы</string>
-    <string name="status_handshake">Подключение ко входу сети</string>
-    <string name="status_handshake_done">Заход в сеть</string>
-    <string name="status_circuit_create">Настройка подключения через сеть</string>
-    <string name="status_done">Готово!</string>
-    <string name="status_conn_pt">Находим альтернативный путь к сети Tor</string>
-    <string name="status_conn_done_pt">Альтернативный путь построен</string>
-    <string name="status_conn_done">Подключены ко входу сети Tor</string>
-    <string name="status_onehop_create">Запрос директории сети</string>
-    <string name="status_enough_dirinfo">Директория сети загружена</string>
-    <string name="status_requesting_status">Узнаём статус подключения у службы</string>
-    <string name="status_loading_status">Загружаем статус подключения</string>
-    <string name="status_requesting_descriptors">Запрашиваем информацию про сетевой сервер</string>
-    <string name="status_loading_descriptors">Прогружаем информацию про сетевой сервер</string>
-    <string name="http_port">Порт HTTP</string>
-    <string name="socks_port">Порт SOCKS</string>
     <string name="invalid_outbound_proxy_config">Неверная конфигурация Исходящего Прокси</string>
 
     <string name="socks_proxy_enable">Использовать прокси</string>
@@ -209,37 +70,19 @@
     <string name="limit_dns_tunnel_use">Ограничить использование Туннеля DNS</string>
     <string name="dns_tunnel_usage_description">DNS-туннели приоритизируют доступ над скоростью и могут ощущаться медленнее. Мы рекомендуем включать их только для ключевых приложений. Просмотр видео не рекомандован.</string>
 
-
-    
     <string name="vpn_channel_name">VPN</string>
     <string name="proxy_channel_name">Proxy</string>
     <string name="byedpi_notification_title">zDPI</string>
     <string name="vpn_notification_content">VPN запущен</string>
     <string name="proxy_notification_content">Прокси запущен</string>
 
-    <string name="failed_to_start">Ошибка запуска</string>
-
     <string name="opera_proxy_notification_title">Opera Proxy</string>
 
     <string name="pref_byedpi_enabled_title">Включить zDPI</string>
-    <string name="pref_byedpi_enabled_summary">Запускать zDPI параллельно с Tor</string>
-    <string name="pref_byedpi_use_as_upstream_title">Использовать zDPI как прокси для Tor</string>
-    <string name="pref_byedpi_use_as_upstream_summary">Tor будет подключаться через zDPI</string>
-    <string name="pref_byedpi_use_args_title">Использовать аргументы</string>
-    <string name="pref_byedpi_use_args_summary">Вручную указать параметры командной строки</string>
-    <string name="pref_byedpi_args_title">Аргументы командной строки</string>
-    <string name="pref_byedpi_args_summary">Например: --preset general или -s midsld -f 1</string>
     <string name="tgws_proxy_channel_name">TGWS Proxy Service Channel</string>
-    <string name="tgws_enabled">Enable TGWS Proxy (Telegram WebSocket)</string>
-    <string name="tgws_host">TGWS Host</string>
-    <string name="tgws_port">TGWS Port</string>
-    <string name="tgws_dc_mappings">DC -&gt; IP Mappings</string>
     
     <string name="title_settings">Настройки</string>
-    <string name="cmd_args_clear">Очистить</string>
-    <string name="cmd_args_paste">Вставить</string>
     <string name="cmd_history_menu">Выберите действие</string>
-    <string name="cmd_history_apply">Применить</string>
     <string name="cmd_history_copy">Копировать</string>
     <string name="proxytest_delay_desc">Задержка перед каждым новым подключением</string>
     <string name="proxytest_requests_desc">Количество одновременно работающих потоков</string>
@@ -292,9 +135,4 @@
     <string name="domain_list_reset">Сбросить списки</string>
     <string name="domain_list_reset_done">Списки сброшены</string>
     <string name="toast_copied">Скопировано</string>
-    <string name="easyvpn_switch_server">Switch server</string>
-    <string name="pref_vpn_bypass_lan_title">Пропуск локальной сети</string>
-    <string name="pref_vpn_bypass_lan_summary">Не направлять локальный трафик (192.168.*, 10.*, 172.16.*) через VPN</string>
-    <string name="easyvpn_proxy_title">EasyVPN Proxy</string>
-    <string name="easyvpn_proxy_summary">SOCKS5 прокси EasyVPN на порту 1791</string>
 </resources>

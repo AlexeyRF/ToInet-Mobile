@@ -73,51 +73,6 @@ object ProxifierRulesManager {
             for (i in 0 until arr.length()) {
                 list.add(ProxifierRule.fromJson(arr.getJSONObject(i)))
             }
-            var modified = false
-            for (rule in list) {
-                if (rule.name.equals("YouTube", ignoreCase = true) || rule.targetPackages.contains("com.google.android.youtube")) {
-                    val additional = listOf(
-                        "com.google.android.apps.youtube.music",
-                        "com.google.android.youtube.tv",
-                        "com.google.android.youtube.googletv",
-                        "app.revanced.android.youtube"
-                    )
-                    for (pkg in additional) {
-                        if (!rule.targetPackages.contains(pkg)) {
-                            rule.targetPackages.add(pkg)
-                            modified = true
-                        }
-                    }
-                }
-            }
-            val hasBrowserRule = list.any { it.name.contains("Браузер", ignoreCase = true) || it.targetPackages.contains("com.android.chrome") }
-            if (!hasBrowserRule) {
-                list.add(
-                    ProxifierRule(
-                        name = "Браузеры",
-                        enabled = true,
-                        targetPackages = mutableListOf(
-                            "com.android.chrome",
-                            "org.mozilla.firefox",
-                            "com.opera.browser",
-                            "com.opera.mini.native",
-                            "com.opera.gx",
-                            "com.yandex.browser",
-                            "com.sec.android.app.sbrowser",
-                            "com.microsoft.emmx",
-                            "com.brave.browser",
-                            "com.duckduckgo.mobile.android",
-                            "com.kiwibrowser.browser",
-                            "com.vivaldi.browser"
-                        ),
-                        action = ProxifierRule.ACTION_EASYVPN
-                    )
-                )
-                modified = true
-            }
-            if (modified) {
-                saveRulesInternal(list)
-            }
             list
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse rules json", e)

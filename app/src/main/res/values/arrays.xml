@@ -17,16 +17,4 @@
         <item>vpn</item>
         <!-- <item>address_status</item> -->
     </array>
-    
-    <string-array name="dns_protocols">
-        <item>UDP</item>
-        <item>DOT</item>
-        <item>DOH</item>
-    </string-array>
-    
-    <string-array name="dns_proxy_modes">
-        <item>VPN</item>
-        <item>DIRECT</item>
-        <item>CUSTOM</item>
-    </string-array>
 </resources>

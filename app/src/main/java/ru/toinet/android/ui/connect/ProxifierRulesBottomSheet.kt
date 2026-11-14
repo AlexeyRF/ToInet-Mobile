@@ -160,7 +160,17 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
         updateAppsButtonText()
 
         btnChooseApps.setOnClickListener {
-            val appPkgsOnly = selectedPackages.filter { !it.startsWith("*") && (it.startsWith("com.") || it.startsWith("org.") || it.startsWith("app.") || !it.contains(".")) }.toMutableList()
+            val pm = requireContext().packageManager
+            val appPkgsOnly = selectedPackages.filter {
+                !it.startsWith("*") && (it.startsWith("com.") || it.startsWith("org.") || it.startsWith("app.") || !it.contains("."))
+            }.filter { pkg ->
+                try {
+                    pm.getApplicationInfo(pkg, 0)
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            }.toMutableList()
             AppSelectDialog(appPkgsOnly) { newSelection ->
                 val domains = etCustomDomains.text.toString().split(',', ' ', '\n').map { it.trim().lowercase() }.filter { it.isNotBlank() }
                 selectedPackages.clear()
@@ -278,7 +288,7 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
             }
 
             val pm = holder.itemView.context.packageManager
-            val displayItems = rule.targetPackages.take(3).map { item ->
+            val installedOrDomainList = rule.targetPackages.mapNotNull { item ->
                 if (item.contains('.') && (item.startsWith("com.") || item.startsWith("org.") || item.startsWith("app."))) {
                     try {
                         val info = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -289,16 +299,17 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
                         }
                         pm.getApplicationLabel(info).toString()
                     } catch (_: Exception) {
-                        item.substringAfterLast('.')
+                        null
                     }
                 } else {
                     item
                 }
             }
+            val displayItems = installedOrDomainList.take(3)
             val appsText = when {
-                rule.targetPackages.isEmpty() -> "Цели не выбраны"
-                rule.targetPackages.size <= 3 -> displayItems.joinToString(", ")
-                else -> "${displayItems.joinToString(", ")} +${rule.targetPackages.size - 3}"
+                installedOrDomainList.isEmpty() -> "Цели не выбраны"
+                installedOrDomainList.size <= 3 -> displayItems.joinToString(", ")
+                else -> "${displayItems.joinToString(", ")} +${installedOrDomainList.size - 3}"
             }
             holder.tvApps.text = appsText
 
