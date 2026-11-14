@@ -123,7 +123,7 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
                 options.add("MTProto (порт $port)" to mtprotoLink)
             }
             options.add("TGWS SOCKS5 (порт $port)" to socksLink)
-            options.add("Шлюз Gatik SOCKS5 (порт 1777, гибрид Tor+TGWS)" to gatikLink)
+            options.add("Шлюз Gatik SOCKS5 (порт 1777)" to gatikLink)
 
             androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Какую ссылку скопировать?")

@@ -32,87 +32,15 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
         val listItems = arrayListOf(
             ToInetMenuAction(
                 0,
-                R.drawable.ic_tor,
-                statusString = if (Prefs.torEnabled) "Tor (мосты и прокси)" else "Tor: ВЫКЛ"
+                R.drawable.ic_server,
+                statusString = "Настройки компонентов\n(Tor, zDPI, EasyVPN, SVPN, TGWS${if (ArchHelper.isOperaSupported) ", Opera" else ""})"
             ) {
-                TorConfigBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    TorConfigBottomSheet.TAG
+                ComponentsSettingsBottomSheet().show(
+                    parentFragmentManager,
+                    ComponentsSettingsBottomSheet.TAG
                 )
                 dismiss()
             },
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_server,
-                statusString = "zDPI: ${if (Prefs.byedpiEnabled) "ВКЛ" else "ВЫКЛ"}\n(прокси)"
-            ) {
-                ByeDpiBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    ByeDpiBottomSheet.TAG
-                )
-                dismiss()
-            }
-        )
-
-        if (ArchHelper.isOperaSupported) {
-            listItems.add(
-                ToInetMenuAction(
-                    0,
-                    R.drawable.ic_opera,
-                    statusString = "Opera Proxy: ${if (Prefs.operaProxyEnabled) "Вкл" else "Выкл"}"
-                ) {
-                    OperaProxyBottomSheet().show(
-                        requireActivity().supportFragmentManager,
-                        OperaProxyBottomSheet.TAG
-                    )
-                    dismiss()
-                }
-            )
-        }
-
-        listItems.add(
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_server,
-                statusString = "EasyVPN\n(прокси, подписки)" // : ${if (Prefs.easyVpnProxyEnabled) "ВКЛ" else "ВЫКЛ"}
-            ) {
-                EasyVpnBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    EasyVpnBottomSheet.TAG
-                )
-                dismiss()
-            }
-        )
-
-        listItems.add(
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_server,
-                statusString = "SVPN (SSH): ${if (Prefs.svpnEnabled) "ВКЛ" else "ВЫКЛ"}\n(туннель, сервер, ключ)"
-            ) {
-                SvpnBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    SvpnBottomSheet.TAG
-                )
-                dismiss()
-            }
-        )
-
-        listItems.add(
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_send_airplane,
-                statusString = "TGWS: ${if (Prefs.tgwsEnabled) "ВКЛ" else "ВЫКЛ"}\n(порт, FakeTLS, CF)"
-            ) {
-                TgwsBottomSheet().show(
-                    requireActivity().supportFragmentManager,
-                    TgwsBottomSheet.TAG
-                )
-                dismiss()
-            }
-        )
-
-        listItems.add(
             ToInetMenuAction(
                 0,
                 R.drawable.ic_send_airplane,
@@ -124,7 +52,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 val svpnPort = Prefs.svpnLocalPort
 
                 val proxies = arrayListOf(
-                    "Шлюз Gatik (порт 1777, гибрид Tor+TGWS)",
+                    "Шлюз Gatik (порт 1777)",
                     "TGWS (порт $tgwsPort)",
                     "zDPI (порт 1780)",
                     "Easy-VPN (порт $easyVpnPort)",
@@ -156,10 +84,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                     }
                     .show()
                 dismiss()
-            }
-        )
-
-        listItems.add(
+            },
             ToInetMenuAction(
                 0,
                 R.drawable.ic_settings_gear,

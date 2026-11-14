@@ -81,6 +81,7 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                     setupMenu(view)
                 }
             },
+            /*
             ToInetMenuAction(
                 0,
                 R.drawable.ic_server,
@@ -94,6 +95,7 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 ).show()
                 setupMenu(view)
             },
+            */
             ToInetMenuAction(
                 0,
                 R.drawable.ic_log,

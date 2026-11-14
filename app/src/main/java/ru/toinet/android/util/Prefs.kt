@@ -643,7 +643,7 @@ object Prefs {
 
     @JvmStatic
     var vpnBypassLan: Boolean
-        get() = cr?.getPrefBoolean("pref_vpn_bypass_lan", false) ?: false
+        get() = true // Зафиксировано в состоянии "Вкл"
         set(value) = cr?.putPref("pref_vpn_bypass_lan", value) ?: Unit
 
     @JvmStatic
