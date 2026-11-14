@@ -26,7 +26,7 @@ class EasyVpnService : Service() {
     companion object {
         private const val TAG = "EasyVpnService"
         private const val NOTIFICATION_CHANNEL_ID = "EasyVpnProxy"
-        private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_ID = 1001
 
         const val ACTION_START = "ru.toinet.android.easyvpn.START"
         const val ACTION_STOP = "ru.toinet.android.easyvpn.STOP"

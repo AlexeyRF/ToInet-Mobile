@@ -15,6 +15,7 @@ object StringUtils {
 
     @JvmStatic
     fun convertCountryCodeToFlagEmoji(countryCode: String): String {
+        if (countryCode.length < 2) return countryCode
         val uppercaseCC = countryCode.uppercase(Locale.getDefault())
         val flagOffset = 0x1F1E6
         val asciiOffset = 0x41

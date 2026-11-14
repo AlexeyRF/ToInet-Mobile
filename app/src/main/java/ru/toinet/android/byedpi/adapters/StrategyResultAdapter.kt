@@ -5,7 +5,6 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -36,8 +35,6 @@ class StrategyResultAdapter(
         val expandButton: LinearLayout = view.findViewById(R.id.expandButton)
         val expandTextView: TextView = view.findViewById(R.id.expandTextView)
         val expandIcon: ImageView = view.findViewById(R.id.expandIcon)
-        val btnApplyWifi: Button = view.findViewById(R.id.btnApplyWifi)
-        val btnApplyMobile: Button = view.findViewById(R.id.btnApplyMobile)
         val sitesRecyclerView: RecyclerView = view.findViewById(R.id.sitesRecyclerView)
     }
 
@@ -45,24 +42,17 @@ class StrategyResultAdapter(
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_strategy_result, parent, false)
         val holder = StrategyViewHolder(view)
 
-        holder.commandTextView.setOnClickListener {
+        holder.itemView.setOnClickListener {
             val position = holder.bindingAdapterPosition
             if (position != RecyclerView.NO_POSITION) {
                 showCommandMenu(strategies[position].command)
             }
         }
 
-        holder.btnApplyWifi.setOnClickListener {
+        holder.commandTextView.setOnClickListener {
             val position = holder.bindingAdapterPosition
             if (position != RecyclerView.NO_POSITION) {
-                onApplyWifi(strategies[position].command)
-            }
-        }
-
-        holder.btnApplyMobile.setOnClickListener {
-            val position = holder.bindingAdapterPosition
-            if (position != RecyclerView.NO_POSITION) {
-                onApplyMobile(strategies[position].command)
+                showCommandMenu(strategies[position].command)
             }
         }
 

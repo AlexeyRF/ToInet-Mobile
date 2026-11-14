@@ -10,28 +10,27 @@ object ProxifierRulesManager {
 
     private val lock = Any()
 
-    @Volatile
-    private var cachedRules: List<ProxifierRule>? = null
+    private data class CacheHolder(
+        val rules: List<ProxifierRule>,
+        val packageToRuleMap: Map<String, ProxifierRule>,
+        val neededProviders: Set<String>
+    )
 
     @Volatile
-    private var packageToRuleMap: Map<String, ProxifierRule> = emptyMap()
+    private var cacheHolder: CacheHolder? = null
 
-    @Volatile
-    private var cachedNeededProviders: Set<String>? = null
-
-    private fun ensureLoaded(): List<ProxifierRule> {
-        cachedRules?.let { return it }
+    private fun getOrLoadCache(): CacheHolder {
+        cacheHolder?.let { return it }
         return synchronized(lock) {
-            cachedRules?.let { return it }
+            cacheHolder?.let { return it }
             val loaded = loadRulesFromPrefs()
-            updateInternalCache(loaded)
-            loaded
+            val newCache = buildCacheHolder(loaded)
+            cacheHolder = newCache
+            newCache
         }
     }
 
-    private fun updateInternalCache(rules: List<ProxifierRule>) {
-        cachedRules = rules
-
+    private fun buildCacheHolder(rules: List<ProxifierRule>): CacheHolder {
         val map = mutableMapOf<String, ProxifierRule>()
         val needed = mutableSetOf<String>()
 
@@ -53,13 +52,12 @@ object ProxifierRulesManager {
             needed.add(def)
         }
 
-        packageToRuleMap = map
-        cachedNeededProviders = needed
+        return CacheHolder(rules, map, needed)
     }
 
     fun getRules(): MutableList<ProxifierRule> {
-        val rules = ensureLoaded()
-        return rules.map { it.copy(targetPackages = it.targetPackages.toMutableList()) }.toMutableList()
+        val holder = getOrLoadCache()
+        return holder.rules.map { it.copy(targetPackages = it.targetPackages.toMutableList()) }.toMutableList()
     }
 
     private fun loadRulesFromPrefs(): List<ProxifierRule> {
@@ -75,6 +73,26 @@ object ProxifierRulesManager {
             for (i in 0 until arr.length()) {
                 list.add(ProxifierRule.fromJson(arr.getJSONObject(i)))
             }
+            var modified = false
+            for (rule in list) {
+                if (rule.name.equals("YouTube", ignoreCase = true) || rule.targetPackages.contains("com.google.android.youtube")) {
+                    val additional = listOf(
+                        "com.google.android.apps.youtube.music",
+                        "com.google.android.youtube.tv",
+                        "com.google.android.youtube.googletv",
+                        "app.revanced.android.youtube"
+                    )
+                    for (pkg in additional) {
+                        if (!rule.targetPackages.contains(pkg)) {
+                            rule.targetPackages.add(pkg)
+                            modified = true
+                        }
+                    }
+                }
+            }
+            if (modified) {
+                saveRulesInternal(list)
+            }
             list
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse rules json", e)
@@ -88,7 +106,7 @@ object ProxifierRulesManager {
         synchronized(lock) {
             saveRulesInternal(rules)
             val defensiveCopy = rules.map { it.copy(targetPackages = it.targetPackages.toMutableList()) }
-            updateInternalCache(defensiveCopy)
+            cacheHolder = buildCacheHolder(defensiveCopy)
         }
     }
 
@@ -100,9 +118,7 @@ object ProxifierRulesManager {
 
     fun invalidateCache() {
         synchronized(lock) {
-            cachedRules = null
-            cachedNeededProviders = null
-            packageToRuleMap = emptyMap()
+            cacheHolder = null
         }
     }
 
@@ -117,7 +133,13 @@ object ProxifierRulesManager {
             ProxifierRule(
                 name = "YouTube",
                 enabled = true,
-                targetPackages = mutableListOf("com.google.android.youtube"),
+                targetPackages = mutableListOf(
+                    "com.google.android.youtube",
+                    "com.google.android.apps.youtube.music",
+                    "com.google.android.youtube.tv",
+                    "com.google.android.youtube.googletv",
+                    "app.revanced.android.youtube"
+                ),
                 action = ProxifierRule.ACTION_BYEDPI
             ),
             ProxifierRule(
@@ -135,9 +157,106 @@ object ProxifierRulesManager {
         )
     }
 
+    fun findRuleForPackages(packages: Array<String>): ProxifierRule? {
+        val rules = getOrLoadCache().rules
+        val pkgSet = packages.toSet()
+        // Priority order: first matching enabled rule in the list wins
+        for (rule in rules) {
+            if (rule.enabled && rule.targetPackages.any { pkgSet.contains(it) }) {
+                return rule
+            }
+        }
+        return null
+    }
+
     fun findRuleForPackage(packageName: String): ProxifierRule? {
-        ensureLoaded()
-        return packageToRuleMap[packageName]
+        val rules = getOrLoadCache().rules
+        // Priority order: first matching enabled rule in the list wins
+        for (rule in rules) {
+            if (rule.enabled && rule.targetPackages.contains(packageName)) {
+                return rule
+            }
+        }
+        return null
+    }
+
+    fun findRuleForDomain(domain: String): ProxifierRule? {
+        val lower = domain.lowercase().trim()
+        if (lower.isBlank()) return null
+        val rules = getOrLoadCache().rules
+
+        // 1. Direct domain match in targetPackages in priority order
+        for (rule in rules) {
+            if (!rule.enabled) continue
+            for (target in rule.targetPackages) {
+                val t = target.lowercase().trim()
+                if (t.isNotBlank()) {
+                    if (lower == t || lower.endsWith(".$t") || (t.startsWith("*.") && lower.endsWith(t.removePrefix("*")))) {
+                        return rule
+                    }
+                }
+            }
+        }
+
+        // 2. Known domain categories matched against user rules in priority order
+        for (rule in rules) {
+            if (!rule.enabled) continue
+            // Check YouTube
+            if (isYouTubeDomain(lower) && (rule.targetPackages.any { isYouTubePackage(it) } || rule.name.contains("YouTube", ignoreCase = true))) {
+                return rule
+            }
+            // Check Telegram
+            if (isTelegramDomain(lower) && (rule.targetPackages.any { isTelegramPackage(it) } || rule.name.contains("Telegram", ignoreCase = true))) {
+                return rule
+            }
+            // Check Social & Media
+            if (isSocialDomain(lower) && (rule.targetPackages.any { isSocialPackage(it) } || rule.name.contains("Social", ignoreCase = true) || rule.name.contains("Media", ignoreCase = true))) {
+                return rule
+            }
+        }
+
+        return null
+    }
+
+    private fun isYouTubePackage(pkg: String): Boolean {
+        val p = pkg.lowercase()
+        return p.contains("youtube") || p.contains("revanced") || p == "com.google.android.youtube"
+    }
+
+    private fun isTelegramPackage(pkg: String): Boolean {
+        val p = pkg.lowercase()
+        return p.contains("telegram") || p == "org.telegram.messenger"
+    }
+
+    private fun isSocialPackage(pkg: String): Boolean {
+        val p = pkg.lowercase()
+        return p.contains("instagram") || p.contains("twitter") || p.contains("facebook")
+    }
+
+    private fun isYouTubeDomain(domain: String): Boolean {
+        return domain == "youtube.com" || domain.endsWith(".youtube.com") ||
+               domain == "googlevideo.com" || domain.endsWith(".googlevideo.com") ||
+               domain == "ytimg.com" || domain.endsWith(".ytimg.com") ||
+               domain == "ggpht.com" || domain.endsWith(".ggpht.com") ||
+               domain == "youtu.be" || domain == "yt.be" ||
+               domain == "youtube-nocookie.com" || domain.endsWith(".youtube-nocookie.com")
+    }
+
+    private fun isTelegramDomain(domain: String): Boolean {
+        return domain == "telegram.org" || domain.endsWith(".telegram.org") ||
+               domain == "t.me" || domain.endsWith(".t.me") ||
+               domain == "telegram.me" || domain.endsWith(".telegram.me") ||
+               domain == "telegra.ph"
+    }
+
+    private fun isSocialDomain(domain: String): Boolean {
+        return domain == "instagram.com" || domain.endsWith(".instagram.com") ||
+               domain == "cdninstagram.com" || domain.endsWith(".cdninstagram.com") ||
+               domain == "twitter.com" || domain.endsWith(".twitter.com") ||
+               domain == "x.com" || domain.endsWith(".x.com") ||
+               domain == "twimg.com" || domain.endsWith(".twimg.com") ||
+               domain == "facebook.com" || domain.endsWith(".facebook.com") ||
+               domain == "fbcdn.net" || domain.endsWith(".fbcdn.net")
     }
 
     fun findActionForPackage(packageName: String): String {
@@ -145,8 +264,7 @@ object ProxifierRulesManager {
     }
 
     fun getNeededProviders(): Set<String> {
-        ensureLoaded()
-        return cachedNeededProviders ?: emptySet()
+        return getOrLoadCache().neededProviders
     }
 
     fun getAvailableActions(): List<Pair<String, String>> {

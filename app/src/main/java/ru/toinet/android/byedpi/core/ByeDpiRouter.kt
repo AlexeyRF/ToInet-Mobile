@@ -24,7 +24,7 @@ object ByeDpiRouter {
         ByeDpiInstance5Service::class.java
     )
     private var usedInstances = 0
-    private val domainToPort = mutableMapOf<String, Int>()
+    private val domainToPort = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private var defaultPort = 11081
 
     fun start(context: Context, jsonStr: String, listenPort: Int, bindIp: String) {
@@ -116,7 +116,7 @@ object ByeDpiRouter {
                 val greeting = ByteArray(2)
                 readExactly(input, greeting)
                 if (greeting[0] != 0x05.toByte()) return@withContext
-                val nmethods = greeting[1].toInt()
+                val nmethods = greeting[1].toInt() and 0xFF
                 readExactly(input, ByteArray(nmethods))
 
                 output.write(byteArrayOf(0x05, 0x00))
@@ -136,6 +136,7 @@ object ByeDpiRouter {
                     }
                     3 -> {
                         val len = input.read()
+                        if (len <= 0) return@withContext
                         val domainBytes = ByteArray(len)
                         readExactly(input, domainBytes)
                         targetDomain = String(domainBytes)
@@ -202,7 +203,11 @@ object ByeDpiRouter {
                 val bndAtyp = upConnResp[3].toInt()
                 when (bndAtyp) {
                     1 -> readExactly(upInput, ByteArray(6))
-                    3 -> readExactly(upInput, ByteArray(upInput.read() + 2))
+                    3 -> {
+                        val dlen = upInput.read()
+                        if (dlen < 0) return@withContext
+                        readExactly(upInput, ByteArray(dlen + 2))
+                    }
                     4 -> readExactly(upInput, ByteArray(18))
                 }
 

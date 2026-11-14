@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
 import ru.toinet.android.databinding.TgwsBottomSheetBinding
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
@@ -153,10 +155,13 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
             
             val mappings = binding.etMappings.text.toString().split("\n")
                 .filter { it.contains(":") }
-                .associate {
-                    val parts = it.split(":")
-                    parts[0].trim().toInt() to parts[1].trim()
-                }
+                .mapNotNull {
+                    val parts = it.split(":", limit = 2)
+                    if (parts.size == 2) {
+                        val dc = parts[0].trim().toIntOrNull()
+                        if (dc != null) dc to parts[1].trim() else null
+                    } else null
+                }.toMap()
             Prefs.tgwsDcMappings = mappings
 
             if (ru.toinet.android.tgws.TgwsService.isRunning) {
@@ -185,7 +190,7 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
             }
         }
 
-        lifecycleScope.launchWhenStarted {
+        viewLifecycleOwner.lifecycleScope.launchWhenStarted {
             ru.toinet.android.tgws.TgwsService.logs.collect { logMsg ->
                 if (binding.tvLogs.text.toString().trim() == "Ожидание логов...") {
                     binding.tvLogs.text = ""

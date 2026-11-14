@@ -2,6 +2,7 @@ package ru.toinet.android.localization
 
 import android.app.Activity
 import android.content.ContextWrapper
+import android.content.res.Configuration
 import android.content.res.Resources
 import android.text.TextUtils
 import android.util.DisplayMetrics
@@ -79,7 +80,7 @@ class Languages private constructor(activity: Activity) {
             locale =
                 if (locale != null && TextUtils.equals(locale!!.language, language) && !refresh) {
                     return  // already configured
-                } else if (language == null || language === USE_SYSTEM_DEFAULT) {
+                } else if (language == null || language == USE_SYSTEM_DEFAULT) {
                     defaultLocale
                 } else {
                     /* handle locales with the country in it, i.e. zh_CN, zh_TW, etc */
@@ -108,8 +109,10 @@ class Languages private constructor(activity: Activity) {
         activity.windowManager.defaultDisplay.getMetrics(ignored)
         var resources: Resources
         val localeSet: MutableSet<Locale> = LinkedHashSet()
+        val testConfig = Configuration(config)
         for (locale in localesToTest) {
-            resources = Resources(assets, ignored, config)
+            testConfig.setLocale(locale)
+            resources = Resources(assets, ignored, testConfig)
             if (!TextUtils.equals(DEFAULT_STRING, resources.getString(resId))
                 || locale == Locale.ENGLISH
             ) localeSet.add(locale)

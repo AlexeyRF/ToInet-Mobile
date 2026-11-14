@@ -33,7 +33,7 @@ class ByeDpiProxyCmdPreferences(val args: Array<String>) : ByeDpiProxyPreference
                     val p = arg.substring(2).toIntOrNull()
                     if (p != null) return p
                 } else if (arg.startsWith("--port=")) {
-                    val p = arg.substring(9).toIntOrNull()
+                    val p = arg.substring(7).toIntOrNull()
                     if (p != null) return p
                 }
             }

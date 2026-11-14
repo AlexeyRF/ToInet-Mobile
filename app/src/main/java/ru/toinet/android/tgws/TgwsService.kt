@@ -111,10 +111,13 @@ class TgwsService : Service() {
         val useByeDpi = intent?.getBooleanExtra("useByeDpi", false) ?: false
         val mappingArray = intent?.getStringArrayExtra("dcMappings")
         val dcMappings = if (mappingArray != null && mappingArray.isNotEmpty()) {
-            mappingArray.associate {
-                val parts = it.split(":")
-                parts[0].toInt() to parts[1]
-            }
+            mappingArray.mapNotNull {
+                val parts = it.split(":", limit = 2)
+                if (parts.size == 2) {
+                    val dc = parts[0].trim().toIntOrNull()
+                    if (dc != null) dc to parts[1].trim() else null
+                } else null
+            }.toMap()
         } else {
             Prefs.tgwsDcMappings
         }
@@ -201,7 +204,7 @@ class TgwsService : Service() {
             .build()
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
             } else {
                 startForeground(NOTIFICATION_ID, notification)

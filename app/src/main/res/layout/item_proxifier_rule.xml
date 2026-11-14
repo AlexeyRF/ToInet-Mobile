@@ -16,7 +16,34 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingVertical="8dp"
-        android:paddingHorizontal="8dp">
+        android:paddingHorizontal="6dp">
+
+        <!-- Reorder up/down buttons -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginEnd="2dp">
+
+            <ImageButton
+                android:id="@+id/btnMoveUp"
+                android:layout_width="24dp"
+                android:layout_height="20dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_arrow_up"
+                android:scaleType="centerInside"
+                android:contentDescription="Повысить приоритет" />
+
+            <ImageButton
+                android:id="@+id/btnMoveDown"
+                android:layout_width="24dp"
+                android:layout_height="20dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_arrow_down"
+                android:scaleType="centerInside"
+                android:contentDescription="Понизить приоритет" />
+        </LinearLayout>
 
         <CheckBox
             android:id="@+id/cbEnabled"
@@ -32,13 +59,13 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:paddingEnd="8dp">
+            android:paddingEnd="6dp">
 
             <TextView
                 android:id="@+id/tvRuleName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Telegram"
+                android:text="#1 Telegram"
                 android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
                 android:textStyle="bold" />
 
@@ -59,7 +86,7 @@
             android:layout_width="wrap_content"
             android:layout_height="36dp"
             android:minHeight="0dp"
-            android:paddingHorizontal="10dp"
+            android:paddingHorizontal="8dp"
             android:paddingVertical="0dp"
             android:text="Easy-VPN"
             android:textSize="12sp"
@@ -67,12 +94,22 @@
 
         <ImageButton
             android:id="@+id/btnDelete"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_close"
             android:contentDescription="Удалить"
-            android:layout_marginStart="4dp" />
+            android:layout_marginStart="2dp" />
+
+        <ImageView
+            android:id="@+id/ivDragHandle"
+            android:layout_width="24dp"
+            android:layout_height="32dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_drag_handle"
+            android:contentDescription="Перетащить"
+            android:alpha="0.6"
+            android:layout_marginStart="2dp" />
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

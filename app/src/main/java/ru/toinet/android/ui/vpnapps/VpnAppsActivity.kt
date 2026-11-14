@@ -33,7 +33,7 @@ class VpnAppsActivity : AppCompatActivity() {
     private lateinit var adapter: VpnAppsAdapter
     private val appList = mutableListOf<AppItem>()
     private val filteredList = mutableListOf<AppItem>()
-    private var excludedApps = mutableSetOf<String>()
+    private val excludedApps = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val iconCache = android.util.LruCache<String, android.graphics.drawable.Drawable>(60)
 
     data class AppItem(
@@ -60,7 +60,8 @@ class VpnAppsActivity : AppCompatActivity() {
         adapter = VpnAppsAdapter()
         recyclerView.adapter = adapter
 
-        excludedApps = Prefs.vpnExcludedApps.toMutableSet()
+        excludedApps.clear()
+        excludedApps.addAll(Prefs.vpnExcludedApps)
 
         etSearch.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
@@ -72,7 +73,7 @@ class VpnAppsActivity : AppCompatActivity() {
 
         btnDisableRu.setOnClickListener {
             val ruApps = appList.filter {
-                it.packageName.contains("ru.", ignoreCase = true) || it.packageName.contains(".ru", ignoreCase = true)
+                ru.toinet.android.util.AddressStatusHelper.isRuPackage(it.packageName)
             }
             ruApps.forEach { excludedApps.add(it.packageName) }
             savePrefs()
@@ -220,14 +221,20 @@ class VpnAppsActivity : AppCompatActivity() {
                                 }
                             }
                             .setNegativeButton("Отмена") { _, _ ->
-                                holder.swEnabled.isChecked = false
+                                val pos = holder.bindingAdapterPosition
+                                if (pos != RecyclerView.NO_POSITION) {
+                                    notifyItemChanged(pos)
+                                }
                             }
                             .setOnCancelListener {
-                                holder.swEnabled.isChecked = false
+                                val pos = holder.bindingAdapterPosition
+                                if (pos != RecyclerView.NO_POSITION) {
+                                    notifyItemChanged(pos)
+                                }
                             }
                             .show()
                     } else {
-                        val isRu = pkgName.contains("ru.", ignoreCase = true) || pkgName.contains(".ru", ignoreCase = true)
+                        val isRu = ru.toinet.android.util.AddressStatusHelper.isRuPackage(pkgName)
                         if (isRu) {
                             AlertDialog.Builder(this@VpnAppsActivity)
                                 .setTitle("Предупреждение")
@@ -237,10 +244,16 @@ class VpnAppsActivity : AppCompatActivity() {
                                     savePrefs()
                                 }
                                 .setNegativeButton("Отмена") { _, _ ->
-                                    holder.swEnabled.isChecked = false
+                                    val pos = holder.bindingAdapterPosition
+                                    if (pos != RecyclerView.NO_POSITION) {
+                                        notifyItemChanged(pos)
+                                    }
                                 }
                                 .setOnCancelListener {
-                                    holder.swEnabled.isChecked = false
+                                    val pos = holder.bindingAdapterPosition
+                                    if (pos != RecyclerView.NO_POSITION) {
+                                        notifyItemChanged(pos)
+                                    }
                                 }
                                 .show()
                         } else {

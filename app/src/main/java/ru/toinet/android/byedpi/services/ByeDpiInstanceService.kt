@@ -28,7 +28,9 @@ open class ByeDpiInstanceService : Service() {
                 for (arg in prefs.args) {
                     if (skipNext) { skipNext = false; continue }
                     if (arg == "-p" || arg == "-i") { skipNext = true; continue }
-                    if (arg.startsWith("-p") || arg.startsWith("--port=") || arg.startsWith("-i") || arg.startsWith("--ip=")) continue
+                    val isPortArg = (arg.startsWith("-p") && arg.length > 2 && arg[2].isDigit()) || arg.startsWith("--port=")
+                    val isIpArg = (arg.startsWith("-i") && arg.length > 2 && (arg[2].isDigit() || arg[2] == ':')) || arg.startsWith("--ip=")
+                    if (isPortArg || isIpArg) continue
                     newArgs.add(arg)
                 }
                 newArgs.add("-i"); newArgs.add("127.0.0.1")

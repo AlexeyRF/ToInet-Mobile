@@ -27,7 +27,7 @@ class SvpnService : Service() {
     companion object {
         private const val TAG = "SvpnService"
         private const val NOTIFICATION_CHANNEL_ID = "svpn_channel"
-        private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_ID = 1003
 
         const val ACTION_START = "ru.toinet.android.svpn.START"
         const val ACTION_STOP = "ru.toinet.android.svpn.STOP"

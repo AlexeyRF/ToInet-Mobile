@@ -23,6 +23,13 @@ class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
     private lateinit var binding: ByedpiBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
 
+    private val testActivityLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { _ ->
+        if (::binding.isInitialized) {
+            binding.etWifiArgs.setText(Prefs.byedpiWifiArgs)
+            binding.etMobileArgs.setText(Prefs.byedpiMobileArgs)
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -69,11 +76,6 @@ class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
             Prefs.byedpiUpstreamProvider = chosen
             Prefs.byedpiUpstreamHost = "127.0.0.1"
             Prefs.byedpiUpstreamPort = UpstreamProxyCoordinator.getPortForProvider(chosen)
-        }
-
-        val testActivityLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { _ ->
-            binding.etWifiArgs.setText(Prefs.byedpiWifiArgs)
-            binding.etMobileArgs.setText(Prefs.byedpiMobileArgs)
         }
 
         binding.btnTest.setOnClickListener {

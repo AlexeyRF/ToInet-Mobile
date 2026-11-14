@@ -52,6 +52,12 @@ class AppVpnService : LifecycleVpnService() {
         var activeService: AppVpnService? = null
             private set
 
+        val isConnected: Boolean
+            get() = status == ServiceStatus.Connected
+
+        val currentStatus: ServiceStatus
+            get() = status
+
         @Volatile
         var currentLogMessage: String? = null
 
@@ -140,6 +146,12 @@ class AppVpnService : LifecycleVpnService() {
                 if (status == ServiceStatus.Connected) {
                     startForeground()
                     sendLocalStatus(org.torproject.jni.TorService.STATUS_ON)
+                    if (appRoutingServer == null) {
+                        appRoutingServer = ru.toinet.android.vpn.rules.AppRoutingServer(this, lifecycleScope).apply {
+                            start()
+                        }
+                    }
+                    ensureNeededProvidersRunning()
                 }
                 START_STICKY
             }
@@ -261,6 +273,10 @@ class AppVpnService : LifecycleVpnService() {
         ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/pdnsd.pid")
 
         val sharedPreferences = getPreferences()
+        // Always use Proxifier rules routing mode
+        val isAppRouting = true
+        /*
+        // Code for tunneling into 1 single provider (preserved but commented out):
         val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
         val provider = ru.toinet.android.util.Prefs.vpnProvider
         var actualHost = "127.0.0.1"
@@ -277,14 +293,8 @@ class AppVpnService : LifecycleVpnService() {
             else -> actualPort = getByeDpiPreferences().port
         }
         var socksAddr = "$actualHost:$actualPort"
-
-        val neededProviders: MutableSet<String> = if (isAppRouting) {
-            val set = ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().toMutableSet()
-            set.add(provider)
-            set
-        } else {
-            mutableSetOf(provider)
-        }
+        */
+        val neededProviders: MutableSet<String> = ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().toMutableSet()
 
         if (neededProviders.contains("tor") && ru.toinet.android.util.Prefs.proxyEnabled) {
             val u = ru.toinet.android.util.Prefs.torUpstreamProvider
@@ -341,16 +351,7 @@ class AppVpnService : LifecycleVpnService() {
         if (neededProviders.contains("svpn") || neededProviders.contains("ssh")) {
             val server = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope)
             svpnServer = server
-            if (provider == "svpn" || provider == "ssh") {
-                val ok = server.startAndWait(12000L)
-                if (!ok) {
-                    val errMsg = server.lastErrorMessage ?: "Не удалось подключиться к SSH серверу"
-                    ru.toinet.android.util.NotificationLogger.log(this, "svpn", "Ошибка SVPN: $errMsg")
-                    throw IllegalStateException(errMsg)
-                }
-            } else {
-                server.start()
-            }
+            server.start()
         }
 
         if (neededProviders.contains("tor")) {
@@ -361,6 +362,9 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         // Wait for proxy port to be open before routing traffic to it
+        val isReady = waitForPort("127.0.0.1", 10850, 4000L)
+        /*
+        // Single provider wait logic (commented out):
         val isReady = if (isAppRouting) {
             waitForPort("127.0.0.1", 10850, 4000L)
         } else {
@@ -373,13 +377,14 @@ class AppVpnService : LifecycleVpnService() {
             }
             waitForPort(actualHost, actualPort, waitTimeout)
         }
+        */
         if (!isReady) {
-            Log.e(TAG, "Proxy port $actualHost:$actualPort failed to start within timeout for provider $provider")
-            ru.toinet.android.util.NotificationLogger.log(this, provider, "Предупреждение: порт прокси $actualPort не ответил вовремя")
+            Log.e(TAG, "AppRoutingServer router port 127.0.0.1:10850 failed to start within timeout")
+            ru.toinet.android.util.NotificationLogger.log(this, "proxifier", "Предупреждение: порт маршрутизатора 10850 не ответил вовремя")
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "77.88.8.8")
-        if ((provider == "svpn" || provider == "ssh") && ru.toinet.android.util.Prefs.svpnDnsServer.isNotBlank()) {
+        if ((neededProviders.contains("svpn") || neededProviders.contains("ssh")) && ru.toinet.android.util.Prefs.svpnDnsServer.isNotBlank()) {
             dns = ru.toinet.android.util.Prefs.svpnDnsServer
         }
         if (dns.isBlank() || dns == "208.67.222.222" || dns == "1.1.1.1") {
@@ -400,7 +405,7 @@ class AppVpnService : LifecycleVpnService() {
 
         var startupSuccess = false
         try {
-            val dnsPort = if (provider == "svpn" || provider == "ssh") ru.toinet.android.util.Prefs.svpnDnsPort else 53
+            val dnsPort = if (neededProviders.contains("svpn") || neededProviders.contains("ssh")) ru.toinet.android.util.Prefs.svpnDnsPort else 53
             ru.toinet.android.vpn.utility.VpnUtility.makePdnsdConf(this, dns, dnsPort)
 
             ru.toinet.android.vpn.utility.VpnUtility.exec(arrayOf(
@@ -409,34 +414,34 @@ class AppVpnService : LifecycleVpnService() {
                 "$dir/pdnsd.conf"
             ))
 
-            val command = if (isAppRouting) {
-                mutableListOf(
-                    "$libDir/libtun2socks.so",
-                    "--netif-ipaddr", "26.26.26.2",
-                    "--netif-netmask", "255.255.255.0",
-                    "--socks-server-addr", "127.0.0.1:10850",
-                    "--tunfd", fd.fd.toString(),
-                    "--tunmtu", "1500",
-                    "--loglevel", "3",
-                    "--pid", "$dir/tun2socks.pid",
-                    "--dnsgw", "26.26.26.1:8091",
-                    "--username", "toinet",
-                    "--password", "toinet",
-                    "--append-source-to-username"
-                )
-            } else {
-                mutableListOf(
-                    "$libDir/libtun2socks.so",
-                    "--netif-ipaddr", "26.26.26.2",
-                    "--netif-netmask", "255.255.255.0",
-                    "--socks-server-addr", socksAddr,
-                    "--tunfd", fd.fd.toString(),
-                    "--tunmtu", "1500",
-                    "--loglevel", "3",
-                    "--pid", "$dir/tun2socks.pid",
-                    "--dnsgw", "26.26.26.1:8091"
-                )
-            }
+            val command = mutableListOf(
+                "$libDir/libtun2socks.so",
+                "--netif-ipaddr", "26.26.26.2",
+                "--netif-netmask", "255.255.255.0",
+                "--socks-server-addr", "127.0.0.1:10850",
+                "--tunfd", fd.fd.toString(),
+                "--tunmtu", "1500",
+                "--loglevel", "3",
+                "--pid", "$dir/tun2socks.pid",
+                "--dnsgw", "26.26.26.1:8091",
+                "--username", "toinet",
+                "--password", "toinet",
+                "--append-source-to-username"
+            )
+            /*
+            // Single provider tunneling mode (commented out):
+            val command = mutableListOf(
+                "$libDir/libtun2socks.so",
+                "--netif-ipaddr", "26.26.26.2",
+                "--netif-netmask", "255.255.255.0",
+                "--socks-server-addr", socksAddr,
+                "--tunfd", fd.fd.toString(),
+                "--tunmtu", "1500",
+                "--loglevel", "3",
+                "--pid", "$dir/tun2socks.pid",
+                "--dnsgw", "26.26.26.1:8091"
+            )
+            */
             
             if (hasExternalIpv6) {
                 command.add("--netif-ip6addr")
@@ -530,10 +535,6 @@ class AppVpnService : LifecycleVpnService() {
             }
         }
 
-        if (stoppedProviders.contains("tgws") && !ru.toinet.android.util.Prefs.tgwsEnabled) {
-            ru.toinet.android.tgws.TgwsService.stop(this)
-        }
-
         easyVpnServer?.stop()
         easyVpnServer = null        
         operaProxyServer?.stop()
@@ -554,6 +555,42 @@ class AppVpnService : LifecycleVpnService() {
         Log.i(TAG, "Tun2socks stopped")
     }
 
+    private fun ensureNeededProvidersRunning() {
+        val neededProviders = ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders()
+        if (neededProviders.contains("byedpi")) {
+            val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
+                action = ru.toinet.android.vpn.data.START_ACTION
+            }
+            sendIntentToService(byedpiIntent, isForeground = false)
+        }
+        if (neededProviders.contains("easyvpn") && easyVpnServer == null) {
+            easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
+                onServerChanged = {
+                    if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
+                        val nm = getSystemService(android.app.NotificationManager::class.java)
+                        nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                    }
+                }
+            }
+            easyVpnServer?.start()
+        }
+        if (neededProviders.contains("operaproxy") && operaProxyServer == null && ArchHelper.isOperaSupported) {
+            operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this, lifecycleScope)
+            operaProxyServer?.start()
+        }
+        if ((neededProviders.contains("svpn") || neededProviders.contains("ssh")) && svpnServer == null) {
+            val server = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope)
+            svpnServer = server
+            server.start()
+        }
+        if (neededProviders.contains("tor")) {
+            val torIntent = Intent(this, ru.toinet.android.service.ToInetService::class.java).apply {
+                action = org.torproject.jni.TorService.ACTION_START
+            }
+            sendIntentToService(torIntent, isForeground = false)
+        }
+    }
+
     private fun startWatchdog() {
         stopWatchdog()
         watchdogJob = lifecycleScope.launch(Dispatchers.IO) {
@@ -569,6 +606,14 @@ class AppVpnService : LifecycleVpnService() {
 
                 val tunAlive = ru.toinet.android.vpn.utility.VpnUtility.isPidAlive(tunPidFile)
                 val pdnsdAlive = ru.toinet.android.vpn.utility.VpnUtility.isPidAlive(pdnsdPidFile)
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled) {
+                    val needed = ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders()
+                    if (needed.contains("byedpi") && ru.toinet.android.byedpi.services.ByeDpiProxyService.status != ServiceStatus.Connected) {
+                        Log.w(TAG, "Watchdog: ByeDpiProxyService is disconnected while needed in app routing, reviving...")
+                        ensureNeededProvidersRunning()
+                    }
+                }
 
                 if (!tunAlive || !pdnsdAlive) {
                     Log.w(TAG, "Watchdog: VPN process died unexpectedly! tun2socks=$tunAlive, pdnsd=$pdnsdAlive")
@@ -589,7 +634,7 @@ class AppVpnService : LifecycleVpnService() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Watchdog auto-restart failed", e)
                         updateStatus(ServiceStatus.Failed)
-                        withContext(Dispatchers.Main) {
+                        lifecycleScope.launch(Dispatchers.Main) {
                             stop()
                         }
                     }
@@ -852,8 +897,7 @@ class AppVpnService : LifecycleVpnService() {
                 if (!ru.toinet.android.util.Prefs.vpnAppsInitialized) {
                     for (pkg in packages) {
                         val pkgName = pkg.packageName
-                        if (!isBrowserPackage(pkgName) && (pkgName.contains("ru.", ignoreCase = true) || 
-                            pkgName.contains(".ru", ignoreCase = true))) {
+                        if (!isBrowserPackage(pkgName) && ru.toinet.android.util.AddressStatusHelper.isRuPackage(pkgName)) {
                             excludedByUser.add(pkgName)
                             needsSave = true
                         }
@@ -863,9 +907,6 @@ class AppVpnService : LifecycleVpnService() {
                 }
 
                 for (disallowedPkg in excludedByUser) {
-                    if (isBrowserPackage(disallowedPkg)) {
-                        continue
-                    }
                     try {
                         builder.addDisallowedApplication(disallowedPkg)
                     } catch (e: Exception) {

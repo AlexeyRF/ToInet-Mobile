@@ -55,7 +55,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
     private var savedCmd: String = ""
     private var testJob: Job? = null
-    private val strategies = mutableListOf<StrategyResult>()
+    private val strategies = java.util.Collections.synchronizedList(mutableListOf<StrategyResult>())
     
 
     private var isTesting: Boolean
@@ -170,6 +170,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        ByeDpiProxyService.testCmdArgsOverride = null
         if (isTesting) {
             isTesting = false
             testJob?.cancel()
@@ -178,6 +179,36 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 ServiceManager.stop(this)
             }
         }
+    }
+
+    private suspend fun waitForProxyPort(port: Int, timeoutMs: Long = 5000): Boolean = withContext(Dispatchers.IO) {
+        val startTime = System.currentTimeMillis()
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            try {
+                java.net.Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress("127.0.0.1", port), 300)
+                    return@withContext true
+                }
+            } catch (_: Exception) {
+                delay(100)
+            }
+        }
+        false
+    }
+
+    private suspend fun waitForPortRelease(port: Int, timeoutMs: Long = 3000): Boolean = withContext(Dispatchers.IO) {
+        val startTime = System.currentTimeMillis()
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            try {
+                java.net.Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress("127.0.0.1", port), 200)
+                }
+                delay(100)
+            } catch (_: Exception) {
+                return@withContext true
+            }
+        }
+        false
     }
 
     private suspend fun waitForProxyStatus(statusNeeded: AppStatus, timeoutMs: Long = 7000): Boolean {
@@ -230,10 +261,14 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 strategyAdapter.updateStrategies(strategies, sortByPercentage = false)
             }
 
+            val ip = prefs.getStringNotNull("byedpi_proxy_ip", "127.0.0.1")
+            val port = prefs.getIntStringNotNull("byedpi_proxy_port", 1780)
+
             if (appStatus.first != AppStatus.Halted) {
+                ByeDpiProxyService.testCmdArgsOverride = null
                 ServiceManager.stop(this@TestActivity)
-                waitForProxyStatus(AppStatus.Halted, 7000)
-                delay(500)
+                waitForProxyStatus(AppStatus.Halted, 5000)
+                waitForPortRelease(port, 3000)
             }
 
             val delaySec = prefs.getIntStringNotNull("byedpi_proxytest_delay", 1)
@@ -254,12 +289,17 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 if (appStatus.first != AppStatus.Halted) {
                     ServiceManager.stop(this@TestActivity)
                     waitForProxyStatus(AppStatus.Halted, 5000)
+                    waitForPortRelease(port, 3000)
                 }
 
+                ByeDpiProxyService.testCmdArgsOverride = strategy.command
                 updateCmdArgs(strategy.command)
                 ServiceManager.start(this@TestActivity, Mode.Proxy)
 
-                val started = waitForProxyStatus(AppStatus.Running, 5000)
+                val statusRunning = waitForProxyStatus(AppStatus.Running, 5000)
+                val portReady = if (statusRunning) waitForProxyPort(port, 5000) else false
+                val started = statusRunning && portReady
+
                 if (!started) {
                     val totalRequests = sites.size * requestsCount
                     strategy.totalRequests = totalRequests
@@ -277,6 +317,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                     if (appStatus.first != AppStatus.Halted) {
                         ServiceManager.stop(this@TestActivity)
                         waitForProxyStatus(AppStatus.Halted, 3000)
+                        waitForPortRelease(port, 2000)
                     }
                     continue
                 }
@@ -317,6 +358,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 if (appStatus.first != AppStatus.Halted) {
                     ServiceManager.stop(this@TestActivity)
                     waitForProxyStatus(AppStatus.Halted, 5000)
+                    waitForPortRelease(port, 3000)
                 }
 
                 delay(delaySec * 500L)
@@ -332,6 +374,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         }
 
         lifecycleScope.launch(Dispatchers.IO) {
+            ByeDpiProxyService.testCmdArgsOverride = null
             isTesting = false
             updateCmdArgs(savedCmd)
 
@@ -540,7 +583,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 val file = File(filesDir, "proxytest_strategies.list")
                 if (file.exists()) file.delete()
             } catch (_: Exception) {}
-            assets.open("proxytest_strategies.list").bufferedReader().readText()
+            assets.open("proxytest_strategies.list").bufferedReader().use { it.readText() }
                 .replace("{sni}", "\"${sniValue}\"").lines()
         }
         return rawLines.map { it.trim().removePrefix("\uFEFF") }.filter {

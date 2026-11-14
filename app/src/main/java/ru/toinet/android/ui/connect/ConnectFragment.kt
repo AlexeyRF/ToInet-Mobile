@@ -11,8 +11,6 @@ import ru.toinet.android.util.ArchHelper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.Animation
-import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -86,10 +84,12 @@ class ConnectFragment : Fragment(),
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.events.collect { event ->
-                when (event) {
-                    is ConnectEvent.StartTorAndVpn -> attemptToStartTor()
-                    is ConnectEvent.RefreshMenuList -> refreshMenuList(requireContext())
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.events.collect { event ->
+                    when (event) {
+                        is ConnectEvent.StartTorAndVpn -> attemptToStartTor()
+                        is ConnectEvent.RefreshMenuList -> if (isAdded) refreshMenuList(requireContext())
+                    }
                 }
             }
         }
@@ -111,11 +111,15 @@ class ConnectFragment : Fragment(),
         }
         
         binding.btnProvider.setOnClickListener {
+            ProxifierRulesBottomSheet().show(requireActivity().supportFragmentManager, ProxifierRulesBottomSheet.TAG)
+            /*
+            // Single provider selector (commented out as requested):
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && Prefs.appRoutingEnabled) {
                 ProxifierRulesBottomSheet().show(requireActivity().supportFragmentManager, ProxifierRulesBottomSheet.TAG)
             } else {
                 VpnBottomSheet().show(requireActivity().supportFragmentManager, VpnBottomSheet.TAG)
             }
+            */
         }
         
         binding.btnSettings.setOnClickListener {
@@ -146,13 +150,23 @@ class ConnectFragment : Fragment(),
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         binding = FragmentConnectBinding.inflate(inflater, container, false)
-        viewModel.updateState(requireContext(), lastStatus)
+        val effectiveStatus = if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
+            TorService.STATUS_ON
+        } else {
+            lastStatus
+        }
+        viewModel.updateState(requireContext(), effectiveStatus)
         return binding.root
     }
 
     override fun onResume() {
         super.onResume()
-        viewModel.updateState(requireContext(), lastStatus)
+        val effectiveStatus = if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
+            TorService.STATUS_ON
+        } else {
+            lastStatus
+        }
+        viewModel.updateState(requireContext(), effectiveStatus)
     }
 
     fun stopTorAndVpn() {
@@ -204,11 +218,15 @@ class ConnectFragment : Fragment(),
     }
 
     fun refreshMenuList(context: Context) {
+        binding.btnProvider.text = "VPN Правила"
+        /*
+        // Single provider menu text (commented out):
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && Prefs.appRoutingEnabled) {
             binding.btnProvider.text = "VPN Правила"
         } else {
             binding.btnProvider.text = "VPN Провайдер"
         }
+        */
     }
 
 
@@ -242,13 +260,6 @@ class ConnectFragment : Fragment(),
             // LinearProgressIndicator doesn't need progress reset if it's indeterminate
         }
 
-        val animHover = AnimationUtils.loadAnimation(context, R.anim.hover)
-        animHover.repeatMode = Animation.REVERSE
-        animHover.start()
-
-        val animShadow = AnimationUtils.loadAnimation(context, R.anim.shadow)
-        animShadow.repeatMode = Animation.REVERSE
-        animShadow.start()
         binding.tvTitle.text = context.getString(R.string.trying_to_connect_title)
     }
 

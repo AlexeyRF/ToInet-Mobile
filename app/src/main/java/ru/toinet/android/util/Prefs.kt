@@ -288,9 +288,12 @@ object Prefs {
     var appRoutingEnabled: Boolean
         get() {
             if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return false
-            return cr?.getPrefBoolean("pref_app_routing_enabled", false) ?: false
+            return cr?.getPrefBoolean("pref_app_routing_enabled", true) ?: true
         }
-        set(value) = cr?.putPref("pref_app_routing_enabled", value) ?: Unit
+        set(value) {
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return
+            cr?.putPref("pref_app_routing_enabled", value) ?: Unit
+        }
 
     var appRoutingRulesJson: String
         get() = cr?.getPrefString("pref_app_routing_rules_json") ?: ""
@@ -392,10 +395,13 @@ object Prefs {
     var tgwsDcMappings: Map<Int, String>
         get() {
             val s = cr?.getPrefString("tgws_dc_mappings") ?: "2:149.154.167.220\n4:149.154.167.220"
-            return s.split("\n").filter { it.contains(":") }.associate {
-                val parts = it.split(":")
-                parts[0].trim().toInt() to parts[1].trim()
-            }
+            return s.split("\n").filter { it.contains(":") }.mapNotNull {
+                val parts = it.split(":", limit = 2)
+                if (parts.size == 2) {
+                    val dc = parts[0].trim().toIntOrNull()
+                    if (dc != null) dc to parts[1].trim() else null
+                } else null
+            }.toMap()
         }
         set(value) {
             val s = value.map { "${it.key}:${it.value}" }.joinToString("\n")
@@ -651,12 +657,12 @@ object Prefs {
         }
         return when (provider) {
             "vpn" -> isGlobalVpnEnabled
-            "tor" -> torEnabled || (isGlobalVpnEnabled && vpnProvider == "tor")
-            "byedpi" -> byedpiEnabled || (isGlobalVpnEnabled && vpnProvider == "byedpi")
+            "tor" -> if (isGlobalVpnEnabled) vpnProvider == "tor" else ((vpnProvider == "tor" || vpnProvider.isBlank()) && torEnabled)
+            "byedpi" -> (vpnProvider == "byedpi") || byedpiEnabled
             "tgws" -> tgwsEnabled
-            "operaproxy" -> (operaProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "operaproxy")) && ArchHelper.isOperaSupported
-            "easyvpn" -> easyVpnProxyEnabled || (isGlobalVpnEnabled && vpnProvider == "easyvpn")
-            "svpn", "ssh" -> svpnEnabled || (isGlobalVpnEnabled && (vpnProvider == "svpn" || vpnProvider == "ssh"))
+            "operaproxy" -> ((vpnProvider == "operaproxy") || operaProxyEnabled) && ArchHelper.isOperaSupported
+            "easyvpn" -> (vpnProvider == "easyvpn") || easyVpnProxyEnabled
+            "svpn", "ssh" -> (vpnProvider == "svpn" || vpnProvider == "ssh") || svpnEnabled
             else -> false
         }
     }
@@ -666,24 +672,16 @@ object Prefs {
         if (isGlobalVpnEnabled) {
             return serviceKey == "vpn"
         }
-        if (torEnabled) {
-            return serviceKey == "tor"
+        val activeProvider = vpnProvider
+        if (activeProvider.isNotBlank()) {
+            return serviceKey == activeProvider
         }
-        if (byedpiEnabled) {
-            return serviceKey == "byedpi"
-        }
-        if (easyVpnProxyEnabled) {
-            return serviceKey == "easyvpn"
-        }
-        if (operaProxyEnabled && ArchHelper.isOperaSupported) {
-            return serviceKey == "operaproxy"
-        }
-        if (svpnEnabled) {
-            return serviceKey == "svpn"
-        }
-        if (tgwsEnabled) {
-            return serviceKey == "tgws"
-        }
+        if (byedpiEnabled) return serviceKey == "byedpi"
+        if (easyVpnProxyEnabled) return serviceKey == "easyvpn"
+        if (operaProxyEnabled && ArchHelper.isOperaSupported) return serviceKey == "operaproxy"
+        if (svpnEnabled) return serviceKey == "svpn"
+        if (torEnabled) return serviceKey == "tor"
+        if (tgwsEnabled) return serviceKey == "tgws"
         return false
     }
 

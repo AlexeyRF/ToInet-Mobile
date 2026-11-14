@@ -13,7 +13,11 @@ class ByeDpiProxy {
     }
 
     fun stopProxy(): Int {
-        return jniStopProxy()
+        val res = jniStopProxy()
+        try {
+            jniForceClose()
+        } catch (_: Exception) {}
+        return res
     }
 
     private fun prepareArgs(preferences: ByeDpiProxyPreferences): Array<String> =

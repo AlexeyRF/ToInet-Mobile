@@ -38,7 +38,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Раздельное туннелирование приложений"
+                    android:text="Раздельное туннелирование по приоритету (сверху вниз)"
                     android:textAppearance="@style/TextAppearance.Material3.BodySmall"
                     android:textColor="?android:textColorSecondary" />
             </LinearLayout>
@@ -47,6 +47,7 @@
                 android:id="@+id/btnStandardSettings"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:visibility="gone"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/baseline_settings_24"
                 android:contentDescription="Стандартные настройки VPN" />
@@ -56,6 +57,7 @@
             android:id="@+id/swAppRouting"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:visibility="gone"
             android:text="Включить правила Proxifier"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
             android:layout_marginBottom="12dp" />

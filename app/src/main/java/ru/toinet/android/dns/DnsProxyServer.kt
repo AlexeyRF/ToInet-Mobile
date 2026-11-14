@@ -104,28 +104,37 @@ class DnsProxyServer(private val context: Context) : CoroutineScope {
         val proxy = getProxy(config)
         val network = getActiveNetwork()
 
-        val conn = if (proxy != null) {
-            url.openConnection(proxy) as HttpsURLConnection
+        val rawConn = if (proxy != null) {
+            url.openConnection(proxy)
         } else if (config.proxyMode == DnsProxyMode.DIRECT && network != null) {
-            network.openConnection(url) as HttpsURLConnection
+            network.openConnection(url)
         } else {
-            url.openConnection() as HttpsURLConnection
+            url.openConnection()
         }
+        val conn = rawConn as? HttpURLConnection ?: return null
 
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/dns-message")
-        conn.setRequestProperty("Accept", "application/dns-message")
-        conn.doOutput = true
-        conn.connectTimeout = 5000
-        conn.readTimeout = 5000
+        return try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/dns-message")
+            conn.setRequestProperty("Accept", "application/dns-message")
+            conn.doOutput = true
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
 
-        conn.outputStream.use { it.write(requestBytes) }
+            conn.outputStream.use { it.write(requestBytes) }
 
-        if (conn.responseCode == 200) {
-            return conn.inputStream.readBytes()
-        } else {
-            Log.w(TAG, "DoH request failed with code: ${conn.responseCode}")
-            return null
+            if (conn.responseCode == 200) {
+                conn.inputStream.use { it.readBytes() }
+            } else {
+                Log.w(TAG, "DoH request failed with code: ${conn.responseCode}")
+                conn.errorStream?.close()
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "DoH resolution error", e)
+            null
+        } finally {
+            conn.disconnect()
         }
     }
 

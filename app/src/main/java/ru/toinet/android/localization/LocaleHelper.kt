@@ -21,12 +21,12 @@ object LocaleHelper {
     private fun updateResources(context: Context, locale: String): Context {
 
         var language = locale
-        var region = ""
+        var region: String? = null
 
         if (language.contains("_")) {
             val parts = locale.split("_")
             language = parts[0]
-            region = parts[1]
+            region = parts.getOrNull(1)
         }
 
         val localeObj = Languages.buildLocaleForLanguage(language, region)

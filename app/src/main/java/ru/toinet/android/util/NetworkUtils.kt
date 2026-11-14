@@ -9,7 +9,7 @@ import java.net.Socket
 object NetworkUtils {
     fun isNetworkAvailable(context: Context, allowOtherVpnApps: Boolean = false): Boolean {
         val connectivityManager =
-            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         if (allowOtherVpnApps && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return true
@@ -40,13 +40,14 @@ object NetworkUtils {
     fun checkPortOrAuto(portString: String): String {
         if (!portString.equals("auto", ignoreCase = true)) {
             var isPortUsed = true
-            var port = portString.toInt()
-            while (isPortUsed) {
+            var port = portString.toIntOrNull() ?: return portString
+            val startPort = port
+            while (isPortUsed && port <= 65535) {
                 isPortUsed = isPortOpen("127.0.0.1", port, 500)
                 if (isPortUsed)  //the specified port is not available, so find one instead
                     port++
             }
-            return port.toString()
+            return if (port <= 65535) port.toString() else startPort.toString()
         }
         return portString
     }

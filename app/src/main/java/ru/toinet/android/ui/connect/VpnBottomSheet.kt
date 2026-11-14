@@ -71,7 +71,11 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
         binding.btnSave.setOnClickListener {
             Prefs.isGlobalVpnEnabled = binding.swVpnEnabled.isChecked
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val routingChanged = Prefs.appRoutingEnabled != binding.swAppRouting.isChecked
                 Prefs.appRoutingEnabled = binding.swAppRouting.isChecked
+                if (routingChanged) {
+                    ru.toinet.android.vpn.rules.ProxifierRulesManager.invalidateCache()
+                }
             }
             Prefs.vpnProvider = when (binding.rgVpnProvider.checkedRadioButtonId) {
                 binding.rbByedpi.id -> "byedpi"
@@ -81,7 +85,7 @@ class VpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 binding.rbSvpn.id -> "svpn"
                 else -> "byedpi"
             }            
-            if (Prefs.isGlobalVpnEnabled && Prefs.vpnProvider == "easyvpn") {
+            if (Prefs.isGlobalVpnEnabled) {
                 requireContext().sendIntentToService("ACTIVE")
             }
             

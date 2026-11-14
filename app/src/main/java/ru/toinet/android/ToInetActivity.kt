@@ -200,6 +200,10 @@ class ToInetActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
+            connectViewModel.updateState(this, TorService.STATUS_ON)
+            previousReceivedTorStatus = TorService.STATUS_ON
+        }
         sendIntentToService(ToInetConstants.CMD_ACTIVE)
         checkStartVpnFromIntent()
     }
@@ -213,6 +217,7 @@ class ToInetActivity : BaseActivity() {
     private fun checkStartVpnFromIntent() {
         if (intent?.getBooleanExtra("start_vpn", false) == true) {
             intent?.removeExtra("start_vpn")
+            setIntent(intent?.cloneFilter())
             val vpnIntent = android.net.VpnService.prepare(this)
             if (vpnIntent != null) {
                 vpnPrepareLauncher.launch(vpnIntent)
@@ -225,7 +230,9 @@ class ToInetActivity : BaseActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
-        unregisterReceiver(toinetServiceBroadcastReceiver)
+        try {
+            unregisterReceiver(toinetServiceBroadcastReceiver)
+        } catch (_: IllegalArgumentException) {}
     }
 
     private val toinetServiceBroadcastReceiver = object : BroadcastReceiver() {
@@ -234,7 +241,7 @@ class ToInetActivity : BaseActivity() {
             val status = intent?.getStringExtra(TorService.EXTRA_STATUS)
             when (intent?.action) {
                 ToInetConstants.LOCAL_ACTION_STATUS -> {
-                    if (status != previousReceivedTorStatus) {
+                    if (status != null) {
                         connectViewModel.updateState(this@ToInetActivity, status)
                         previousReceivedTorStatus = status
                     }

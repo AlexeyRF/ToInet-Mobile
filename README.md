@@ -16,7 +16,7 @@
 *   **Opera Proxy**:
     *   Маршрутизация через прокси-серверы Opera.
 *   **SVPN (SSH)**:
-    *   SSH-туннелирование с динамическим SOCKS5-прокси (JSch) и поддержкой системного VPN.
+    *   SSH-туннелирование.
     *   Гибкая настройка: хост, порт, логин, пароль или приватный SSH-ключ (PEM / OpenSSH / Ed25519) и upstream DNS.
 
 ---
@@ -25,15 +25,15 @@
 
 Если вам необходимо добавить в приложение прокси, то ToInet-Mobile используют фиксированные локальные порты (синхронизированы с ToInet-MAX):
 
-| Инструмент             | Порт   | Тип прокси | 
-|:-----------------------|:-------|:-----------|
-| **TGWS (Proxy)**       | `1480` | SOCKS5     |
-| **SVPN (SSH)**         | `1770` | SOCKS5     |
-| **Gatik (TG Router)**  | `1777` | SOCKS5     |
-| **zDPI (ByeDPI)**      | `1780` | SOCKS5     |
-| **Opera-Proxy**        | `1785` | SOCKS5     |
-| **Easy-VPN (Xray)**    | `1790` | SOCKS5     |
-| **Tor Socks5**         | `9853` | SOCKS5     |
+| Инструмент                  | Порт   | Тип прокси | 
+|:----------------------------|:-------|:-----------|
+| **TGWS (Proxy)**            | `1480` | SOCKS5     |
+| **SVPN (SSH)**              | `1770` | SOCKS5     |
+| **Gatik (TG Router)**       | `1777` | SOCKS5     |
+| **zDPI (ByeDPI + Zapret2)** | `1780` | SOCKS5     |
+| **Opera-Proxy**             | `1785` | SOCKS5     |
+| **Easy-VPN (Xray)**         | `1790` | SOCKS5     |
+| **Tor**              | `9853` | SOCKS5     |
 
 ---
 
@@ -52,7 +52,7 @@
 *   [romanvht (Стратегии и тестер ByeDPI)](https://github.com/romanvht/)
 *   [Flowseal (Оригинальный TGWS](https://github.com/Flowseal/)
 *   [Alexey71 (OperaProxy)](https://github.com/Alexey71/)
-*   [mwiede (JSch - SSH для SVPN)](https://github.com/mwiede/jsch)
+*   [mwiede (SSH)](https://github.com/mwiede/jsch)
 
 
 ## Дисклеймер

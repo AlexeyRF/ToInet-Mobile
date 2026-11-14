@@ -29,10 +29,13 @@ class ByeDpiProxyService : LifecycleService() {
 
     companion object {
         private val TAG: String = ByeDpiProxyService::class.java.simpleName
-        private const val FOREGROUND_SERVICE_ID: Int = 1
+        private const val FOREGROUND_SERVICE_ID: Int = 1780
         private const val NOTIFICATION_CHANNEL_ID: String = "ByeDPI Proxy"
 
         const val ACTION_RESTART = "ru.toinet.android.byedpi.RESTART"
+        @Volatile
+        var testCmdArgsOverride: String? = null
+
         var currentRunningArgs: String? = null
             private set
 
@@ -55,9 +58,9 @@ class ByeDpiProxyService : LifecycleService() {
 
         val isForeground = intent?.getBooleanExtra("is_foreground", false)
             ?: (!ru.toinet.android.util.Prefs.isGlobalVpnEnabled && ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi"))
-        isForegroundService = isForeground
+        isForegroundService = isForeground && !ru.toinet.android.util.Prefs.isGlobalVpnEnabled
 
-        if ((action == START_ACTION && isForeground) || (action == "ACTIVE" && status == ServiceStatus.Connected && isForeground)) {
+        if ((action == START_ACTION && isForegroundService) || (action == "ACTIVE" && status == ServiceStatus.Connected && isForegroundService)) {
             startForeground()
         }
 
@@ -82,7 +85,7 @@ class ByeDpiProxyService : LifecycleService() {
             }
 
             "ACTIVE" -> {
-                if (status == ServiceStatus.Connected) {
+                if (status == ServiceStatus.Connected && isForegroundService) {
                     startForeground()
                 }
                 START_STICKY
@@ -107,7 +110,8 @@ class ByeDpiProxyService : LifecycleService() {
         }
 
         try {
-            if (!ru.toinet.android.util.Prefs.isGlobalVpnEnabled && !ru.toinet.android.util.Prefs.torEnabled) {
+            val isPrimary = !ru.toinet.android.util.Prefs.isGlobalVpnEnabled && (ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi") || ru.toinet.android.util.Prefs.vpnProvider == "byedpi")
+            if (isPrimary && testCmdArgsOverride == null) {
                 val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS)
                 statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_STARTING)
                 statusIntent.setPackage(packageName)
@@ -131,6 +135,9 @@ class ByeDpiProxyService : LifecycleService() {
     }
 
     private fun startForeground() {
+        if (!isForegroundService || ru.toinet.android.util.Prefs.isGlobalVpnEnabled) {
+            return
+        }
         val notification: Notification = createNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -157,14 +164,16 @@ class ByeDpiProxyService : LifecycleService() {
             stopProxy()
         }
         updateStatus(ServiceStatus.Disconnected)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            @Suppress("DEPRECATION")
-            stopForeground(true)
+        if (isForegroundService && !ru.toinet.android.util.Prefs.isGlobalVpnEnabled) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+            val nm = getSystemService(NotificationManager::class.java)
+            nm?.cancel(FOREGROUND_SERVICE_ID)
         }
-        val nm = getSystemService(NotificationManager::class.java)
-        nm?.cancel(FOREGROUND_SERVICE_ID)
         stopSelf()
     }
 
@@ -181,30 +190,38 @@ class ByeDpiProxyService : LifecycleService() {
             } catch (_: Exception) {}
         }
 
-        var cmdStrOriginal = ru.toinet.android.util.Prefs.getCurrentByedpiArgs(this).ifBlank { "--preset general" }
-        currentRunningArgs = cmdStrOriginal
-        val subUrl = ru.toinet.android.util.Prefs.byedpiSubscriptionUrl
-        if (subUrl.isNotBlank()) {
-            try {
-                Log.i(TAG, "Fetching ByeDPI config from $subUrl")
-                val fetchedArgs = withContext(Dispatchers.IO) {
-                    java.net.URL(subUrl).readText().trim()
-                }
-                if (fetchedArgs.isNotBlank()) {
-                    cmdStrOriginal = fetchedArgs
-                    // Optionally save it back or just use it in memory
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to fetch ByeDPI config from subscription", e)
-            }
+        val testCmd = testCmdArgsOverride
+        var cmdStrOriginal = if (!testCmd.isNullOrBlank()) {
+            testCmd
+        } else {
+            ru.toinet.android.util.Prefs.getCurrentByedpiArgs(this).ifBlank { "--preset general" }
         }
+        currentRunningArgs = cmdStrOriginal
 
-        if (ru.toinet.android.util.Prefs.byedpiUpstreamEnabled) {
-            val upstreamProvider = ru.toinet.android.util.Prefs.byedpiUpstreamProvider
-            ru.toinet.android.util.UpstreamProxyCoordinator.ensureUpstreamStarted(this, upstreamProvider)
-            val upstreamArg = "${ru.toinet.android.util.Prefs.byedpiUpstreamHost}:${ru.toinet.android.util.Prefs.byedpiUpstreamPort}"
-            if (!cmdStrOriginal.contains("-C")) {
-                cmdStrOriginal = "$cmdStrOriginal -C $upstreamArg".trim()
+        if (testCmd.isNullOrBlank()) {
+            val subUrl = ru.toinet.android.util.Prefs.byedpiSubscriptionUrl
+            if (subUrl.isNotBlank()) {
+                try {
+                    Log.i(TAG, "Fetching ByeDPI config from $subUrl")
+                    val fetchedArgs = withContext(Dispatchers.IO) {
+                        java.net.URL(subUrl).readText().trim()
+                    }
+                    if (fetchedArgs.isNotBlank()) {
+                        cmdStrOriginal = fetchedArgs
+                        // Optionally save it back or just use it in memory
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to fetch ByeDPI config from subscription", e)
+                }
+            }
+
+            if (ru.toinet.android.util.Prefs.byedpiUpstreamEnabled) {
+                val upstreamProvider = ru.toinet.android.util.Prefs.byedpiUpstreamProvider
+                ru.toinet.android.util.UpstreamProxyCoordinator.ensureUpstreamStarted(this, upstreamProvider)
+                val upstreamArg = "${ru.toinet.android.util.Prefs.byedpiUpstreamHost}:${ru.toinet.android.util.Prefs.byedpiUpstreamPort}"
+                if (!cmdStrOriginal.contains("-C")) {
+                    cmdStrOriginal = "$cmdStrOriginal -C $upstreamArg".trim()
+                }
             }
         }
 
@@ -297,7 +314,8 @@ class ByeDpiProxyService : LifecycleService() {
             Mode.Proxy
         )
 
-        if (!ru.toinet.android.util.Prefs.isGlobalVpnEnabled && !ru.toinet.android.util.Prefs.torEnabled) {
+        val isPrimary = !ru.toinet.android.util.Prefs.isGlobalVpnEnabled && (ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi") || ru.toinet.android.util.Prefs.vpnProvider == "byedpi")
+        if (isPrimary && testCmdArgsOverride == null) {
             val toinetStatus = when (newStatus) {
                 ServiceStatus.Connected -> org.torproject.jni.TorService.STATUS_ON
                 ServiceStatus.Disconnected, ServiceStatus.Failed -> org.torproject.jni.TorService.STATUS_OFF

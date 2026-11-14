@@ -1,6 +1,7 @@
 package ru.toinet.android.easyvpn
 
 import android.content.Context
+import android.os.Build
 import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.*
@@ -16,6 +17,13 @@ import java.net.Proxy
 import java.net.Socket
 import java.net.URL
 import java.net.URLDecoder
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.SNIHostName
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocket
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 object EasyVpnUpdater {
     private const val TAG = "EasyVpnUpdater"
@@ -110,10 +118,38 @@ object EasyVpnUpdater {
     }
 
     suspend fun pingTestNodes(nodes: List<VlessNode>, context: Context? = null): List<VlessNode> = withContext(Dispatchers.IO) {
-        val workingWithPing = mutableListOf<Pair<VlessNode, Long>>()
+        // Prioritize candidate pool: all TLS nodes first, then valid Reality nodes with pbk and non-IP sni, then others
+        val tlsNodes = nodes.filter { it.security.equals("tls", ignoreCase = true) }
+        val realityNodes = nodes.filter {
+            it.security.equals("reality", ignoreCase = true) &&
+            it.pbk.trim().isNotEmpty() &&
+            it.sni.trim().isNotEmpty() &&
+            !it.sni.trim().matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))
+        }
+        val otherNodes = nodes.filter {
+            !it.security.equals("tls", ignoreCase = true) &&
+            !it.security.equals("reality", ignoreCase = true)
+        }
+        val candidatePool = (tlsNodes + realityNodes + otherNodes).take(300)
+
+        val workingWithPing = mutableListOf<Triple<VlessNode, Long, Boolean>>()
         val semaphore = Semaphore(30)
 
-        val deferreds = nodes.take(300).map { node ->
+        val trustAllCerts = arrayOf<TrustManager>(
+            object : X509TrustManager {
+                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                override fun checkClientTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+            }
+        )
+        val sslContext = try {
+            SSLContext.getInstance("TLS").apply {
+                init(null, trustAllCerts, SecureRandom())
+            }
+        } catch (_: Exception) { null }
+        val sslFactory = sslContext?.socketFactory
+
+        val deferreds = candidatePool.map { node ->
             async(Dispatchers.IO) {
                 semaphore.withPermit {
                     if (!coroutineContext.isActive) return@withPermit null
@@ -121,8 +157,25 @@ object EasyVpnUpdater {
                         val start = System.currentTimeMillis()
                         Socket().use { s ->
                             s.connect(InetSocketAddress(node.server, node.port), 3000)
+                            var tlsSuccess = false
+                            if (node.security.equals("tls", ignoreCase = true) && sslFactory != null) {
+                                val sslSocket = sslFactory.createSocket(s, node.server, node.port, true) as SSLSocket
+                                try {
+                                    sslSocket.soTimeout = 3000
+                                    val sniHost = node.sni.trim().ifEmpty { node.server.trim() }
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && sniHost.isNotEmpty()) {
+                                        val params = sslSocket.sslParameters
+                                        params.serverNames = listOf(SNIHostName(sniHost))
+                                        sslSocket.sslParameters = params
+                                    }
+                                    sslSocket.startHandshake()
+                                    tlsSuccess = true
+                                } finally {
+                                    try { sslSocket.close() } catch (_: Exception) {}
+                                }
+                            }
                             val rtt = System.currentTimeMillis() - start
-                            Pair(node, rtt)
+                            Triple(node, rtt, tlsSuccess)
                         }
                     } catch (_: Exception) {
                         null
@@ -135,15 +188,14 @@ object EasyVpnUpdater {
             if (it != null) workingWithPing.add(it)
         }
 
-        // Сортировка по минимальному пингу с приоритетом VLESS-Reality и отечественных SNI (не блокируемых ТСПУ)
-        workingWithPing.sortBy { (node, rtt) ->
+        // Sorting: verified TLS handshakes get top priority (-500ms score discount).
+        // This eliminates the MITM error flood caused by dead or honeypot Reality nodes.
+        workingWithPing.sortBy { (node, rtt, tlsSuccess) ->
             var score = rtt
-            val sni = node.sni.lowercase()
-            if (node.security.equals("reality", ignoreCase = true)) score -= 1000L
-            if (sni.contains("yandex") || sni.contains("vk.") || sni.contains("vk.com") || sni.contains("ok.ru") || sni.contains("max.ru") || sni.contains("sova")) {
-                score -= 1500L
+            if (node.security.equals("tls", ignoreCase = true) && tlsSuccess) {
+                score -= 500L
             }
-            if (sni.contains("papar.online")) {
+            if (node.sni.lowercase().contains("papar.online")) {
                 score += 5000L
             }
             score
@@ -358,8 +410,18 @@ object EasyVpnUpdater {
                     sec = "none"
                 }
 
-                if (sec == "reality" && node.pbk.trim().isEmpty()) {
-                    sec = if (node.sni.trim().isNotEmpty()) "tls" else "none"
+                val rawSni = node.sni.trim()
+                val isHostIp = node.server.trim().matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))
+                val effectiveSni = if (rawSni.isNotEmpty() && !rawSni.matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))) {
+                    rawSni
+                } else if (!isHostIp && node.server.trim().isNotEmpty()) {
+                    node.server.trim()
+                } else {
+                    ""
+                }
+
+                if (sec == "reality" && (effectiveSni.isEmpty() || node.pbk.trim().isEmpty())) {
+                    sec = if (effectiveSni.isNotEmpty()) "tls" else "none"
                 }
 
                 val effectiveFlow = if (netType == "tcp" && (sec == "tls" || sec == "reality") && node.flow.contains("vision", ignoreCase = true)) {
@@ -391,18 +453,6 @@ object EasyVpnUpdater {
                     put("network", netType)
                     put("security", sec)
 
-                    val rawSni = node.sni.trim()
-                    val isHostIp = node.server.trim().matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))
-                    val effectiveSni = if (rawSni.isNotEmpty() && !rawSni.matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))) {
-                        rawSni
-                    } else if (!isHostIp && node.server.trim().isNotEmpty()) {
-                        node.server.trim()
-                    } else if (sec == "reality") {
-                        "yandex.ru"
-                    } else {
-                        ""
-                    }
-
                     val cleanFp = node.fp.trim().lowercase()
                     val effectiveFp = when (cleanFp) {
                         "chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized" -> cleanFp
@@ -425,6 +475,7 @@ object EasyVpnUpdater {
                         put("tlsSettings", tlsObj)
                     } else if (sec == "reality") {
                         val realityObj = JSONObject().apply {
+                            put("show", false)
                             if (effectiveSni.isNotEmpty()) {
                                 put("serverName", effectiveSni)
                             }
@@ -435,13 +486,6 @@ object EasyVpnUpdater {
                             val validSid = if (rawSid.all { it in '0'..'9' || it in 'a'..'f' } && rawSid.length % 2 == 0) rawSid else ""
                             put("shortId", validSid)
                             put("spiderX", if (node.spx.isNotEmpty()) node.spx else "")
-
-                            if (node.alpn.isNotEmpty() && !node.alpn.equals("null", ignoreCase = true)) {
-                                val alpnList = node.alpn.split(",").map { it.trim() }.filter { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
-                                if (alpnList.isNotEmpty()) {
-                                    put("alpn", JSONArray(alpnList))
-                                }
-                            }
                         }
                         put("realitySettings", realityObj)
                     }
@@ -602,11 +646,18 @@ object EasyVpnUpdater {
             })
 
             if (proxyTags.length() > 0) {
+                // If a specific server is chosen, observatory probes only that target server;
+                // if balancer mode is active, it probes the pool sequentially every 30s.
+                val selector = if (activeNodeIndex >= 0 && effectiveTargetTag != null) {
+                    JSONArray().apply { put(effectiveTargetTag) }
+                } else {
+                    JSONArray().apply { put("proxy-") }
+                }
                 put("observatory", JSONObject().apply {
-                    put("subjectSelector", JSONArray().apply { put("proxy-") })
-                    put("probeURL", "https://www.google.com/generate_204")
-                    put("probeInterval", "15s")
-                    put("enableConcurrency", true)
+                    put("subjectSelector", selector)
+                    put("probeURL", "https://cp.cloudflare.com/generate_204")
+                    put("probeInterval", "30s")
+                    put("enableConcurrency", false)
                 })
             }
 
@@ -646,14 +697,6 @@ object EasyVpnUpdater {
                     put("network", "udp")
                     put("port", "443")
                     put("outboundTag", "block")
-                })
-
-                // Direct DNS queries
-                rulesArray.put(JSONObject().apply {
-                    put("type", "field")
-                    put("inboundTag", JSONArray().apply { put("socks-in") })
-                    put("port", "53")
-                    put("outboundTag", "direct")
                 })
 
                 if (proxyTags.length() > 0) {

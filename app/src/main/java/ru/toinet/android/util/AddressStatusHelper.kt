@@ -36,9 +36,52 @@ object AddressStatusHelper {
         }
     }
 
+    private val ruCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    private val RU_ECOSYSTEM_KEYWORDS = arrayOf(
+        // Search & Portals & Tech
+        "yandex", "ya.ru", "kinopoisk", "dzen", "eda.yandex", "lavka",
+        // VK & Mail.ru
+        "vkontakte", "vk.com", "vk.me", "mailru", "mail.ru", "my.mail", "mygames", "odnoklassniki", "ok.ru",
+        // Banks & FinTech
+        "sberbank", "sber", "tcsbank", "tinkoff", "tbank", "alfabank", "vtb", "gazprombank",
+        "raiffeisen", "sovkombank", "rshb", "psbank", "openbank", "yoomoney", "nspk", "mirpay", "sbp",
+        // Government & Public Services
+        "gosuslugi", "nalog", "mos.ru", "emias", "pension", "fssprus", "gibdd",
+        // Marketplaces & Delivery & Stores
+        "wildberries", "ozon", "avito", "cdek", "boxberry", "samokat", "megamarket", "kufar",
+        // Navigation & Transport
+        "dublgis", "2gis", "citimobil", "yandexnavi", "yandextraffic", "maxim", "rzd",
+        // Media & Video & Streaming
+        "rutube", "okko", "premier", "start.ru", "kion", "ivi.ru", "smotrim", "amediateka", "wink",
+        // Telecoms
+        "mts", "megafon", "beeline", "tele2", "rostelecom", "yota", "t2mobile",
+        // Classifieds & Career
+        "headhunter", "hh.ru", "auto.ru", "drom", "cian", "domclick",
+        // Security & Software
+        "kaspersky", "drweb", "myoffice", "astralinux", "1c"
+    )
+
     @JvmStatic
     fun isRuPackage(pkgName: String): Boolean {
-        return pkgName.contains("ru.", ignoreCase = true) || pkgName.contains(".ru", ignoreCase = true)
+        if (pkgName.isBlank()) return false
+        val cached = ruCache[pkgName]
+        if (cached != null) return cached
+
+        val lower = pkgName.lowercase()
+        val isRu = lower.startsWith("ru.") ||
+                lower.endsWith(".ru") ||
+                lower.contains(".ru.") ||
+                lower.startsWith("su.") ||
+                lower.endsWith(".su") ||
+                lower.contains(".su.") ||
+                lower.startsWith("рф.") ||
+                lower.endsWith(".рф") ||
+                lower.contains(".рф.") ||
+                RU_ECOSYSTEM_KEYWORDS.any { lower.contains(it) }
+
+        ruCache[pkgName] = isRu
+        return isRu
     }
 
     @JvmStatic

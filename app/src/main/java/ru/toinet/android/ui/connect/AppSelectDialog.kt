@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.LruCache
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -24,21 +25,42 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.toinet.android.R
 
-class AppSelectDialog(
-    private val initialSelected: List<String>,
-    private val onDone: (List<String>) -> Unit
-) : BottomSheetDialogFragment() {
+class AppSelectDialog() : BottomSheetDialogFragment() {
+
+    var onDoneListener: ((List<String>) -> Unit)? = null
+
+    constructor(initialSelected: List<String>, onDone: (List<String>) -> Unit) : this() {
+        arguments = Bundle().apply {
+            putStringArrayList(ARG_INITIAL_SELECTED, ArrayList(initialSelected))
+        }
+        this.onDoneListener = onDone
+    }
 
     data class AppItem(
         val name: String,
-        val packageName: String,
-        val icon: Drawable?
+        val packageName: String
     )
 
     private val allApps = mutableListOf<AppItem>()
     private val filteredApps = mutableListOf<AppItem>()
     private val selectedPackages = mutableSetOf<String>()
+    private val iconCache = LruCache<String, Drawable>(80)
     private lateinit var adapter: AppAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val initialList = savedInstanceState?.getStringArrayList(KEY_SELECTED)
+            ?: arguments?.getStringArrayList(ARG_INITIAL_SELECTED)
+        if (initialList != null) {
+            selectedPackages.clear()
+            selectedPackages.addAll(initialList)
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putStringArrayList(KEY_SELECTED, ArrayList(selectedPackages))
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -52,15 +74,13 @@ class AppSelectDialog(
         val btnCancel = view.findViewById<View>(R.id.btnCancel)
         val btnDone = view.findViewById<View>(R.id.btnDone)
 
-        selectedPackages.addAll(initialSelected)
-
         rvApps.layoutManager = LinearLayoutManager(requireContext())
         adapter = AppAdapter()
         rvApps.adapter = adapter
 
         btnCancel.setOnClickListener { dismiss() }
         btnDone.setOnClickListener {
-            onDone(selectedPackages.toList())
+            onDoneListener?.invoke(selectedPackages.toList())
             dismiss()
         }
 
@@ -89,8 +109,9 @@ class AppSelectDialog(
         progressBar.visibility = View.VISIBLE
         rvApps.visibility = View.GONE
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            val pm = requireContext().packageManager
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val context = context ?: return@launch
+            val pm = context.packageManager
             val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
             val apps = mutableListOf<AppItem>()
 
@@ -99,8 +120,7 @@ class AppSelectDialog(
                 val hasLaunchIntent = pm.getLaunchIntentForPackage(appInfo.packageName) != null
                 if (!isSystem || hasLaunchIntent || selectedPackages.contains(appInfo.packageName)) {
                     val name = appInfo.loadLabel(pm).toString()
-                    val icon = appInfo.loadIcon(pm)
-                    apps.add(AppItem(name, appInfo.packageName, icon))
+                    apps.add(AppItem(name, appInfo.packageName))
                 }
             }
 
@@ -138,7 +158,28 @@ class AppSelectDialog(
             val app = filteredApps[position]
             holder.tvName.text = app.name
             holder.tvPackage.text = app.packageName
-            holder.ivIcon.setImageDrawable(app.icon)
+
+            val cachedIcon = iconCache.get(app.packageName)
+            if (cachedIcon != null) {
+                holder.ivIcon.setImageDrawable(cachedIcon)
+            } else {
+                holder.ivIcon.setImageDrawable(null)
+                holder.ivIcon.tag = app.packageName
+                val pkg = app.packageName
+                val pm = holder.itemView.context.packageManager
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        val icon = pm.getApplicationIcon(pkg)
+                        iconCache.put(pkg, icon)
+                        withContext(Dispatchers.Main) {
+                            if (holder.ivIcon.tag == pkg) {
+                                holder.ivIcon.setImageDrawable(icon)
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+
             holder.cbSelected.isChecked = selectedPackages.contains(app.packageName)
 
             holder.itemView.setOnClickListener {
@@ -157,5 +198,7 @@ class AppSelectDialog(
 
     companion object {
         const val TAG = "AppSelectDialog"
+        private const val ARG_INITIAL_SELECTED = "arg_initial_selected"
+        private const val KEY_SELECTED = "key_selected"
     }
 }

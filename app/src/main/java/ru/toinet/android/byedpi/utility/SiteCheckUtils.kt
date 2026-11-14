@@ -70,41 +70,16 @@ class SiteCheckUtils(
                 connection.connectTimeout = (timeout * 1000).toInt()
                 connection.readTimeout = (timeout * 1000).toInt()
                 connection.instanceFollowRedirects = true
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                connection.setRequestProperty("Accept", "*/*")
                 connection.setRequestProperty("Connection", "close")
 
                 val responseCode = connection.responseCode
-                val declaredLength = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                    connection.contentLengthLong
-                } else {
-                    connection.contentLength.toLong()
-                }
-
-                var actualLength = 0L
-                try {
-                    val inputStream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
-                    if (inputStream != null) {
-                        val buffer = ByteArray(8192)
-                        var bytesRead: Int
-
-                        val limit = if (declaredLength > 0) declaredLength else 1024L * 1024
-
-                        while (actualLength < limit) {
-                            val remaining = limit - actualLength
-                            val toRead = if (remaining > buffer.size) buffer.size else remaining.toInt()
-                            bytesRead = inputStream.read(buffer, 0, toRead)
-                            if (bytesRead == -1) break
-                            actualLength += bytesRead
-                        }
-                    }
-                } catch (_: IOException) {
-                    // Stream reading failed
-                }
-
-                if (declaredLength <= 0L || actualLength >= declaredLength) {
-                    Log.i("SiteChecker", "Response for $site: $responseCode, Declared: $declaredLength, Actual: $actualLength")
+                if (responseCode in 200..499) {
+                    Log.i("SiteChecker", "Response for $site: HTTP $responseCode (success)")
                     responseCount++
                 } else {
-                    Log.w("SiteChecker", "Block detected for $site, Declared: $declaredLength, Actual: $actualLength")
+                    Log.w("SiteChecker", "Unexpected HTTP status for $site: $responseCode")
                 }
 
             } catch (e: Exception) {

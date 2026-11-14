@@ -84,7 +84,12 @@ cleanup:
 static jint internal_stop_proxy(void) {
     LOG(LOG_S, "send shutdown to proxy");
     pthread_mutex_lock(&proxy_mutex);
-    int result = proxy_running && server_fd >= 0 ? shutdown(server_fd, SHUT_RDWR) : -1;
+    int result = -1;
+    if (proxy_running && server_fd >= 0) {
+        result = shutdown(server_fd, SHUT_RDWR);
+        close(server_fd);
+        server_fd = -1;
+    }
     pthread_mutex_unlock(&proxy_mutex);
     return result;
 }

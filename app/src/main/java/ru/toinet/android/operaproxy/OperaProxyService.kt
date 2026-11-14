@@ -27,7 +27,7 @@ class OperaProxyService : Service() {
     companion object {
         private const val TAG = "OperaProxyService"
         private const val NOTIFICATION_CHANNEL_ID = "operaproxy_channel"
-        private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_ID = 1002
 
         const val ACTION_START = "ru.toinet.android.operaproxy.START"
         const val ACTION_STOP = "ru.toinet.android.operaproxy.STOP"
@@ -60,7 +60,23 @@ class OperaProxyService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        if (intent == null) {
+            if (Prefs.isProviderActive("operaproxy")) {
+                val isForeground = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("operaproxy")
+                if (isForeground) {
+                    startForegroundNotification()
+                }
+                if (server == null) {
+                    server = OperaProxyServer(this, scope)
+                }
+                server?.start()
+                return START_STICKY
+            } else {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        }
+        when (intent.action) {
             ACTION_START -> {
                 val isForeground = intent.getBooleanExtra("is_foreground", false) ||
                         (!Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("operaproxy"))

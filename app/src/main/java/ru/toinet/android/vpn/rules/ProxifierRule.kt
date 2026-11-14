@@ -19,7 +19,6 @@ data class ProxifierRule(
         const val ACTION_TOR = "tor"
         const val ACTION_OPERAPROXY = "operaproxy"
         const val ACTION_SVPN = "svpn"
-        const val ACTION_TGWS = "tgws"
 
         fun getActionTitle(action: String): String = when (action) {
             ACTION_DIRECT -> "Direct (Напрямую)"
@@ -28,8 +27,15 @@ data class ProxifierRule(
             ACTION_EASYVPN -> "Easy-VPN (Xray)"
             ACTION_TOR -> "TOR (порт 9853)"
             ACTION_OPERAPROXY -> "Opera Proxy (1785)"
-            ACTION_SVPN -> "SVPN / SSH (${ru.toinet.android.util.Prefs.svpnLocalPort})"
-            ACTION_TGWS -> "TGWS (порт ${ru.toinet.android.util.Prefs.tgwsPort})"
+            ACTION_SVPN -> {
+                val port = try {
+                    val p = ru.toinet.android.util.Prefs.svpnLocalPort
+                    if (p in 1..65535) p else 1770
+                } catch (_: Throwable) {
+                    1770
+                }
+                "SVPN / SSH ($port)"
+            }
             else -> action
         }
 
@@ -59,15 +65,5 @@ data class ProxifierRule(
         targetPackages.forEach { arr.put(it) }
         obj.put("targetPackages", arr)
         return obj
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is ProxifierRule) return false
-        return id == other.id
-    }
-
-    override fun hashCode(): Int {
-        return id.hashCode()
     }
 }

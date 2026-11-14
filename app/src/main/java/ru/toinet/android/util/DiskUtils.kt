@@ -16,15 +16,7 @@ object DiskUtils {
 
     @Throws(IOException::class)
     fun readFileFromAssets(assetFilename: String, context: Context): String {
-        val reader = BufferedReader(InputStreamReader(context.assets.open(assetFilename)))
-        val sb = StringBuilder()
-        var mLine = reader.readLine()
-        while (mLine != null) {
-            sb.append(mLine).append('\n') // process line
-            mLine = reader.readLine()
-        }
-        reader.close()
-        return sb.toString()
+        return context.assets.open(assetFilename).bufferedReader().use { it.readText() }
     }
 
     @JvmStatic
@@ -43,9 +35,8 @@ object DiskUtils {
 
     @JvmStatic
     fun readFileFromInputStream(contentResolver: ContentResolver, file: Uri): String {
-        val input = contentResolver.openInputStream(file)
-        val reader = BufferedReader(input!!.reader())
-        return reader.use(BufferedReader::readText)
+        val input = contentResolver.openInputStream(file) ?: throw IOException("Cannot open input stream for $file")
+        return input.bufferedReader().use { it.readText() }
     }
 
     @JvmStatic
@@ -56,30 +47,22 @@ object DiskUtils {
     }
 
     fun readInputStreamAsString(stream: InputStream?): String {
-        var line: String?
-        val out = StringBuilder()
-
-        try {
-            val reader = BufferedReader(InputStreamReader(stream))
-
-            while ((reader.readLine().also { line = it }) != null) {
-                out.append(line)
-                out.append('\n')
-            }
+        if (stream == null) return ""
+        return try {
+            stream.bufferedReader().use { it.readText() }
         } catch (e: IOException) {
             e.printStackTrace()
+            ""
         }
-
-        return out.toString()
     }
 
     @JvmStatic
     @Throws(IOException::class)
-    fun flushTextToFile(file: File, text: String, append: Boolean)  {
-        val ps = PrintWriter(FileWriter(file, append))
-        ps.print(text)
-        ps.flush()
-        ps.close()
+    fun flushTextToFile(file: File, text: String, append: Boolean) {
+        PrintWriter(FileWriter(file, append)).use { ps ->
+            ps.print(text)
+            ps.flush()
+        }
     }
 
 }
