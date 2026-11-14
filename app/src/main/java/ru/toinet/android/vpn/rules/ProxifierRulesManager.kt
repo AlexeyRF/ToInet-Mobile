@@ -90,6 +90,31 @@ object ProxifierRulesManager {
                     }
                 }
             }
+            val hasBrowserRule = list.any { it.name.contains("Браузер", ignoreCase = true) || it.targetPackages.contains("com.android.chrome") }
+            if (!hasBrowserRule) {
+                list.add(
+                    ProxifierRule(
+                        name = "Браузеры",
+                        enabled = true,
+                        targetPackages = mutableListOf(
+                            "com.android.chrome",
+                            "org.mozilla.firefox",
+                            "com.opera.browser",
+                            "com.opera.mini.native",
+                            "com.opera.gx",
+                            "com.yandex.browser",
+                            "com.sec.android.app.sbrowser",
+                            "com.microsoft.emmx",
+                            "com.brave.browser",
+                            "com.duckduckgo.mobile.android",
+                            "com.kiwibrowser.browser",
+                            "com.vivaldi.browser"
+                        ),
+                        action = ProxifierRule.ACTION_EASYVPN
+                    )
+                )
+                modified = true
+            }
             if (modified) {
                 saveRulesInternal(list)
             }
@@ -141,6 +166,25 @@ object ProxifierRulesManager {
                     "app.revanced.android.youtube"
                 ),
                 action = ProxifierRule.ACTION_BYEDPI
+            ),
+            ProxifierRule(
+                name = "Браузеры",
+                enabled = true,
+                targetPackages = mutableListOf(
+                    "com.android.chrome",
+                    "org.mozilla.firefox",
+                    "com.opera.browser",
+                    "com.opera.mini.native",
+                    "com.opera.gx",
+                    "com.yandex.browser",
+                    "com.sec.android.app.sbrowser",
+                    "com.microsoft.emmx",
+                    "com.brave.browser",
+                    "com.duckduckgo.mobile.android",
+                    "com.kiwibrowser.browser",
+                    "com.vivaldi.browser"
+                ),
+                action = ProxifierRule.ACTION_EASYVPN
             ),
             ProxifierRule(
                 name = "Social & Media",

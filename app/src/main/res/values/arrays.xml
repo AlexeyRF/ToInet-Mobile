@@ -9,13 +9,13 @@
     <array name="log_providers">
         <item>ToInet</item>
         <item>VPN</item>
-        <item>Состояние Адреса</item>
+        <!-- <item>Состояние Адреса</item> -->
     </array>
     
     <array name="log_providers_values">
         <item>none</item>
         <item>vpn</item>
-        <item>address_status</item>
+        <!-- <item>address_status</item> -->
     </array>
     
     <string-array name="dns_protocols">

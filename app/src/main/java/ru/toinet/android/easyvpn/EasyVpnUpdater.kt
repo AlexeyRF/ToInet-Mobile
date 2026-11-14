@@ -195,6 +195,10 @@ object EasyVpnUpdater {
             if (node.security.equals("tls", ignoreCase = true) && tlsSuccess) {
                 score -= 500L
             }
+            val remarks = node.remarks.lowercase()
+            if (remarks.contains("🇷🇺") || remarks.contains("russia") || remarks.contains("россия") || remarks.contains("cidr-megafon") || remarks.contains("cidr-mts") || remarks.contains("cidr-yandex")) {
+                score += 1000L
+            }
             if (node.sni.lowercase().contains("papar.online")) {
                 score += 5000L
             }
@@ -316,8 +320,13 @@ object EasyVpnUpdater {
                         VlessNode.parse(link)?.let { list.add(it) }
                     }
                     if (list.isNotEmpty()) {
-                        Log.i(TAG, "Plan Ъ: Loaded ${list.size} reserve nodes")
-                        return list
+                        // Prioritize international/foreign exit nodes over domestic Russian nodes
+                        val prioritized = list.sortedWith(compareBy<VlessNode> { node ->
+                            val rem = node.remarks.lowercase()
+                            if (rem.contains("🇷🇺") || rem.contains("russia") || rem.contains("россия") || rem.contains("cidr-megafon") || rem.contains("cidr-yandex")) 1 else 0
+                        }.thenBy { if (it.security.equals("tls", ignoreCase = true)) 0 else 1 })
+                        Log.i(TAG, "Plan Ъ: Loaded ${prioritized.size} reserve nodes")
+                        return prioritized
                     }
                 }
             }
@@ -369,6 +378,50 @@ object EasyVpnUpdater {
                     })
                 })
             })
+        }
+    }
+
+    private fun sanitizeJsonValue(v: Any?): Any? {
+        return when (v) {
+            null, JSONObject.NULL -> null
+            is JSONObject -> {
+                val result = JSONObject()
+                val keys = v.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    if (!v.isNull(k) && k != "extra" && k != "downloadSettings") {
+                        val childVal = sanitizeJsonValue(v.get(k))
+                        if (childVal != null) {
+                            result.put(k, childVal)
+                        }
+                    }
+                }
+                result
+            }
+            is JSONArray -> {
+                val result = JSONArray()
+                for (i in 0 until v.length()) {
+                    val childVal = sanitizeJsonValue(v.get(i))
+                    if (childVal != null) {
+                        result.put(childVal)
+                    }
+                }
+                result
+            }
+            is String -> {
+                val s = v.trim()
+                if (s.contains("-") && s.matches(Regex("^\\d+-\\d+$"))) {
+                    val parts = s.split("-")
+                    val low = parts[0].toLongOrNull() ?: 0L
+                    val high = parts[1].toLongOrNull() ?: 0L
+                    (low + high) / 2L
+                } else if (s.matches(Regex("^\\d+$"))) {
+                    s.toLongOrNull() ?: s
+                } else {
+                    s
+                }
+            }
+            else -> v
         }
     }
 
@@ -514,13 +567,15 @@ object EasyVpnUpdater {
                                         while (keys.hasNext()) {
                                             val k = keys.next()
                                             if (!extraObj.isNull(k)) {
-                                                val v = extraObj.get(k)
-                                                if (k == "host" || k == "path" || k == "mode") {
-                                                    if (optString(k, "").isEmpty()) {
+                                                val v = sanitizeJsonValue(extraObj.get(k))
+                                                if (v != null) {
+                                                    if (k == "host" || k == "path" || k == "mode") {
+                                                        if (optString(k, "").isEmpty()) {
+                                                            put(k, v)
+                                                        }
+                                                    } else if (k != "extra" && k != "downloadSettings") {
                                                         put(k, v)
                                                     }
-                                                } else if (k != "extra" && k != "downloadSettings") {
-                                                    put(k, v)
                                                 }
                                             }
                                         }
@@ -655,7 +710,7 @@ object EasyVpnUpdater {
                 }
                 put("observatory", JSONObject().apply {
                     put("subjectSelector", selector)
-                    put("probeURL", "https://cp.cloudflare.com/generate_204")
+                    put("probeURL", "https://www.google.com/generate_204")
                     put("probeInterval", "30s")
                     put("enableConcurrency", false)
                 })
@@ -687,8 +742,15 @@ object EasyVpnUpdater {
             put("outbounds", outbounds)
 
             put("routing", JSONObject().apply {
-                put("domainStrategy", "IPIfNonMatch")
+                put("domainStrategy", "AsIs")
                 val rulesArray = JSONArray()
+
+                // Route DNS port 53 directly
+                rulesArray.put(JSONObject().apply {
+                    put("type", "field")
+                    put("port", "53")
+                    put("outboundTag", "direct")
+                })
 
                 // Drop QUIC (UDP 443) traffic so browsers immediately fall back to TCP TLS without resets/hangs
                 rulesArray.put(JSONObject().apply {
@@ -725,6 +787,13 @@ object EasyVpnUpdater {
                             put("inboundTag", JSONArray().apply { put("socks-in") })
                             put("balancerTag", "balancer")
                         })
+                        if (effectiveTargetTag != null || firstTag != null) {
+                            rulesArray.put(JSONObject().apply {
+                                put("type", "field")
+                                put("inboundTag", JSONArray().apply { put("socks-in") })
+                                put("outboundTag", effectiveTargetTag ?: firstTag)
+                            })
+                        }
                     }
                 } else {
                     rulesArray.put(JSONObject().apply {

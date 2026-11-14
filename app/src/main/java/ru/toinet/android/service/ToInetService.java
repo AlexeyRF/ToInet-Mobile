@@ -118,10 +118,13 @@ public class ToInetService extends Service {
         String title = "ToInet";
         String content = null;
 
+        /*
         if ("address_status".equals(currentProvider)) {
             title = "Состояние Адреса";
             content = ru.toinet.android.util.AddressStatusHelper.getAddressStatus(this);
-        } else if ("vpn".equals(currentProvider)) {
+        } else
+        */
+        if ("vpn".equals(currentProvider)) {
             title = "ToInet";
             content = Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
         } else {

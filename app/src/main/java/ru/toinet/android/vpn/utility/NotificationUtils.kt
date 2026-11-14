@@ -94,11 +94,19 @@ fun createConnectionNotification(
             )
         )
 
+    val notifTitle = "ToInet"
+    /*
     val notifTitle = if (currentProvider == "address_status") "Состояние Адреса" else "ToInet"
     val notifContent = if (currentProvider == "none") {
         null
     } else if (currentProvider == "address_status") {
         ru.toinet.android.util.AddressStatusHelper.getAddressStatus(context)
+    } else {
+        context.getString(content)
+    }
+    */
+    val notifContent = if (currentProvider == "none") {
+        null
     } else {
         context.getString(content)
     }
@@ -130,6 +138,7 @@ fun createConnectionNotificationString(
     content: String,
     service: Class<*>,
     switchServerIntent: PendingIntent? = null,
+    switchTorIntent: PendingIntent? = null,
     serviceKey: String = "vpn",
 ): Notification {
     val channelName = if (channelId == "ToInetVpn") {
@@ -157,11 +166,19 @@ fun createConnectionNotificationString(
             )
         )
 
+    val notifTitle = title.ifBlank { "ToInet" }
+    /*
     val notifTitle = if (currentProvider == "address_status") "Состояние Адреса" else "ToInet"
     val notifContent = if (currentProvider == "none") {
         null
     } else if (currentProvider == "address_status") {
         ru.toinet.android.util.AddressStatusHelper.getAddressStatus(context)
+    } else {
+        content.ifBlank { null }
+    }
+    */
+    val notifContent = if (currentProvider == "none") {
+        null
     } else {
         content.ifBlank { null }
     }
@@ -174,8 +191,16 @@ fun createConnectionNotificationString(
         if (switchServerIntent != null) {
             builder.addAction(
                 0,
-                context.getString(R.string.easyvpn_switch_server),
+                "Сменить EasyVPN",
                 switchServerIntent
+            )
+        }
+
+        if (switchTorIntent != null) {
+            builder.addAction(
+                0,
+                "Сменить ноду Tor",
+                switchTorIntent
             )
         }
 

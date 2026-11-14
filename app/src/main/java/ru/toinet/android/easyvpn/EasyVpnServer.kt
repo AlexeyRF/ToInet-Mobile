@@ -248,7 +248,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                 currentNodeIndex = 0
                 allNodes.toList()
             }
-            val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = -1)
+            val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
             startXrayProcess(config)
             startedWithUserNodes = true
         } else if (cachedUserNodes.isNotEmpty()) {
@@ -258,7 +258,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                 currentNodeIndex = 0
                 allNodes.toList()
             }
-            val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = -1)
+            val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
             startXrayProcess(config)
             startedWithUserNodes = true
         }
@@ -274,7 +274,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                     currentNodeIndex = 0
                     allNodes.toList()
                 }
-                val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = -1)
+                val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
                 startXrayProcess(config)
             } else {
                 Log.w(TAG, "Plan Ъ reserve nodes not available, starting with fallback direct config")
@@ -305,7 +305,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
             Pair(rotatedNodes, allNodes.size)
         }
         Log.i(TAG, "Reloading Xray with $total verified nodes")
-        val targetIdx = if (currentNodeIndex == 0) -1 else 0
+        val targetIdx = 0
         val config = EasyVpnUpdater.buildConfig(rotated, activeNodeIndex = targetIdx)
         startXrayProcess(config)
         onServerChanged?.invoke()
