@@ -96,6 +96,7 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 setupMenu(view)
             },
             */
+            /*
             ToInetMenuAction(
                 0,
                 R.drawable.ic_log,
@@ -103,6 +104,7 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             ) {
                 showNotificationSettings { setupMenu(view) }
             },
+            */
             ToInetMenuAction(
                 0,
                 R.drawable.ic_log,
@@ -163,6 +165,7 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
         }
     }
 
+    /*
     private fun showNotificationSettings(onUpdated: () -> Unit) {
         val allProviders = resources.getStringArray(R.array.log_providers)
         val allValues = resources.getStringArray(R.array.log_providers_values)
@@ -186,6 +189,7 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             .setNegativeButton("Отмена", null)
             .show()
     }
+    */
 
     companion object {
         const val TAG = "AppSettingsBottomSheet"

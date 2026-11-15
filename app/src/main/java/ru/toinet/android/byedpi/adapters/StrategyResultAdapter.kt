@@ -67,6 +67,21 @@ class StrategyResultAdapter(
         return holder
     }
 
+    fun getPositionOfStrategy(strategy: StrategyResult): Int {
+        return strategies.indexOf(strategy)
+    }
+
+    fun notifyStrategyChanged(strategy: StrategyResult, payload: Any? = null) {
+        val pos = strategies.indexOf(strategy)
+        if (pos >= 0) {
+            if (payload != null) {
+                notifyItemChanged(pos, payload)
+            } else {
+                notifyItemChanged(pos)
+            }
+        }
+    }
+
     @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: StrategyViewHolder, position: Int) {
         val strategy = strategies[position]
@@ -79,14 +94,22 @@ class StrategyResultAdapter(
 
             val isProgress = isTesting && !strategy.isCompleted
 
+            holder.progressBar.isIndeterminate = false
+            holder.progressBar.max = strategy.totalRequests
+
             if (isProgress) {
-                holder.progressBar.isIndeterminate = true
-                holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests}"
+                holder.progressBar.progress = strategy.currentProgress
+                holder.progressTextView.text = "${strategy.currentProgress}/${strategy.totalRequests} (${strategy.successPercentage}%)"
+                holder.progressTextView.setTextColor(android.graphics.Color.parseColor("#2196F3"))
             } else {
-                holder.progressBar.isIndeterminate = false
-                holder.progressBar.max = strategy.totalRequests
                 holder.progressBar.progress = strategy.successCount
-                holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests}"
+                holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests} (${strategy.successPercentage}%)"
+                val color = when {
+                    strategy.successPercentage >= 70 -> android.graphics.Color.parseColor("#4CAF50")
+                    strategy.successPercentage > 0 -> android.graphics.Color.parseColor("#FFA000")
+                    else -> android.graphics.Color.parseColor("#E53935")
+                }
+                holder.progressTextView.setTextColor(color)
             }
         } else {
             holder.progressLayout.visibility = View.GONE
@@ -123,16 +146,27 @@ class StrategyResultAdapter(
             val strategy = strategies[position]
 
             if (strategy.totalRequests > 0) {
+                holder.progressLayout.visibility = View.VISIBLE
+                holder.progressTextView.visibility = View.VISIBLE
+
                 val isProgress = isTesting && !strategy.isCompleted
 
+                holder.progressBar.isIndeterminate = false
+                holder.progressBar.max = strategy.totalRequests
+
                 if (isProgress) {
-                    holder.progressBar.isIndeterminate = true
-                    holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests}"
+                    holder.progressBar.progress = strategy.currentProgress
+                    holder.progressTextView.text = "${strategy.currentProgress}/${strategy.totalRequests} (${strategy.successPercentage}%)"
+                    holder.progressTextView.setTextColor(android.graphics.Color.parseColor("#2196F3"))
                 } else {
-                    holder.progressBar.isIndeterminate = false
-                    holder.progressBar.max = strategy.totalRequests
                     holder.progressBar.progress = strategy.successCount
-                    holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests}"
+                    holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests} (${strategy.successPercentage}%)"
+                    val color = when {
+                        strategy.successPercentage >= 70 -> android.graphics.Color.parseColor("#4CAF50")
+                        strategy.successPercentage > 0 -> android.graphics.Color.parseColor("#FFA000")
+                        else -> android.graphics.Color.parseColor("#E53935")
+                    }
+                    holder.progressTextView.setTextColor(color)
                 }
             }
 

@@ -753,9 +753,7 @@ class AppVpnService : LifecycleVpnService() {
             else -> "VPN"
         }
         
-        val defaultDesc = if (ru.toinet.android.util.Prefs.notificationLogProvider == "none") {
-            ""
-        } else if (isAppRouting) {
+        val defaultDesc = if (isAppRouting) {
             "Раздельное туннелирование"
         } else when (provider) {
             "easyvpn" -> easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)

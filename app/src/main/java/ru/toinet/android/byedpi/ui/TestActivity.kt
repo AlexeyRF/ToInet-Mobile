@@ -284,6 +284,10 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
                 withContext(Dispatchers.Main) {
                     progressTextView.text = getString(R.string.test_process, cmdIndex, cmds.size)
+                    val pos = strategyAdapter.getPositionOfStrategy(strategy)
+                    if (pos >= 0) {
+                        strategiesRecyclerView.scrollToPosition(pos)
+                    }
                 }
 
                 if (appStatus.first != AppStatus.Halted) {
@@ -310,8 +314,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                         strategy.siteResults.add(SiteResult(site, 0, requestsCount))
                     }
                     withContext(Dispatchers.Main) {
-                        strategyAdapter.notifyItemChanged(strategyIndex)
-                        strategyAdapter.updateStrategies(strategies, sortByPercentage = true)
+                        strategyAdapter.notifyStrategyChanged(strategy)
                         saveResults(strategies)
                     }
                     if (appStatus.first != AppStatus.Halted) {
@@ -326,9 +329,11 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
                 val totalRequests = sites.size * requestsCount
                 strategy.totalRequests = totalRequests
+                strategy.currentProgress = 0
+                strategy.successCount = 0
 
                 withContext(Dispatchers.Main) {
-                    strategyAdapter.notifyItemChanged(strategyIndex)
+                    strategyAdapter.notifyStrategyChanged(strategy)
                 }
 
                 siteChecker.checkSitesAsync(
@@ -343,7 +348,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                             strategy.successCount += successCount
                             strategy.siteResults.add(SiteResult(site, successCount, countRequests))
 
-                            strategyAdapter.notifyItemChanged(strategyIndex, "progress")
+                            strategyAdapter.notifyStrategyChanged(strategy, "progress")
                         }
                     }
                 )
@@ -351,7 +356,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 strategy.isCompleted = true
 
                 withContext(Dispatchers.Main) {
-                    strategyAdapter.updateStrategies(strategies, sortByPercentage = true)
+                    strategyAdapter.notifyStrategyChanged(strategy)
                     saveResults(strategies)
                 }
 
@@ -393,6 +398,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
                 strategyAdapter.setTestingState(false)
                 strategyAdapter.updateStrategies(strategies, sortByPercentage = true)
+                strategiesRecyclerView.scrollToPosition(0)
 
                 saveResults(strategies)
             }

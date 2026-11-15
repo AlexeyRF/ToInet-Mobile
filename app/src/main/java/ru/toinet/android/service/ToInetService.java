@@ -111,23 +111,8 @@ public class ToInetService extends Service {
                 .setSilent(true)
                 .setOngoing(true);
 
-        String currentProvider = ru.toinet.android.util.Prefs.getNotificationLogProvider();
         String title = "ToInet";
-        String content = null;
-
-        /*
-        if ("address_status".equals(currentProvider)) {
-            title = "Состояние Адреса";
-            content = ru.toinet.android.util.AddressStatusHelper.getAddressStatus(this);
-        } else
-        */
-        if ("vpn".equals(currentProvider)) {
-            title = "ToInet";
-            content = Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
-        } else {
-            title = "ToInet";
-            content = null;
-        }
+        String content = Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
 
         mNotifyBuilder
                 .setSmallIcon(R.drawable.ic_stat_tor)
@@ -147,6 +132,11 @@ public class ToInetService extends Service {
             var pendingIntentNewNym = getServiceIntent(i);
 
             mNotifyBuilder.addAction(R.drawable.ic_refresh_white_24dp, getString(R.string.menu_new_identity), pendingIntentNewNym);
+
+            var stopIntent = new Intent(this, ToInetService.class);
+            stopIntent.setAction(ACTION_STOP);
+            var pendingIntentStop = getServiceIntent(stopIntent);
+            mNotifyBuilder.addAction(0, getString(R.string.disable), pendingIntentStop);
         } // Tor connection is off
         else if (mCurrentStatus.equals(STATUS_OFF)) {
             var i = new Intent(this, ToInetService.class);

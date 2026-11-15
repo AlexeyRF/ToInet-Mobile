@@ -95,38 +95,22 @@ fun createConnectionNotification(
         )
 
     val notifTitle = "ToInet"
-    /*
-    val notifTitle = if (currentProvider == "address_status") "Состояние Адреса" else "ToInet"
-    val notifContent = if (currentProvider == "none") {
-        null
-    } else if (currentProvider == "address_status") {
-        ru.toinet.android.util.AddressStatusHelper.getAddressStatus(context)
-    } else {
-        context.getString(content)
-    }
-    */
-    val notifContent = if (currentProvider == "none") {
-        null
-    } else {
-        context.getString(content)
-    }
+    val notifContent = context.getString(content)
 
     builder.setContentTitle(notifTitle)
         .setContentText(notifContent)
         .setSubText(null)
 
-    if (currentProvider != "none") {
-        builder.addAction(
+    builder.addAction(
+        0,
+        context.getString(R.string.disable),
+        PendingIntent.getService(
+            context,
             0,
-            context.getString(R.string.disable),
-            PendingIntent.getService(
-                context,
-                0,
-                Intent(context, service).setAction(STOP_ACTION),
-                PendingIntent.FLAG_IMMUTABLE,
-            )
+            Intent(context, service).setAction(STOP_ACTION),
+            PendingIntent.FLAG_IMMUTABLE,
         )
-    }
+    )
 
     return builder.build()
 }
@@ -166,55 +150,39 @@ fun createConnectionNotificationString(
             )
         )
 
-    val notifTitle = title.ifBlank { "ToInet" }
-    /*
-    val notifTitle = if (currentProvider == "address_status") "Состояние Адреса" else "ToInet"
-    val notifContent = if (currentProvider == "none") {
-        null
-    } else if (currentProvider == "address_status") {
-        ru.toinet.android.util.AddressStatusHelper.getAddressStatus(context)
-    } else {
-        content.ifBlank { null }
-    }
-    */
-    val notifContent = if (currentProvider == "none") {
-        null
-    } else {
-        content.ifBlank { null }
-    }
+    val notifTitle = "ToInet"
+    val notifContent = content.ifBlank { null }
 
     builder.setContentTitle(notifTitle)
         .setContentText(notifContent)
         .setSubText(null)
 
-    if (currentProvider != "none") {
-        if (switchServerIntent != null) {
-            builder.addAction(
-                0,
-                "Сменить EasyVPN",
-                switchServerIntent
-            )
-        }
-
-        if (switchTorIntent != null) {
-            builder.addAction(
-                0,
-                "Сменить ноду Tor",
-                switchTorIntent
-            )
-        }
-
+    if (switchServerIntent != null) {
         builder.addAction(
             0,
-            context.getString(R.string.disable),
-            PendingIntent.getService(
-                context,
-                0,
-                Intent(context, service).setAction(STOP_ACTION),
-                PendingIntent.FLAG_IMMUTABLE,
-            )
+            "Сменить EasyVPN",
+            switchServerIntent
         )
     }
+
+    if (switchTorIntent != null) {
+        builder.addAction(
+            0,
+            "Сменить ноду Tor",
+            switchTorIntent
+        )
+    }
+
+    builder.addAction(
+        0,
+        context.getString(R.string.disable),
+        PendingIntent.getService(
+            context,
+            0,
+            Intent(context, service).setAction(STOP_ACTION),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+    )
 
     return builder.build()
 }

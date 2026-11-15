@@ -45,6 +45,23 @@ struct packet fake_udp = {
 };
 
 
+static const struct params default_params = {
+    .await_int = 10,
+    
+    .ipv6 = 1,
+    .resolve = 1,
+    .udp = 1,
+    .max_open = 512,
+    .bfsize = 16384,
+    .baddr = {
+        .in6 = { .sin6_family = AF_INET6 }
+    },
+    .laddr = {
+        .in = { .sin_family = AF_INET }
+    },
+    .debug = 0
+};
+
 struct params params = {
     .await_int = 10,
     
@@ -1619,6 +1636,7 @@ int init(void)
 
 int main(int argc, char **argv) 
 {
+    params = default_params;
     #ifdef _WIN32
     WSADATA wsa;
     

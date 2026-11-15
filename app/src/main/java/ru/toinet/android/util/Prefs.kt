@@ -497,7 +497,7 @@ object Prefs {
 
     @JvmStatic
     var notificationLogProvider: String
-        get() = cr?.getPrefString("notification_log_provider") ?: "none"
+        get() = "none"
         set(value) = cr?.putPref("notification_log_provider", value) ?: Unit
     @JvmStatic
     var useDynamicColors: Boolean
@@ -687,13 +687,6 @@ object Prefs {
 
     @JvmStatic
     fun shouldServiceShowNotification(serviceKey: String): Boolean {
-        val current = notificationLogProvider
-        if (current == "vpn") {
-            if (isGlobalVpnEnabled) {
-                return serviceKey == "vpn"
-            }
-            return isPrimaryNotificationService(serviceKey)
-        }
         return isPrimaryNotificationService(serviceKey)
     }
 
