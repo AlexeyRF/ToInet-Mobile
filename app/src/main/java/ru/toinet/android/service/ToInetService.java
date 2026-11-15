@@ -112,7 +112,7 @@ public class ToInetService extends Service {
                 .setOngoing(true);
 
         String title = "ToInet";
-        String content = Notifications.getNotificationTitleForStatus(this, mCurrentStatus);
+        String content = null;
 
         mNotifyBuilder
                 .setSmallIcon(R.drawable.ic_stat_tor)

@@ -741,29 +741,8 @@ class AppVpnService : LifecycleVpnService() {
     }
 
     private fun createNotification(): Notification {
-        // val isAddressStatus = ru.toinet.android.util.Prefs.notificationLogProvider == "address_status"
         val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
         val provider = ru.toinet.android.util.Prefs.vpnProvider
-        val title = if (isAppRouting) "Раздельное туннелирование" else when (provider) {
-            "easyvpn" -> "EasyVPN"
-            "svpn", "ssh" -> "SVPN (SSH)"
-            "operaproxy" -> "Opera Proxy"
-            "tor" -> "TOR"
-            "byedpi" -> getString(R.string.byedpi_notification_title)
-            else -> "VPN"
-        }
-        
-        val defaultDesc = if (isAppRouting) {
-            "Раздельное туннелирование"
-        } else when (provider) {
-            "easyvpn" -> easyVpnServer?.getCurrentServerDescription() ?: getString(R.string.vpn_notification_content)
-            "tor" -> "Tor VPN запущен"
-            "svpn", "ssh" -> "SVPN (SSH) запущен"
-            "operaproxy" -> "Opera Proxy VPN запущен"
-            "byedpi" -> "ByeDPI VPN запущен"
-            else -> getString(R.string.vpn_notification_content)
-        }
-        val content = defaultDesc
 
         val hasEasyVpn: Boolean
         val hasTor: Boolean
@@ -801,8 +780,8 @@ class AppVpnService : LifecycleVpnService() {
         return createConnectionNotificationString(
             this,
             NOTIFICATION_CHANNEL_ID,
-            title,
-            content,
+            "ToInet",
+            null,
             AppVpnService::class.java,
             switchEasyVpnIntent,
             switchTorIntent,

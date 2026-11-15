@@ -133,7 +133,7 @@ class SvpnService : Service() {
 
         if (!isDetailed) {
             builder.setContentTitle("ToInet")
-                .setContentText("SVPN (SSH)")
+                .setContentText(null)
                 .setSubText(null)
         } else {
             builder.setContentTitle("SVPN (SSH Tunnel)")

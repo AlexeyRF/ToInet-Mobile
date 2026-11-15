@@ -95,7 +95,7 @@ fun createConnectionNotification(
         )
 
     val notifTitle = "ToInet"
-    val notifContent = context.getString(content)
+    val notifContent: String? = null
 
     builder.setContentTitle(notifTitle)
         .setContentText(notifContent)
@@ -119,7 +119,7 @@ fun createConnectionNotificationString(
     context: Context,
     channelId: String,
     title: String,
-    content: String,
+    content: String? = null,
     service: Class<*>,
     switchServerIntent: PendingIntent? = null,
     switchTorIntent: PendingIntent? = null,
@@ -151,7 +151,7 @@ fun createConnectionNotificationString(
         )
 
     val notifTitle = "ToInet"
-    val notifContent = content.ifBlank { null }
+    val notifContent: String? = null
 
     builder.setContentTitle(notifTitle)
         .setContentText(notifContent)

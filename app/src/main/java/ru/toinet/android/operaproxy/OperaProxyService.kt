@@ -138,7 +138,7 @@ class OperaProxyService : Service() {
 
         if (!isDetailed) {
             builder.setContentTitle("ToInet")
-                .setContentText(getString(R.string.opera_proxy_notification_title))
+                .setContentText(null)
                 .setSubText(null)
         } else {
             builder.setContentTitle(getString(R.string.opera_proxy_notification_title))
