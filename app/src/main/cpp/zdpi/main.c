@@ -129,7 +129,9 @@ const struct option options[] = {
     {"help",          0, 0, 'h'},
     {"version",       0, 0, 'v'},
     {"ip",            1, 0, 'i'},
+    {"bind-addr",     1, 0, 'i'},
     {"port",          1, 0, 'p'},
+    {"bind-port",     1, 0, 'p'},
     #ifdef __linux__
     {"transparent",   0, 0, 'E'},
     #endif
@@ -151,9 +153,14 @@ const struct option options[] = {
     {"copy",          1, 0, 'B'},
     {"cache-file",    1, 0, 'y'},
     {"proto",         1, 0, 'K'},
+    {"dpi-desync-protocol", 1, 0, 1017},
+    {"dpi-desync-any-protocol", 0, 0, 1009},
     {"hosts",         1, 0, 'H'},
+    {"hostlist",      1, 0, 'H'},
+    {"hostlist-auto", 1, 0, 'H'},
     {"pf",            1, 0, 'V'},
     {"round",         1, 0, 'R'},
+    {"dpi-desync-cutoff", 1, 0, 1010},
     {"split",         1, 0, 's'},
     {"disorder",      1, 0, 'd'},
     {"oob",           1, 0, 'o'},
@@ -164,48 +171,53 @@ const struct option options[] = {
     {"md5sig",        0, 0, 'S'},
     #endif
     {"fake-sni",      1, 0, 'n'},
+    {"dpi-desync-fake-sni", 1, 0, 'n'},
     #endif
     {"ttl",           1, 0, 't'},
+    {"dpi-desync-ttl", 1, 0, 't'},
+    {"dpi-desync-autottl", 1, 0, 't'},
     {"fake-data",     1, 0, 'l'},
+    {"fake-file",     1, 0, 'l'},
+    {"dpi-desync-fake-file", 1, 0, 'l'},
     {"fake-offset",   1, 0, 'O'},
     {"fake-tls-mod",  1, 0, 'Q'},
     {"oob-data",      1, 0, 'e'},
     {"mod-http",      1, 0, 'M'},
+    {"dpi-desync-mod-http", 1, 0, 'M'},
     {"tlsrec",        1, 0, 'r'},
     {"tlsminor",      1, 0, 'm'},
     {"udp-fake",      1, 0, 'a'},
+    {"dpi-desync-fake-quic", 1, 0, 1006},
     {"def-ttl",       1, 0, 'g'},
-    {"wait-send",     0, 0, 'Z'}, //
-    {"await-int",     1, 0, 'z'}, //
+    {"wait-send",     0, 0, 'Z'},
+    {"await-int",     1, 0, 'z'},
     #ifdef __linux__
     {"drop-sack",     0, 0, 'Y'},
-    {"protect-path",  1, 0, 'P'}, //
+    {"protect-path",  1, 0, 'P'},
     #endif
     {"ipset",         1, 0, 'j'},
-    {"connect-to",    1, 0, 'C'}, //
-    {"rst",           0, 0, '0'}, //
-    {"comment",       1, 0, '#'}, //
+    {"connect-to",    1, 0, 'C'},
+    {"rst",           0, 0, '0'},
+    {"comment",       1, 0, '#'},
     {"cache-merge",   1, 0, '/'},
     {"dpi-desync",          1, 0, 1001},
     {"dpi-desync-split-pos",1, 0, 1002},
-    {"dpi-desync-ttl",      1, 0, 1003},
-    {"dpi-desync-autottl",  1, 0, 1004},
+    {"split-pos",           1, 0, 1002},
+    {"split-seq",           1, 0, 1002},
+    {"multisplit-pos",      1, 0, 1002},
+    {"multidisorder-pos",   1, 0, 1002},
     {"dpi-desync-fake-tls", 1, 0, 1005},
-    {"dpi-desync-fake-quic",1, 0, 1006},
-    {"dpi-desync-fake-sni", 1, 0, 1007},
+    {"fake-hex",            1, 0, 1015},
     {"dpi-desync-fooling",  1, 0, 1008},
-    {"dpi-desync-any-protocol", 0, 0, 1009},
-    {"dpi-desync-cutoff",   1, 0, 1010},
+    {"fooling",             1, 0, 1008},
     {"wsize",               1, 0, 1011},
     {"quic-drop",           0, 0, 1012},
     {"drop-quic",           0, 0, 1012},
-    {"hostlist",            1, 0, 'H'},
-    {"fake-hex",            1, 0, 1015},
-    {"fake-file",           1, 0, 'l'},
-    {"split-pos",           1, 0, 1002},
+    {"block-quic",          0, 0, 1012},
     {"preset",              1, 0, 1020},
-    {"bind-addr",           1, 0, 'i'},
     {"socks",               0, 0, 1030},
+    {"auto-reconnect",      0, 0, 1016},
+    {"dpi-desync-reconnect",0, 0, 1016},
     {0}
 };
     
@@ -742,33 +754,45 @@ static void apply_zapret_desync(struct desync_params *dp, const char *modes)
     strncpy(buf, modes, sizeof(buf) - 1);
     buf[sizeof(buf) - 1] = 0;
     
-    char *tok = strtok(buf, ",+ ");
+    char *tok = strtok(buf, ", \t;");
+    int part_idx = 0;
     while (tok) {
         int m = DESYNC_SPLIT;
         if (!strcmp(tok, "fake")) m = DESYNC_FAKE;
-        else if (!strcmp(tok, "split") || !strcmp(tok, "multisplit")) m = DESYNC_SPLIT;
-        else if (!strcmp(tok, "disorder") || !strcmp(tok, "multidisorder")) m = DESYNC_DISORDER;
+        else if (!strcmp(tok, "split") || !strcmp(tok, "split2") || !strcmp(tok, "multisplit")) m = DESYNC_SPLIT;
+        else if (!strcmp(tok, "disorder") || !strcmp(tok, "disorder2") || !strcmp(tok, "multidisorder")) m = DESYNC_DISORDER;
         else if (!strcmp(tok, "oob")) m = DESYNC_OOB;
         else if (!strcmp(tok, "disoob")) m = DESYNC_DISOOB;
         else if (!strcmp(tok, "fakedsplit")) m = DESYNC_FAKEDSPLIT;
         else if (!strcmp(tok, "fakeddisorder")) m = DESYNC_FAKEDDISORDER;
         else if (!strcmp(tok, "tlsrec")) {
-            struct part *tr = add((void *)&dp->tlsrec, &dp->tlsrec_n, sizeof(struct part));
-            if (tr) {
-                memset(tr, 0, sizeof(*tr));
-                posmarker_parse("midsld", &tr->ppos);
+            if (dp->tlsrec_n == 0) {
+                struct part *tr = add((void *)&dp->tlsrec, &dp->tlsrec_n, sizeof(struct part));
+                if (tr) {
+                    memset(tr, 0, sizeof(*tr));
+                    posmarker_parse("midsld", &tr->ppos);
+                }
             }
-            tok = strtok(NULL, ",+ ");
+            tok = strtok(NULL, ", \t;");
+            continue;
+        } else if (!strcmp(tok, "rst") || !strcmp(tok, "rstrdata")) {
+            dp->rst = 1;
+            tok = strtok(NULL, ", \t;");
             continue;
         }
         
-        struct part *p = add((void *)&dp->parts, &dp->parts_n, sizeof(struct part));
-        if (p) {
-            memset(p, 0, sizeof(*p));
-            p->m = m;
-            posmarker_parse("midsld", &p->ppos);
+        if (part_idx < dp->parts_n) {
+            dp->parts[part_idx].m = m;
+        } else {
+            struct part *p = add((void *)&dp->parts, &dp->parts_n, sizeof(struct part));
+            if (p) {
+                memset(p, 0, sizeof(*p));
+                p->m = m;
+                posmarker_parse("midsld", &p->ppos);
+            }
         }
-        tok = strtok(NULL, ",+ ");
+        part_idx++;
+        tok = strtok(NULL, ", \t;");
     }
 }
 
@@ -778,24 +802,47 @@ static void apply_zapret_split_pos(struct desync_params *dp, const char *positio
     strncpy(buf, positions, sizeof(buf) - 1);
     buf[sizeof(buf) - 1] = 0;
     
-    char *tok = strtok(buf, ",+ ");
-    int idx = 0;
-    while (tok) {
-        if (idx < dp->parts_n) {
-            parse_offset(&dp->parts[idx], tok);
-        } else {
+    char *toks[16];
+    int ntoks = 0;
+    char *tok = strtok(buf, ", \t;");
+    while (tok && ntoks < 16) {
+        toks[ntoks++] = tok;
+        tok = strtok(NULL, ", \t;");
+    }
+    if (ntoks == 0) return;
+
+    if (ntoks == 1) {
+        if (dp->parts_n == 0) {
             struct part *p = add((void *)&dp->parts, &dp->parts_n, sizeof(struct part));
             if (p) {
                 memset(p, 0, sizeof(*p));
                 p->m = DESYNC_SPLIT;
-                parse_offset(p, tok);
+                parse_offset(p, toks[0]);
+            }
+        } else {
+            for (int i = 0; i < dp->parts_n; i++) {
+                parse_offset(&dp->parts[i], toks[0]);
             }
         }
-        if (idx < dp->tlsrec_n) {
-            parse_offset(&dp->tlsrec[idx], tok);
+        for (int i = 0; i < dp->tlsrec_n; i++) {
+            parse_offset(&dp->tlsrec[i], toks[0]);
         }
-        idx++;
-        tok = strtok(NULL, ",+ ");
+    } else {
+        for (int i = 0; i < ntoks; i++) {
+            if (i < dp->parts_n) {
+                parse_offset(&dp->parts[i], toks[i]);
+            } else {
+                struct part *p = add((void *)&dp->parts, &dp->parts_n, sizeof(struct part));
+                if (p) {
+                    memset(p, 0, sizeof(*p));
+                    p->m = DESYNC_SPLIT;
+                    parse_offset(p, toks[i]);
+                }
+            }
+            if (i < dp->tlsrec_n) {
+                parse_offset(&dp->tlsrec[i], toks[i]);
+            }
+        }
     }
 }
 
@@ -1323,10 +1370,20 @@ int parse_args(int argc, char **argv)
             if (dp->fake_data.data) {
                 continue;
             }
-            dp->fake_data.data = ftob(optarg, &dp->fake_data.size);
-            if (!dp->fake_data.data) {
-                uniperror("read/parse");
-                invalid = 1;
+            if (!strcmp(optarg, "google")) dp->fake_template = FAKE_TMPL_GOOGLE;
+            else if (!strcmp(optarg, "kyber") || !strcmp(optarg, "cloudflare")) dp->fake_template = FAKE_TMPL_KYBER;
+            else if (!strcmp(optarg, "rutracker")) dp->fake_template = FAKE_TMPL_RUTRACKER;
+            else if (!strcmp(optarg, "fake_default") || !strcmp(optarg, "default")) dp->fake_template = FAKE_TMPL_DEFAULT;
+            else if (!strncmp(optarg, "0x", 2) || !strncmp(optarg, "0X", 2)) {
+                size_t hlen = strlen(optarg + 2) / 2;
+                dp->fake_data.data = malloc(hlen);
+                dp->fake_data.size = hlen;
+                parse_hex_str(optarg + 2, (uint8_t *)dp->fake_data.data, &hlen);
+            } else {
+                dp->fake_data.data = ftob(optarg, &dp->fake_data.size);
+                if (!dp->fake_data.data) {
+                    dp->fake_template = FAKE_TMPL_GOOGLE;
+                }
             }
             break;
             
@@ -1471,7 +1528,7 @@ int parse_args(int argc, char **argv)
             apply_zapret_desync(dp, optarg);
             break;
             
-        case 1002: // --dpi-desync-split-pos
+        case 1002: // --dpi-desync-split-pos / --split-pos
             apply_zapret_split_pos(dp, optarg);
             break;
             
@@ -1483,8 +1540,9 @@ int parse_args(int argc, char **argv)
             
         case 1005: // --dpi-desync-fake-tls
             if (!strcmp(optarg, "google")) dp->fake_template = FAKE_TMPL_GOOGLE;
-            else if (!strcmp(optarg, "kyber")) dp->fake_template = FAKE_TMPL_KYBER;
+            else if (!strcmp(optarg, "kyber") || !strcmp(optarg, "cloudflare")) dp->fake_template = FAKE_TMPL_KYBER;
             else if (!strcmp(optarg, "rutracker")) dp->fake_template = FAKE_TMPL_RUTRACKER;
+            else if (!strcmp(optarg, "fake_default") || !strcmp(optarg, "default")) dp->fake_template = FAKE_TMPL_DEFAULT;
             else if (!strncmp(optarg, "0x", 2) || !strncmp(optarg, "0X", 2)) {
                 size_t hlen = strlen(optarg + 2) / 2;
                 dp->fake_data.data = malloc(hlen);
@@ -1492,11 +1550,15 @@ int parse_args(int argc, char **argv)
                 parse_hex_str(optarg + 2, (uint8_t *)dp->fake_data.data, &hlen);
             } else {
                 dp->fake_data.data = ftob(optarg, &dp->fake_data.size);
+                if (!dp->fake_data.data) {
+                    dp->fake_template = FAKE_TMPL_GOOGLE;
+                }
             }
             break;
             
         case 1006: // --dpi-desync-fake-quic
             dp->fake_quic = true;
+            dp->udp_fake_count = 1;
             break;
             
         case 1007: // --dpi-desync-fake-sni
@@ -1507,6 +1569,18 @@ int parse_args(int argc, char **argv)
             break;
             
         case 1008: // --dpi-desync-fooling
+            {
+                char fbuf[128];
+                strncpy(fbuf, optarg, sizeof(fbuf) - 1);
+                fbuf[sizeof(fbuf) - 1] = 0;
+                char *ftok = strtok(fbuf, ", \t;");
+                while (ftok) {
+                    if (!strcmp(ftok, "md5sig")) dp->md5sig = 1;
+                    else if (!strcmp(ftok, "badsum") || !strcmp(ftok, "badseq")) dp->drop_sack = 1;
+                    else if (!strcmp(ftok, "rst") || !strcmp(ftok, "rstrdata")) dp->rst = 1;
+                    ftok = strtok(NULL, ", \t;");
+                }
+            }
             break;
             
         case 1009: // --dpi-desync-any-protocol
@@ -1514,6 +1588,15 @@ int parse_args(int argc, char **argv)
             break;
             
         case 1010: // --dpi-desync-cutoff
+            {
+                const char *s = optarg;
+                while (*s && !isdigit(*s)) s++;
+                val = strtol(s, &end, 0);
+                if (val > 0) {
+                    dp->rounds[0] = val;
+                    dp->rounds[1] = val;
+                }
+            }
             break;
             
         case 1011: // --wsize
@@ -1522,6 +1605,17 @@ int parse_args(int argc, char **argv)
             
         case 1012: // --quic-drop / --drop-quic
             dp->drop_quic = true;
+            break;
+
+        case 1016: // --auto-reconnect / --dpi-desync-reconnect
+            params.auto_reconnect = 1;
+            break;
+
+        case 1017: // --dpi-desync-protocol
+            if (!strcmp(optarg, "tls") || !strcmp(optarg, "https")) dp->proto |= IS_TCP | IS_HTTPS;
+            else if (!strcmp(optarg, "http")) dp->proto |= IS_TCP | IS_HTTP;
+            else if (!strcmp(optarg, "udp") || !strcmp(optarg, "quic")) dp->proto |= IS_UDP;
+            else if (!strcmp(optarg, "any") || !strcmp(optarg, "all")) dp->proto = 0;
             break;
             
         case 1015: // --fake-hex
@@ -1637,6 +1731,11 @@ int init(void)
 int main(int argc, char **argv) 
 {
     params = default_params;
+    optind = 1;
+#if defined(__BIONIC__) || defined(__ANDROID__)
+    extern int optreset;
+    optreset = 1;
+#endif
     #ifdef _WIN32
     WSADATA wsa;
     

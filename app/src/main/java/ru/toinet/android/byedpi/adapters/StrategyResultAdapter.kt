@@ -67,21 +67,6 @@ class StrategyResultAdapter(
         return holder
     }
 
-    fun getPositionOfStrategy(strategy: StrategyResult): Int {
-        return strategies.indexOf(strategy)
-    }
-
-    fun notifyStrategyChanged(strategy: StrategyResult, payload: Any? = null) {
-        val pos = strategies.indexOf(strategy)
-        if (pos >= 0) {
-            if (payload != null) {
-                notifyItemChanged(pos, payload)
-            } else {
-                notifyItemChanged(pos)
-            }
-        }
-    }
-
     @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: StrategyViewHolder, position: Int) {
         val strategy = strategies[position]
@@ -94,22 +79,14 @@ class StrategyResultAdapter(
 
             val isProgress = isTesting && !strategy.isCompleted
 
-            holder.progressBar.isIndeterminate = false
-            holder.progressBar.max = strategy.totalRequests
-
             if (isProgress) {
-                holder.progressBar.progress = strategy.currentProgress
-                holder.progressTextView.text = "${strategy.currentProgress}/${strategy.totalRequests} (${strategy.successPercentage}%)"
-                holder.progressTextView.setTextColor(android.graphics.Color.parseColor("#2196F3"))
+                holder.progressBar.isIndeterminate = true
+                holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests}"
             } else {
+                holder.progressBar.isIndeterminate = false
+                holder.progressBar.max = strategy.totalRequests
                 holder.progressBar.progress = strategy.successCount
-                holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests} (${strategy.successPercentage}%)"
-                val color = when {
-                    strategy.successPercentage >= 70 -> android.graphics.Color.parseColor("#4CAF50")
-                    strategy.successPercentage > 0 -> android.graphics.Color.parseColor("#FFA000")
-                    else -> android.graphics.Color.parseColor("#E53935")
-                }
-                holder.progressTextView.setTextColor(color)
+                holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests}"
             }
         } else {
             holder.progressLayout.visibility = View.GONE
@@ -151,34 +128,42 @@ class StrategyResultAdapter(
 
                 val isProgress = isTesting && !strategy.isCompleted
 
-                holder.progressBar.isIndeterminate = false
-                holder.progressBar.max = strategy.totalRequests
-
                 if (isProgress) {
-                    holder.progressBar.progress = strategy.currentProgress
-                    holder.progressTextView.text = "${strategy.currentProgress}/${strategy.totalRequests} (${strategy.successPercentage}%)"
-                    holder.progressTextView.setTextColor(android.graphics.Color.parseColor("#2196F3"))
+                    holder.progressBar.isIndeterminate = true
+                    holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests}"
                 } else {
+                    holder.progressBar.isIndeterminate = false
+                    holder.progressBar.max = strategy.totalRequests
                     holder.progressBar.progress = strategy.successCount
-                    holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests} (${strategy.successPercentage}%)"
-                    val color = when {
-                        strategy.successPercentage >= 70 -> android.graphics.Color.parseColor("#4CAF50")
-                        strategy.successPercentage > 0 -> android.graphics.Color.parseColor("#FFA000")
-                        else -> android.graphics.Color.parseColor("#E53935")
-                    }
-                    holder.progressTextView.setTextColor(color)
+                    holder.progressTextView.text = "${strategy.successCount}/${strategy.totalRequests}"
                 }
+            } else {
+                holder.progressLayout.visibility = View.GONE
             }
 
-            if (strategy.siteResults.isNotEmpty() && holder.expandButton.isGone) {
+            if (strategy.siteResults.isNotEmpty()) {
                 holder.expandButton.visibility = View.VISIBLE
-            }
-
-            if (strategy.isExpanded && holder.sitesRecyclerView.isVisible) {
-                val adapter = holder.sitesRecyclerView.adapter
-                if (adapter is SiteResultAdapter) {
-                    adapter.updateSites(strategy.siteResults)
+                if (strategy.isExpanded) {
+                    holder.expandTextView.text = context.getString(R.string.test_hide_details)
+                    holder.expandIcon.rotation = 180f
+                    holder.sitesRecyclerView.visibility = View.VISIBLE
+                    val adapter = holder.sitesRecyclerView.adapter
+                    if (adapter is SiteResultAdapter) {
+                        adapter.updateSites(strategy.siteResults)
+                    } else {
+                        val siteAdapter = SiteResultAdapter()
+                        holder.sitesRecyclerView.layoutManager = LinearLayoutManager(context)
+                        holder.sitesRecyclerView.adapter = siteAdapter
+                        siteAdapter.updateSites(strategy.siteResults)
+                    }
+                } else {
+                    holder.expandTextView.text = context.getString(R.string.test_show_details)
+                    holder.expandIcon.rotation = 0f
+                    holder.sitesRecyclerView.visibility = View.GONE
                 }
+            } else {
+                holder.expandButton.visibility = View.GONE
+                holder.sitesRecyclerView.visibility = View.GONE
             }
         }
     }
@@ -187,23 +172,25 @@ class StrategyResultAdapter(
         return strategies.size
     }
 
+    fun updateStrategy(strategy: StrategyResult) {
+        val position = strategies.indexOfFirst { it === strategy }
+        if (position != -1) notifyItemChanged(position, "progress")
+    }
+
     @SuppressLint("NotifyDataSetChanged")
     fun setTestingState(testing: Boolean) {
+        if (isTesting == testing) return
         isTesting = testing
         notifyDataSetChanged()
     }
 
     @SuppressLint("NotifyDataSetChanged")
-    fun updateStrategies(newStrategies: List<StrategyResult>, sortByPercentage: Boolean = true) {
+    fun updateStrategies(newStrategies: List<StrategyResult>) {
         strategies.clear()
 
-        val sorted = if (sortByPercentage) {
-            newStrategies.sortedWith(compareByDescending<StrategyResult> { it.isCompleted }
-                .thenByDescending { it.successPercentage }
-                .thenByDescending { it.successCount })
-        } else {
-            newStrategies
-        }
+        val sorted = newStrategies.sortedWith(compareByDescending<StrategyResult> { it.isCompleted }
+            .thenByDescending { it.successPercentage }
+            .thenByDescending { it.successCount })
 
         strategies.addAll(sorted)
         notifyDataSetChanged()

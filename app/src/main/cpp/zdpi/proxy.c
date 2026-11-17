@@ -32,6 +32,9 @@
     #if defined(__linux__) && defined(__GLIBC__)
         extern int accept4(int, struct sockaddr *__restrict, socklen_t *__restrict, int);
     #endif
+    #if defined(__linux__) || defined(__ANDROID__)
+        #include <sys/eventfd.h>
+    #endif
     #ifdef __linux__
         /* For SO_ORIGINAL_DST only (which is 0x50) */
         #include "linux/netfilter_ipv4.h"
@@ -44,10 +47,31 @@
 
 #define RFD_COUNT 2
 
-int server_fd, res_fds[RFD_COUNT];
+int server_fd = -1, res_fds[RFD_COUNT];
+static struct poolhd *volatile active_pool = NULL;
+static int stop_event_fd = -1;
+
+void proxy_stop(void) {
+    LOG(LOG_S, "proxy_stop called\n");
+    struct poolhd *pool = active_pool;
+    if (pool) {
+        pool->brk = 1;
+    }
+#if defined(__linux__) || defined(__ANDROID__)
+    if (stop_event_fd >= 0) {
+        uint64_t val = 1;
+        write(stop_event_fd, &val, sizeof(val));
+    }
+#endif
+    if (server_fd >= 0) {
+        shutdown(server_fd, SHUT_RDWR);
+        close(server_fd);
+        server_fd = -1;
+    }
+}
 
 static void on_cancel(int sig) {
-    shutdown(server_fd, SHUT_RDWR);
+    proxy_stop();
 }
 
 static int accept_close(int fd)
@@ -1076,6 +1100,13 @@ int on_ignore(struct poolhd *pool, struct eval *val, int etype)
 }
 
 
+static int on_stop_event(struct poolhd *pool, struct eval *val, int et)
+{
+    LOG(LOG_S, "stop event received in loop\n");
+    pool->brk = 1;
+    return -1;
+}
+
 int start_event_loop(int srvfd)
 {
     server_fd = srvfd;
@@ -1083,17 +1114,35 @@ int start_event_loop(int srvfd)
     struct poolhd *pool = init_pool(params.max_open * 2 + 1);
     if (!pool) {
         close(srvfd);
+        server_fd = -1;
         return -1;
     }
+    active_pool = pool;
+
+#if defined(__linux__) || defined(__ANDROID__)
+    stop_event_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (stop_event_fd >= 0) {
+        if (!add_event(pool, &on_stop_event, stop_event_fd, POLLIN)) {
+            close(stop_event_fd);
+            stop_event_fd = -1;
+        }
+    }
+#endif
+
     if (!add_event(pool, &on_accept, srvfd, POLLIN)) {
+        active_pool = NULL;
         destroy_pool(pool);
         close(srvfd);
+        server_fd = -1;
         return -1;
     }
     loop_event(pool);
     
     LOG(LOG_S, "exit\n");
+    active_pool = NULL;
     destroy_pool(pool);
+    stop_event_fd = -1;
+    server_fd = -1;
     return 0;
 }
 
@@ -1112,6 +1161,9 @@ int listen_socket(const union sockaddr_u *srv)
         close(srvfd);
         return -1;
     }
+#ifdef SO_REUSEPORT
+    setsockopt(srvfd, SOL_SOCKET, SO_REUSEPORT, (char *)&opt, sizeof(opt));
+#endif
     if (bind(srvfd, &srv->sa, SA_SIZE(srv)) < 0) {
         uniperror("bind");  
         close(srvfd);

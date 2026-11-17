@@ -185,6 +185,7 @@ class ByeDpiProxyService : LifecycleService() {
             try {
                 ru.toinet.android.byedpi.core.ByeDpiRouter.stop(this)
                 proxy.stopProxy()
+                kotlinx.coroutines.withTimeoutOrNull(2000) { proxyJob?.join() }
                 proxyJob?.cancel()
                 proxyJob = null
             } catch (_: Exception) {}
@@ -287,7 +288,7 @@ class ByeDpiProxyService : LifecycleService() {
         ru.toinet.android.byedpi.core.ByeDpiRouter.stop(this)
         proxy.stopProxy()
         proxyJob?.cancel()
-        proxyJob?.join()
+        kotlinx.coroutines.withTimeoutOrNull(2000) { proxyJob?.join() }
         proxyJob = null
         currentRunningArgs = null
 

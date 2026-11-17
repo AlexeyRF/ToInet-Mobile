@@ -11,6 +11,7 @@
 #include "main.h"
 
 extern int server_fd;
+extern void proxy_stop(void);
 static pthread_mutex_t proxy_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int proxy_started = 0;
 static int proxy_running = 0;
@@ -22,6 +23,17 @@ int __wrap_daemon(__attribute__((unused)) int nochdir, __attribute__((unused)) i
 }
 
 static jint internal_start_proxy(JNIEnv *env, jobjectArray args) {
+    for (int wait_i = 0; wait_i < 20; wait_i++) {
+        pthread_mutex_lock(&proxy_mutex);
+        if (!proxy_running) {
+            proxy_started = 1;
+            pthread_mutex_unlock(&proxy_mutex);
+            break;
+        }
+        pthread_mutex_unlock(&proxy_mutex);
+        usleep(50000);
+    }
+
     pthread_mutex_lock(&proxy_mutex);
     if (proxy_running) {
         pthread_mutex_unlock(&proxy_mutex);
@@ -84,23 +96,21 @@ cleanup:
 static jint internal_stop_proxy(void) {
     LOG(LOG_S, "send shutdown to proxy");
     pthread_mutex_lock(&proxy_mutex);
-    int result = -1;
-    if (proxy_running && server_fd >= 0) {
-        result = shutdown(server_fd, SHUT_RDWR);
-        close(server_fd);
-        server_fd = -1;
+    if (proxy_running) {
+        proxy_stop();
     }
     pthread_mutex_unlock(&proxy_mutex);
-    return result;
+    return 0;
 }
 
 static jint internal_force_close(void) {
     LOG(LOG_S, "proxy socket force close");
     pthread_mutex_lock(&proxy_mutex);
-    int result = server_fd >= 0 ? close(server_fd) : -1;
-    server_fd = -1;
+    if (proxy_running) {
+        proxy_stop();
+    }
     pthread_mutex_unlock(&proxy_mutex);
-    return result;
+    return 0;
 }
 
 JNIEXPORT jint JNICALL

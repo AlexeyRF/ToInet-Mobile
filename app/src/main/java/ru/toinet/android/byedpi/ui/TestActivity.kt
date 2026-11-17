@@ -258,7 +258,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 progressTextView.text = ""
 
                 strategyAdapter.setTestingState(true)
-                strategyAdapter.updateStrategies(strategies, sortByPercentage = false)
+                strategyAdapter.updateStrategies(strategies)
             }
 
             val ip = prefs.getStringNotNull("byedpi_proxy_ip", "127.0.0.1")
@@ -284,10 +284,6 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
 
                 withContext(Dispatchers.Main) {
                     progressTextView.text = getString(R.string.test_process, cmdIndex, cmds.size)
-                    val pos = strategyAdapter.getPositionOfStrategy(strategy)
-                    if (pos >= 0) {
-                        strategiesRecyclerView.scrollToPosition(pos)
-                    }
                 }
 
                 if (appStatus.first != AppStatus.Halted) {
@@ -314,7 +310,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                         strategy.siteResults.add(SiteResult(site, 0, requestsCount))
                     }
                     withContext(Dispatchers.Main) {
-                        strategyAdapter.notifyStrategyChanged(strategy)
+                        strategyAdapter.updateStrategies(strategies)
                         saveResults(strategies)
                     }
                     if (appStatus.first != AppStatus.Halted) {
@@ -333,7 +329,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 strategy.successCount = 0
 
                 withContext(Dispatchers.Main) {
-                    strategyAdapter.notifyStrategyChanged(strategy)
+                    strategyAdapter.updateStrategy(strategy)
                 }
 
                 siteChecker.checkSitesAsync(
@@ -348,15 +344,14 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                             strategy.successCount += successCount
                             strategy.siteResults.add(SiteResult(site, successCount, countRequests))
 
-                            strategyAdapter.notifyStrategyChanged(strategy, "progress")
+                            strategyAdapter.updateStrategy(strategy)
                         }
                     }
                 )
 
-                strategy.isCompleted = true
-
                 withContext(Dispatchers.Main) {
-                    strategyAdapter.notifyStrategyChanged(strategy)
+                    strategy.isCompleted = true
+                    strategyAdapter.updateStrategies(strategies)
                     saveResults(strategies)
                 }
 
@@ -369,6 +364,9 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 delay(delaySec * 500L)
             }
 
+            withContext(Dispatchers.Main) {
+                progressTextView.text = getString(R.string.test_complete)
+            }
             stopTesting()
         }
     }
@@ -397,7 +395,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 // suggestCombinations(strategies.filter { it.isCompleted })
 
                 strategyAdapter.setTestingState(false)
-                strategyAdapter.updateStrategies(strategies, sortByPercentage = true)
+                strategyAdapter.updateStrategies(strategies)
                 strategiesRecyclerView.scrollToPosition(0)
 
                 saveResults(strategies)
@@ -504,7 +502,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         }
     }
 
-        private fun saveResults(results: List<StrategyResult>) {
+    private fun saveResults(results: List<StrategyResult>) {
         try {
             val jsonArray = org.json.JSONArray()
             for (res in results) {
@@ -531,7 +529,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
         } catch (e: Exception) {}
     }
 
-        private fun loadResults(): List<StrategyResult> {
+    private fun loadResults(): List<StrategyResult> {
         val file = File(filesDir, "proxy_test_results.json")
         val list = mutableListOf<StrategyResult>()
         if (file.exists()) {
@@ -554,7 +552,7 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                         totalRequests = obj.getInt("totalRequests"),
                         currentProgress = obj.getInt("currentProgress"),
                         isCompleted = obj.getBoolean("isCompleted"),
-                        isExpanded = obj.getBoolean("isExpanded")
+                        isExpanded = obj.optBoolean("isExpanded", false)
                     )
                     val sites = obj.getJSONArray("siteResults")
                     for (j in 0 until sites.length()) {

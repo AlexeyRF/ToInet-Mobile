@@ -110,4 +110,6 @@ int start_event_loop(int srvfd);
 
 int run(const union sockaddr_u *srv);
 
+void proxy_stop(void);
+
 #endif
