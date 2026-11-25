@@ -31,7 +31,7 @@
         android:clickable="true"
         android:focusable="true"
         android:foreground="?attr/selectableItemBackground"
-        app:layout_constraintBottom_toTopOf="@+id/btnDisconnect"
+        app:layout_constraintBottom_toTopOf="@+id/buttonsLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tvTitle"
@@ -58,22 +58,6 @@
         android:textColor="?attr/colorError"
         android:visibility="gone"
         tools:visibility="visible"
-        app:layout_constraintBottom_toTopOf="@+id/btnDisconnect"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <!-- Disconnect VPN Button (shown only when connected) -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnDisconnect"
-        style="@style/Widget.Material3.Button"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_marginHorizontal="24dp"
-        android:layout_marginBottom="12dp"
-        android:text="Отключить VPN"
-        android:visibility="gone"
-        app:cornerRadius="16dp"
-        app:backgroundTint="#F44336"
         app:layout_constraintBottom_toTopOf="@+id/buttonsLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

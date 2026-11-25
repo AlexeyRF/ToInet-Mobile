@@ -37,15 +37,20 @@ object NetworkUtils {
         return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 
+    fun isPortAvailable(port: Int): Boolean {
+        return try {
+            java.net.ServerSocket(port, 1, java.net.InetAddress.getByName("127.0.0.1")).use { true }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun checkPortOrAuto(portString: String): String {
         if (!portString.equals("auto", ignoreCase = true)) {
-            var isPortUsed = true
             var port = portString.toIntOrNull() ?: return portString
             val startPort = port
-            while (isPortUsed && port <= 65535) {
-                isPortUsed = isPortOpen("127.0.0.1", port, 500)
-                if (isPortUsed)  //the specified port is not available, so find one instead
-                    port++
+            while (!isPortAvailable(port) && port <= 65535) {
+                port++
             }
             return if (port <= 65535) port.toString() else startPort.toString()
         }

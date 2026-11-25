@@ -9,6 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import ru.toinet.android.databinding.OperaProxyBottomSheetBinding
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.syncStandaloneComponent
 import android.os.Build
 import android.widget.Toast
 
@@ -42,12 +43,24 @@ class OperaProxyBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         binding.btnSave.setOnClickListener {
-            Prefs.operaProxyEnabled = binding.swEnabled.isChecked
+            val oldBind = Prefs.operaProxyBindAddress
+            val oldUpstream = Prefs.operaProxyUpstream
+            val oldPreset = Prefs.operaProxyPreset
+            val oldVerbose = Prefs.operaProxyVerbose
+
+            val newEnabled = binding.swEnabled.isChecked
+            Prefs.operaProxyEnabled = newEnabled
             Prefs.operaProxyBindAddress = binding.etBindAddress.text.toString()
             Prefs.operaProxyUpstream = binding.etUpstream.text.toString()
             Prefs.operaProxyPreset = binding.etPreset.text.toString().trim().ifEmpty { "random" }
             Prefs.operaProxyVerbose = binding.swVerbose.isChecked
-            
+
+            val configChanged = (oldBind != Prefs.operaProxyBindAddress) ||
+                (oldUpstream != Prefs.operaProxyUpstream) ||
+                (oldPreset != Prefs.operaProxyPreset) ||
+                (oldVerbose != Prefs.operaProxyVerbose)
+
+            requireContext().syncStandaloneComponent("operaproxy", newEnabled, configChanged)
             viewModel.triggerRefreshMenuList()
             dismiss()
         }

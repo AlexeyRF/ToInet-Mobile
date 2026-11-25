@@ -485,9 +485,9 @@ class TestActivity : androidx.appcompat.app.AppCompatActivity() {
                 if (ByeDpiProxyService.status == ServiceStatus.Connected) {
                     val restartIntent = Intent(this@TestActivity, ByeDpiProxyService::class.java).apply {
                         action = ByeDpiProxyService.ACTION_RESTART
-                        putExtra("is_foreground", !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi"))
+                        putExtra("is_foreground", true)
                     }
-                    sendIntentToService(restartIntent, isForeground = false)
+                    sendIntentToService(restartIntent, isForeground = true)
                 }
             }
 

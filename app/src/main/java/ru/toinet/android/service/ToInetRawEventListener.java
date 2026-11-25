@@ -16,12 +16,12 @@ import ru.toinet.android.util.StringUtils;
 import org.torproject.jni.TorService;
 
 import java.text.NumberFormat;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("deprecation")
 public class ToInetRawEventListener implements RawEventListener {
@@ -47,10 +47,10 @@ public class ToInetRawEventListener implements RawEventListener {
         mService = toinetService;
         mTotalBandwidthRead = 0;
         mTotalBandwidthWritten = 0;
-        hmBuiltNodes = new HashMap<>();
+        hmBuiltNodes = new ConcurrentHashMap<>();
 
-        exitNodeMap = new HashMap<>();
-        ignoredInternalCircuits = new HashSet<>();
+        exitNodeMap = new ConcurrentHashMap<>();
+        ignoredInternalCircuits = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     }
 

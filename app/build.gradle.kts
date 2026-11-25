@@ -110,7 +110,11 @@ configure<ApplicationExtension> {
 
     packaging {
         resources {
-            excludes += listOf("META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version")
+            excludes += listOf(
+                "META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version",
+                "assets/geoip",
+                "assets/geoip6"
+            )
         }
         jniLibs {
             useLegacyPackaging = true
@@ -232,7 +236,7 @@ dependencies {
     // Tor
     implementation(files("../libs/geoip.jar"))
     api(libs.guardian.jtorctl)
-    api(libs.tor.android)
+    api(files("../libs/tor-android-native.aar"))
 
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

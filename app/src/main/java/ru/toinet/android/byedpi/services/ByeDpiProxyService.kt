@@ -8,23 +8,33 @@ import android.os.Build
 import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
-import ru.toinet.android.R
-import ru.toinet.android.byedpi.core.*
-import ru.toinet.android.vpn.data.*
-import ru.toinet.android.byedpi.utility.*
-import ru.toinet.android.vpn.utility.*
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withTimeoutOrNull
+import ru.toinet.android.R
+import ru.toinet.android.byedpi.core.*
+import ru.toinet.android.byedpi.utility.*
+import ru.toinet.android.util.NotificationLogger
+import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.UpstreamProxyCoordinator
+import ru.toinet.android.util.broadcastStandaloneStatus
+import ru.toinet.android.vpn.data.*
+import ru.toinet.android.vpn.utility.*
+import java.net.InetSocketAddress
+import java.net.Socket
 
 class ByeDpiProxyService : LifecycleService() {
     private var proxy = ByeDpiProxy()
     private var proxyJob: Job? = null
     private val mutex = Mutex()
+    @Volatile
     private var isForegroundService = false
 
     companion object {
@@ -39,6 +49,7 @@ class ByeDpiProxyService : LifecycleService() {
         var currentRunningArgs: String? = null
             private set
 
+        @Volatile
         var status: ServiceStatus = ServiceStatus.Disconnected
             private set
     }
@@ -54,13 +65,29 @@ class ByeDpiProxyService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        val action = intent?.action
+        if (intent == null) {
+            if (Prefs.isProviderActive("byedpi")) {
+                isForegroundService = true
+                startForeground()
+                lifecycleScope.launch { start() }
+                return START_STICKY
+            } else {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        }
 
-        val isForeground = intent?.getBooleanExtra("is_foreground", false)
-            ?: (!ru.toinet.android.util.Prefs.isGlobalVpnEnabled && ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi"))
-        isForegroundService = isForeground && !ru.toinet.android.util.Prefs.isGlobalVpnEnabled
+        val action = intent.action
+        val fgRequested = intent.getBooleanExtra("is_foreground", false)
+        if (fgRequested) {
+            isForegroundService = true
+        } else if (action == START_ACTION && !Prefs.isGlobalVpnEnabled) {
+            isForegroundService = true
+        }
 
-        if ((action == START_ACTION && isForegroundService) || (action == "ACTIVE" && status == ServiceStatus.Connected && isForegroundService)) {
+        if ((action == START_ACTION || action == ACTION_RESTART || action == "ACTIVE" || action == STOP_ACTION) &&
+            (fgRequested || ((action == START_ACTION || action == ACTION_RESTART) && isForegroundService))
+        ) {
             startForeground()
         }
 
@@ -76,68 +103,84 @@ class ByeDpiProxyService : LifecycleService() {
             }
 
             ACTION_RESTART -> {
-                lifecycleScope.launch {
-                    stop()
-                    kotlinx.coroutines.delay(300)
-                    start()
-                }
+                lifecycleScope.launch { restart() }
                 START_STICKY
             }
 
             "ACTIVE" -> {
-                if (status == ServiceStatus.Connected && isForegroundService) {
+                if (status == ServiceStatus.Connected && (fgRequested || isForegroundService)) {
                     startForeground()
                 }
                 START_STICKY
             }
 
             else -> {
-                if (action != null) Log.w(TAG, "Unknown action: $action")
+                Log.w(TAG, "Unknown action: $action")
                 START_NOT_STICKY
+            }
+        }
+    }
+
+    private suspend fun restart() {
+        mutex.withLock {
+            try {
+                withContext(Dispatchers.IO) {
+                    stopProxyLocked()
+                }
+                updateStatus(ServiceStatus.Disconnected)
+                delay(200)
+                performStartLocked()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to restart proxy", e)
+                updateStatus(ServiceStatus.Failed)
+                NotificationLogger.log(this, "byedpi", "Ошибка перезапуска ByeDPI: ${e.message}")
+                stopAfterFailure()
             }
         }
     }
 
     private suspend fun start() {
         Log.i(TAG, "Starting")
-
-        if (status == ServiceStatus.Connected) {
-            Log.w(TAG, "Proxy already connected")
-            if (isForegroundService) {
-                startForeground()
+        mutex.withLock {
+            if (status == ServiceStatus.Connected) {
+                Log.w(TAG, "Proxy already connected")
+                if (isForegroundService) {
+                    startForeground()
+                }
+                return
             }
-            return
-        }
-
-        try {
-            val isPrimary = !ru.toinet.android.util.Prefs.isGlobalVpnEnabled && (ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi") || ru.toinet.android.util.Prefs.vpnProvider == "byedpi")
-            if (isPrimary && testCmdArgsOverride == null) {
-                val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS)
-                statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_STARTING)
-                statusIntent.setPackage(packageName)
-                sendBroadcast(statusIntent)
+            try {
+                performStartLocked()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start proxy", e)
+                updateStatus(ServiceStatus.Failed)
+                NotificationLogger.log(this, "byedpi", "Ошибка запуска ByeDPI: ${e.message}")
+                stopAfterFailure()
             }
-            ru.toinet.android.util.NotificationLogger.log(this, "byedpi", "Запуск ByeDPI Proxy...")
-            if (isForegroundService) {
-                startForeground()
-            }
-            mutex.withLock {
-                startProxy()
-            }
-            updateStatus(ServiceStatus.Connected)
-            ru.toinet.android.util.NotificationLogger.log(this, "byedpi", "ByeDPI Proxy запущен")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start proxy", e)
-            updateStatus(ServiceStatus.Failed)
-            ru.toinet.android.util.NotificationLogger.log(this, "byedpi", "Ошибка запуска ByeDPI: ${e.message}")
-            stop()
         }
     }
 
-    private fun startForeground() {
-        if (!isForegroundService || ru.toinet.android.util.Prefs.isGlobalVpnEnabled) {
-            return
+    private suspend fun performStartLocked() {
+        val isPrimary = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi")
+        if (isPrimary && testCmdArgsOverride == null) {
+            val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS).apply {
+                putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_STARTING)
+                setPackage(packageName)
+            }
+            sendBroadcast(statusIntent)
         }
+        NotificationLogger.log(this, "byedpi", "Запуск ByeDPI Proxy...")
+        if (isForegroundService) {
+            startForeground()
+        }
+        withContext(Dispatchers.IO) {
+            startProxyLocked()
+        }
+        updateStatus(ServiceStatus.Connected)
+        NotificationLogger.log(this, "byedpi", "ByeDPI Proxy запущен")
+    }
+
+    private fun startForeground() {
         val notification: Notification = createNotification()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -149,77 +192,90 @@ class ByeDpiProxyService : LifecycleService() {
             } else {
                 startForeground(FOREGROUND_SERVICE_ID, notification)
             }
+            isForegroundService = true
         } catch (e: Exception) {
             Log.e(TAG, "Failed startForeground in ByeDpiProxyService", e)
             try {
                 startForeground(FOREGROUND_SERVICE_ID, notification)
+                isForegroundService = true
             } catch (_: Exception) {}
         }
     }
 
     private suspend fun stop() {
         Log.i(TAG, "Stopping")
-
         mutex.withLock {
-            stopProxy()
+            withContext(Dispatchers.IO) {
+                stopProxyLocked()
+            }
+            updateStatus(ServiceStatus.Disconnected)
         }
-        updateStatus(ServiceStatus.Disconnected)
-        if (isForegroundService && !ru.toinet.android.util.Prefs.isGlobalVpnEnabled) {
+        if (isForegroundService) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
             } else {
                 @Suppress("DEPRECATION")
                 stopForeground(true)
             }
+            isForegroundService = false
             val nm = getSystemService(NotificationManager::class.java)
             nm?.cancel(FOREGROUND_SERVICE_ID)
         }
         stopSelf()
     }
 
-    private suspend fun startProxy() {
+    private suspend fun stopAfterFailure() {
+        withContext(Dispatchers.IO) {
+            stopProxyLocked()
+        }
+        if (isForegroundService) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+            isForegroundService = false
+            val nm = getSystemService(NotificationManager::class.java)
+            nm?.cancel(FOREGROUND_SERVICE_ID)
+        }
+        stopSelf()
+    }
+
+    private suspend fun startProxyLocked() {
         Log.i(TAG, "Starting proxy")
 
         if (proxyJob != null) {
             Log.w(TAG, "Previous proxy job was not null, cleaning up first")
-            try {
-                ru.toinet.android.byedpi.core.ByeDpiRouter.stop(this)
-                proxy.stopProxy()
-                kotlinx.coroutines.withTimeoutOrNull(2000) { proxyJob?.join() }
-                proxyJob?.cancel()
-                proxyJob = null
-            } catch (_: Exception) {}
+            stopProxyLocked()
         }
 
         val testCmd = testCmdArgsOverride
         var cmdStrOriginal = if (!testCmd.isNullOrBlank()) {
             testCmd
         } else {
-            ru.toinet.android.util.Prefs.getCurrentByedpiArgs(this).ifBlank { "--preset general" }
+            Prefs.getCurrentByedpiArgs(this).ifBlank { "--preset general" }
         }
         currentRunningArgs = cmdStrOriginal
 
         if (testCmd.isNullOrBlank()) {
-            val subUrl = ru.toinet.android.util.Prefs.byedpiSubscriptionUrl
+            val subUrl = Prefs.byedpiSubscriptionUrl
             if (subUrl.isNotBlank()) {
                 try {
                     Log.i(TAG, "Fetching ByeDPI config from $subUrl")
-                    val fetchedArgs = withContext(Dispatchers.IO) {
-                        java.net.URL(subUrl).readText().trim()
-                    }
+                    val fetchedArgs = java.net.URL(subUrl).readText().trim()
                     if (fetchedArgs.isNotBlank()) {
                         cmdStrOriginal = fetchedArgs
-                        // Optionally save it back or just use it in memory
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to fetch ByeDPI config from subscription", e)
                 }
             }
 
-            if (ru.toinet.android.util.Prefs.byedpiUpstreamEnabled) {
-                val upstreamProvider = ru.toinet.android.util.Prefs.byedpiUpstreamProvider
-                ru.toinet.android.util.UpstreamProxyCoordinator.ensureUpstreamStarted(this, upstreamProvider)
-                val upstreamArg = "${ru.toinet.android.util.Prefs.byedpiUpstreamHost}:${ru.toinet.android.util.Prefs.byedpiUpstreamPort}"
+            if (Prefs.byedpiUpstreamEnabled) {
+                val upstreamProvider = Prefs.byedpiUpstreamProvider
+                UpstreamProxyCoordinator.ensureUpstreamStarted(this, upstreamProvider)
+                val upstreamArg = "${Prefs.byedpiUpstreamHost}:${Prefs.byedpiUpstreamPort}"
                 if (!cmdStrOriginal.contains("-C")) {
                     cmdStrOriginal = "$cmdStrOriginal -C $upstreamArg".trim()
                 }
@@ -244,52 +300,112 @@ class ByeDpiProxyService : LifecycleService() {
 
         if (isRouter) {
             Log.i(TAG, "Starting router")
-            val ip = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
+            val ip = if (Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
             val port = preferences.port
-            ru.toinet.android.byedpi.core.ByeDpiRouter.start(this, cmdStr, port, ip)
+            val routerStarted = ByeDpiRouter.start(this, cmdStr, port, ip)
+            if (!routerStarted) {
+                throw IllegalStateException("ByeDpiRouter failed to bind port $port")
+            }
 
             proxyJob = lifecycleScope.launch(Dispatchers.IO) {
                 while (isActive) {
-                    kotlinx.coroutines.delay(1000)
+                    delay(1000)
                 }
             }
-            updateStatus(ServiceStatus.Connected)
         } else {
             proxy = ByeDpiProxy()
-
-            proxyJob = lifecycleScope.launch(Dispatchers.IO) {
-                withContext(Dispatchers.Main) {
-                    updateStatus(ServiceStatus.Connected)
+            val exitCodeDeferred = CompletableDeferred<Int>()
+            val job = lifecycleScope.launch(Dispatchers.IO) {
+                val code = try {
+                    proxy.startProxy(preferences)
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Proxy threw exception", e)
+                    -1
                 }
-                val code = proxy.startProxy(preferences)
+                exitCodeDeferred.complete(code)
 
                 withContext(Dispatchers.Main) {
-                    if (code != 0) {
-                        Log.e(TAG, "Proxy stopped with code $code")
-                        updateStatus(ServiceStatus.Failed)
-                    } else {
-                        updateStatus(ServiceStatus.Disconnected)
+                    if (proxyJob === coroutineContext[Job]) {
+                        if (code != 0) {
+                            Log.e(TAG, "Proxy stopped with code $code")
+                            updateStatus(ServiceStatus.Failed)
+                        } else if (status != ServiceStatus.Disconnected) {
+                            updateStatus(ServiceStatus.Disconnected)
+                        }
                     }
                 }
+            }
+            proxyJob = job
+
+            val probeHost = resolveProbeHost(preferences)
+            val probePort = preferences.port
+            val waitStart = System.currentTimeMillis()
+            var portReady = false
+            while (System.currentTimeMillis() - waitStart < 2000L) {
+                if (exitCodeDeferred.isCompleted) {
+                    val code = exitCodeDeferred.await()
+                    throw IllegalStateException("ByeDPI process exited early with code $code")
+                }
+                try {
+                    Socket().use { s ->
+                        s.connect(InetSocketAddress(probeHost, probePort), 100)
+                        portReady = true
+                    }
+                } catch (_: Exception) {}
+                if (portReady) break
+                delay(50)
+            }
+            if (exitCodeDeferred.isCompleted) {
+                val code = exitCodeDeferred.await()
+                throw IllegalStateException("ByeDPI process exited with code $code")
+            }
+            if (!portReady) {
+                Log.w(TAG, "ByeDPI native thread running after 2000ms, port $probeHost:$probePort probe incomplete")
             }
         }
 
         Log.i(TAG, "Proxy started")
     }
 
-    private suspend fun stopProxy() {
+    private fun resolveProbeHost(preferences: ByeDpiProxyPreferences): String {
+        val rawIp = when (preferences) {
+            is ByeDpiProxyUIPreferences -> preferences.ip
+            is ByeDpiProxyCmdPreferences -> {
+                var found: String? = null
+                var nextIsIp = false
+                for (arg in preferences.args) {
+                    if (nextIsIp) {
+                        found = arg
+                        break
+                    }
+                    if (arg == "-i" || arg == "--ip") {
+                        nextIsIp = true
+                    } else if (arg.startsWith("-i") && arg.length > 2) {
+                        found = arg.substring(2)
+                        break
+                    } else if (arg.startsWith("--ip=")) {
+                        found = arg.substring(5)
+                        break
+                    }
+                }
+                found ?: "127.0.0.1"
+            }
+        }
+        return if (rawIp == "0.0.0.0" || rawIp == "::" || rawIp.isBlank()) "127.0.0.1" else rawIp
+    }
+
+    private suspend fun stopProxyLocked() {
         Log.i(TAG, "Stopping proxy")
 
-        if (status == ServiceStatus.Disconnected) {
-            Log.w(TAG, "Proxy already disconnected")
-            return
-        }
-
-        ru.toinet.android.byedpi.core.ByeDpiRouter.stop(this)
-        proxy.stopProxy()
-        proxyJob?.cancel()
-        kotlinx.coroutines.withTimeoutOrNull(2000) { proxyJob?.join() }
+        val jobToStop = proxyJob
         proxyJob = null
+
+        ByeDpiRouter.stop(this)
+        try {
+            proxy.stopProxy()
+        } catch (_: Exception) {}
+        jobToStop?.cancel()
+        withTimeoutOrNull(2000) { jobToStop?.join() }
         currentRunningArgs = null
 
         Log.i(TAG, "Proxy stopped")
@@ -315,16 +431,17 @@ class ByeDpiProxyService : LifecycleService() {
             Mode.Proxy
         )
 
-        val isPrimary = !ru.toinet.android.util.Prefs.isGlobalVpnEnabled && (ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi") || ru.toinet.android.util.Prefs.vpnProvider == "byedpi")
-        if (isPrimary && testCmdArgsOverride == null) {
-            val toinetStatus = when (newStatus) {
-                ServiceStatus.Connected -> org.torproject.jni.TorService.STATUS_ON
-                ServiceStatus.Disconnected, ServiceStatus.Failed -> org.torproject.jni.TorService.STATUS_OFF
+        val isPrimary = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi")
+        if (testCmdArgsOverride == null) {
+            if (isPrimary && newStatus == ServiceStatus.Connected) {
+                val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS).apply {
+                    putExtra(org.torproject.jni.TorService.EXTRA_STATUS, org.torproject.jni.TorService.STATUS_ON)
+                    setPackage(packageName)
+                }
+                sendBroadcast(statusIntent)
+            } else if (newStatus != ServiceStatus.Connected && !Prefs.isGlobalVpnEnabled) {
+                broadcastStandaloneStatus(this)
             }
-            val statusIntent = Intent(ru.toinet.android.service.ToInetConstants.LOCAL_ACTION_STATUS)
-            statusIntent.putExtra(org.torproject.jni.TorService.EXTRA_STATUS, toinetStatus)
-            statusIntent.setPackage(packageName)
-            sendBroadcast(statusIntent)
         }
 
         val intent = Intent(
@@ -338,6 +455,20 @@ class ByeDpiProxyService : LifecycleService() {
         sendBroadcast(intent)
     }
 
+    override fun onDestroy() {
+        try {
+            ByeDpiRouter.stop(this)
+            proxy.stopProxy()
+        } catch (_: Exception) {}
+        proxyJob?.cancel()
+        proxyJob = null
+        currentRunningArgs = null
+        if (status != ServiceStatus.Disconnected) {
+            updateStatus(ServiceStatus.Disconnected)
+        }
+        super.onDestroy()
+    }
+
     private fun createNotification(): Notification =
         createConnectionNotification(
             this,
@@ -345,7 +476,6 @@ class ByeDpiProxyService : LifecycleService() {
             R.string.byedpi_notification_title,
             R.string.proxy_notification_content,
             ByeDpiProxyService::class.java,
+            serviceKey = "byedpi"
         )
 }
-
-

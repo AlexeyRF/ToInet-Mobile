@@ -70,6 +70,7 @@
             tools:ignore="ExportedReceiver">
             <intent-filter>
                 <action android:name="ru.toinet.android.intent.action.START" />
+                <action android:name="org.torproject.android.intent.action.START" />
             </intent-filter>
         </receiver>
 
@@ -149,11 +150,21 @@
                 android:value="ByeDPI Proxy functionality" />
         </service>
 
-        <service android:name=".byedpi.services.ByeDpiInstance1Service" android:process=":proxy1" android:exported="false" />
-        <service android:name=".byedpi.services.ByeDpiInstance2Service" android:process=":proxy2" android:exported="false" />
-        <service android:name=".byedpi.services.ByeDpiInstance3Service" android:process=":proxy3" android:exported="false" />
-        <service android:name=".byedpi.services.ByeDpiInstance4Service" android:process=":proxy4" android:exported="false" />
-        <service android:name=".byedpi.services.ByeDpiInstance5Service" android:process=":proxy5" android:exported="false" />
+        <service android:name=".byedpi.services.ByeDpiInstance1Service" android:process=":proxy1" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="ByeDPI Router instance" />
+        </service>
+        <service android:name=".byedpi.services.ByeDpiInstance2Service" android:process=":proxy2" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="ByeDPI Router instance" />
+        </service>
+        <service android:name=".byedpi.services.ByeDpiInstance3Service" android:process=":proxy3" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="ByeDPI Router instance" />
+        </service>
+        <service android:name=".byedpi.services.ByeDpiInstance4Service" android:process=":proxy4" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="ByeDPI Router instance" />
+        </service>
+        <service android:name=".byedpi.services.ByeDpiInstance5Service" android:process=":proxy5" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="ByeDPI Router instance" />
+        </service>
 
 
         <service

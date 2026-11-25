@@ -22,6 +22,7 @@ class OnBootReceiver : BroadcastReceiver() {
                 // for debugging and gets in the way of automated screenshots
                 return
             }
+            Prefs.setContext(context.applicationContext)
             if (Prefs.startOnBoot() && !sReceivedBoot) {
                 startService(context)
                 sReceivedBoot = true

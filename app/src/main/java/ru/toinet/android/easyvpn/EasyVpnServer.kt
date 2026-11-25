@@ -152,6 +152,11 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
     private var allNodes: MutableList<VlessNode> = mutableListOf()
     private var currentNodeIndex: Int = 0
     var onServerChanged: (() -> Unit)? = null
+    var onStateChanged: ((running: Boolean, error: String?) -> Unit)? = null
+
+    @Volatile
+    var isServerRunning: Boolean = false
+        private set
 
     companion object {
         @Volatile
@@ -214,7 +219,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         onServerChanged?.invoke()
     }
 
-    fun start() {
+    fun start(): Boolean {
         stop()
         synchronized(this) {
             isStopped = false
@@ -240,6 +245,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
         val cachedUserNodes = EasyVpnUpdater.loadUserCachedNodes(context, subsHash)
 
         var startedWithUserNodes = false
+        var startedOk = false
 
         if (directUserNodes.isNotEmpty()) {
             Log.i(TAG, "Starting with ${directUserNodes.size} direct user vless nodes")
@@ -249,7 +255,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                 allNodes.toList()
             }
             val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
-            startXrayProcess(config)
+            startedOk = startXrayProcess(config)
             startedWithUserNodes = true
         } else if (cachedUserNodes.isNotEmpty()) {
             Log.i(TAG, "Starting with ${cachedUserNodes.size} cached user nodes")
@@ -259,7 +265,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                 allNodes.toList()
             }
             val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
-            startXrayProcess(config)
+            startedOk = startXrayProcess(config)
             startedWithUserNodes = true
         }
 
@@ -275,11 +281,11 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                     allNodes.toList()
                 }
                 val config = EasyVpnUpdater.buildConfig(nodes, activeNodeIndex = 0)
-                startXrayProcess(config)
+                startedOk = startXrayProcess(config)
             } else {
                 Log.w(TAG, "Plan Ъ reserve nodes not available, starting with fallback direct config")
                 val fallbackConfig = EasyVpnUpdater.buildDirectFallbackConfig()
-                startXrayProcess(fallbackConfig)
+                startedOk = startXrayProcess(fallbackConfig)
             }
         }
 
@@ -294,6 +300,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                 EasyVpnUpdater.updateAndTestConfigs(context)
             }
         }
+        return startedOk
     }
 
     fun reloadWithNodes(nodes: List<VlessNode>) {
@@ -352,7 +359,6 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
 
             val proc = pb.start()
             process = proc
-            isRunning = true
             Log.i(TAG, "xray started directly from nativeLibraryDir")
 
             scope.launch(Dispatchers.IO) {
@@ -367,12 +373,66 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                 val exitCode = try { proc.waitFor() } catch (_: Exception) { -1 }
                 Log.w(TAG, "xray process exited with code $exitCode")
                 if (process == proc) {
-                    isRunning = false
+                    val wasStopped = isStopped
+                    isServerRunning = false
+                    if (activeInstance == this@EasyVpnServer) {
+                        isRunning = false
+                    }
+                    if (!wasStopped) {
+                        onStateChanged?.invoke(false, "xray exited with code $exitCode")
+                    }
                 }
             }
-            true
+
+            val listenPort = if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1790
+            val waitStart = System.currentTimeMillis()
+            var bound = false
+            var processAlive = true
+            while (System.currentTimeMillis() - waitStart < 2500L) {
+                processAlive = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    proc.isAlive
+                } else {
+                    try { proc.exitValue(); false } catch (_: IllegalThreadStateException) { true }
+                }
+                if (!processAlive || isStopped) break
+                try {
+                    java.net.Socket().use { s ->
+                        s.connect(java.net.InetSocketAddress("127.0.0.1", listenPort), 100)
+                        bound = true
+                    }
+                } catch (_: Exception) {}
+                if (bound) break
+                try { Thread.sleep(50) } catch (_: InterruptedException) { break }
+            }
+
+            if (!processAlive || isStopped) {
+                isServerRunning = false
+                if (activeInstance == this) {
+                    isRunning = false
+                }
+                false
+            } else {
+                if (!bound) {
+                    Log.w(TAG, "xray process is alive after 2500ms, port $listenPort not open yet")
+                }
+                synchronized(this) {
+                    if (isStopped) {
+                        isServerRunning = false
+                        if (activeInstance == this) isRunning = false
+                        return false
+                    }
+                    isServerRunning = true
+                    isRunning = true
+                }
+                onStateChanged?.invoke(true, null)
+                true
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start xray process", e)
+            isServerRunning = false
+            if (activeInstance == this) {
+                isRunning = false
+            }
             false
         }
     }
@@ -380,9 +440,11 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
     @Synchronized
     fun stop() {
         isStopped = true
+        isServerRunning = false
         updateJob?.cancel()
         updateJob = null
         if (activeInstance == this) {
+            isRunning = false
             activeInstance = null
         }
         synchronized(nodeLock) {
@@ -394,13 +456,14 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
             if (oldProc != null) {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     oldProc.destroyForcibly()
+                    try { oldProc.waitFor(500, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: Exception) {}
                 } else {
                     oldProc.destroy()
+                    try { Thread.sleep(100) } catch (_: Exception) {}
                 }
             }
         } catch (_: Exception) {}
         process = null
-        isRunning = false
         Log.i(TAG, "xray stopped")
     }
 }

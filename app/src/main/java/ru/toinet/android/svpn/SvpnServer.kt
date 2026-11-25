@@ -17,23 +17,45 @@ class SvpnServer(
         @Volatile
         var isRunning = false
             private set
+        @Volatile
+        var activeInstance: SvpnServer? = null
+            private set
     }
 
     @Volatile
     private var tunnel: SshTunnel? = null
 
-    val lastErrorMessage: String?
-        get() = tunnel?.lastError
+    @Volatile
+    private var internalError: String? = null
 
-    fun start() {
+    @Volatile
+    private var isStopped: Boolean = false
+
+    @Volatile
+    var isServerRunning: Boolean = false
+        private set
+
+    var onConnectionStateChanged: ((connected: Boolean, error: String?) -> Unit)? = null
+
+    val lastErrorMessage: String?
+        get() = internalError ?: tunnel?.lastError
+
+    fun start(): Boolean {
         stop()
+        synchronized(this) {
+            isStopped = false
+        }
+        activeInstance = this
+        internalError = null
 
         val host = Prefs.svpnHost.trim()
         if (host.isEmpty()) {
             val msg = "SVPN: SSH хост не настроен. Укажите параметры в настройках."
             Log.e(TAG, msg)
             NotificationLogger.log(context, "svpn", msg)
-            return
+            internalError = msg
+            onConnectionStateChanged?.invoke(false, msg)
+            return false
         }
 
         val port = Prefs.svpnPort
@@ -63,36 +85,58 @@ class SvpnServer(
 
         newTunnel.start(vpnService, object : SshTunnel.TunnelListener {
             override fun onConnected() {
+                if (isStopped || tunnel !== newTunnel) {
+                    newTunnel.stop()
+                    return
+                }
+                isServerRunning = true
                 isRunning = true
+                internalError = null
                 Log.i(TAG, "SVPN Connected")
                 NotificationLogger.log(context, "svpn", "SVPN подключен (порт $localPort)")
+                onConnectionStateChanged?.invoke(true, null)
             }
 
             override fun onDisconnected() {
-                isRunning = false
+                isServerRunning = false
+                if (activeInstance == this@SvpnServer) {
+                    isRunning = false
+                }
+                if (isStopped) return
                 Log.w(TAG, "SVPN Disconnected")
                 NotificationLogger.log(context, "svpn", "SVPN отключен")
+                onConnectionStateChanged?.invoke(false, "Disconnected")
             }
 
             override fun onError(message: String, t: Throwable?) {
-                isRunning = false
+                isServerRunning = false
+                if (activeInstance == this@SvpnServer) {
+                    isRunning = false
+                }
+                internalError = message
+                if (isStopped) return
                 Log.e(TAG, "SVPN Error: $message", t)
                 NotificationLogger.log(context, "svpn", "Ошибка SVPN: $message")
+                onConnectionStateChanged?.invoke(false, message)
             }
         })
+        return true
     }
 
     /**
      * Starts the SVPN SSH tunnel and synchronously blocks until connected or failed/timed out.
      */
     fun startAndWait(timeoutMs: Long = 12000L): Boolean {
-        start()
+        if (!start() || internalError != null) {
+            return false
+        }
         val start = System.currentTimeMillis()
         while (System.currentTimeMillis() - start < timeoutMs) {
-            if (isRunning && tunnel?.isProxyListening == true) {
+            if (isStopped) return false
+            if (isServerRunning && tunnel?.isProxyListening == true) {
                 return true
             }
-            if (tunnel?.lastError != null) {
+            if (internalError != null || tunnel?.lastError != null) {
                 return false
             }
             try {
@@ -101,17 +145,28 @@ class SvpnServer(
                 break
             }
         }
-        return isRunning && tunnel?.isProxyListening == true
+        val success = !isStopped && isServerRunning && tunnel?.isProxyListening == true
+        if (!success && internalError == null) {
+            internalError = "SVPN: таймаут подключения к SSH серверу"
+        }
+        return success
     }
 
+    @Synchronized
     fun stop() {
+        isStopped = true
+        isServerRunning = false
+        if (activeInstance == this) {
+            isRunning = false
+            activeInstance = null
+        }
         try {
             tunnel?.stop()
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping SVPN tunnel", e)
         }
         tunnel = null
-        isRunning = false
+        internalError = null
         Log.i(TAG, "SVPN stopped")
     }
 }

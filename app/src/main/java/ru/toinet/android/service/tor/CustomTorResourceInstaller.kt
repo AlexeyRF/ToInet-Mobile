@@ -21,7 +21,13 @@ class CustomTorResourceInstaller(private val context: Context, private val insta
     // Reads file from assetPath/assetKey writes it to the install folder
     @Throws(IOException::class)
     private fun assetToFile(assetPath: String, assetKey: String) {
-        val inputStream = context.assets.open(assetPath)
+        val inputStream: InputStream = try {
+            context.assets.open(assetPath)
+        } catch (e: Exception) {
+            context.classLoader.getResourceAsStream("assets/$assetPath")
+                ?: CustomTorResourceInstaller::class.java.classLoader?.getResourceAsStream("assets/$assetPath")
+                ?: throw IOException("Cannot find asset or resource for $assetPath", e)
+        }
         val outFile = File(installFolder, assetKey)
         streamToFile(inputStream, outFile)
     }

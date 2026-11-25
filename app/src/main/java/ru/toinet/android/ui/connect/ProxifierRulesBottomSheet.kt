@@ -1,7 +1,9 @@
 package ru.toinet.android.ui.connect
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.VpnService
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -15,7 +17,9 @@ import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -27,8 +31,10 @@ import ru.toinet.android.R
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.util.setGlobalVpnEnabled
 import ru.toinet.android.vpn.rules.ProxifierRule
 import ru.toinet.android.vpn.rules.ProxifierRulesManager
+import ru.toinet.android.vpn.services.AppVpnService
 import java.util.Collections
 
 class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
@@ -38,6 +44,24 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     private lateinit var adapter: RulesAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
     private var defaultAction = ProxifierRule.ACTION_DIRECT
+    private var isUpdatingVpnSwitch = false
+    private var swVpnEnabledView: MaterialSwitch? = null
+
+    private val vpnPrepareLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val ctx = context ?: return@registerForActivityResult
+        if (result.resultCode == AppCompatActivity.RESULT_OK) {
+            ctx.setGlobalVpnEnabled(true)
+            viewModel.triggerRefreshMenuList()
+        } else {
+            isUpdatingVpnSwitch = true
+            swVpnEnabledView?.isChecked = false
+            isUpdatingVpnSwitch = false
+            ctx.setGlobalVpnEnabled(false)
+            viewModel.triggerRefreshMenuList()
+        }
+    }
 
     override fun getHeightRatio(): Float = -1f
 
@@ -48,12 +72,34 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     ): View {
         val view = inflater.inflate(R.layout.proxifier_rules_bottom_sheet, container, false)
 
+        val swVpnEnabled = view.findViewById<MaterialSwitch>(R.id.swVpnEnabled)
         val swAppRouting = view.findViewById<MaterialSwitch>(R.id.swAppRouting)
         val btnStandardSettings = view.findViewById<ImageButton>(R.id.btnStandardSettings)
         val rvRules = view.findViewById<RecyclerView>(R.id.rvRules)
         val btnDefaultAction = view.findViewById<MaterialButton>(R.id.btnDefaultAction)
         val btnAddRule = view.findViewById<MaterialButton>(R.id.btnAddRule)
         val btnSave = view.findViewById<MaterialButton>(R.id.btnSave)
+
+        swVpnEnabledView = swVpnEnabled
+        isUpdatingVpnSwitch = true
+        swVpnEnabled.isChecked = Prefs.isGlobalVpnEnabled
+        isUpdatingVpnSwitch = false
+
+        swVpnEnabled.setOnCheckedChangeListener { _, isChecked ->
+            if (isUpdatingVpnSwitch) return@setOnCheckedChangeListener
+            if (isChecked) {
+                val prepareIntent = VpnService.prepare(requireContext())
+                if (prepareIntent != null) {
+                    vpnPrepareLauncher.launch(prepareIntent)
+                } else {
+                    requireContext().setGlobalVpnEnabled(true)
+                    viewModel.triggerRefreshMenuList()
+                }
+            } else {
+                requireContext().setGlobalVpnEnabled(false)
+                viewModel.triggerRefreshMenuList()
+            }
+        }
 
         // Proxifier rules are now the main VPN operation mode
         swAppRouting.visibility = View.GONE
@@ -107,8 +153,13 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
             Prefs.appRoutingDefaultAction = defaultAction
             ProxifierRulesManager.saveRules(rulesList)
 
-            if (Prefs.isGlobalVpnEnabled) {
-                requireContext().sendIntentToService("ACTIVE")
+            if (Prefs.isGlobalVpnEnabled && AppVpnService.isConnected) {
+                requireContext().sendIntentToService(
+                    Intent(requireContext(), AppVpnService::class.java).apply {
+                        action = "ACTIVE"
+                    },
+                    isForeground = false
+                )
             }
             viewModel.triggerRefreshMenuList()
             Toast.makeText(requireContext(), "Правила и приоритеты сохранены", Toast.LENGTH_SHORT).show()
@@ -116,6 +167,11 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         return view
+    }
+
+    override fun onDestroyView() {
+        swVpnEnabledView = null
+        super.onDestroyView()
     }
 
     private fun showActionPicker(anchor: View, onChosen: (String) -> Unit) {

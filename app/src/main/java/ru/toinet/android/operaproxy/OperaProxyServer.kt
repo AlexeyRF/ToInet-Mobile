@@ -17,10 +17,18 @@ class OperaProxyServer(
     private val context: Context,
     private val scope: CoroutineScope
 ) {
+    @Volatile
     private var process: Process? = null
+    @Volatile
+    private var isStopped: Boolean = false
+    @Volatile
+    var isServerRunning: Boolean = false
+        private set
+    var onStateChanged: ((running: Boolean, error: String?) -> Unit)? = null
 
     companion object {
         private const val TAG = "OperaProxyServer"
+        @Volatile
         var isRunning: Boolean = false
             private set
 
@@ -68,8 +76,9 @@ class OperaProxyServer(
         }
     }
 
-    fun start() {
+    fun start(): Boolean {
         stop()
+        isStopped = false
 
         NotificationLogger.log(context, "operaproxy", "Запуск Opera Proxy...")
 
@@ -77,7 +86,7 @@ class OperaProxyServer(
             val err = "Ошибка: исполняемый файл opera-proxy не найден"
             Log.e(TAG, err)
             NotificationLogger.log(context, "operaproxy", err)
-            return
+            return false
         }
 
         val cmdArgs = mutableListOf<String>()
@@ -108,15 +117,13 @@ class OperaProxyServer(
             cmdArgs.add(upstream)
         }
 
-        try {
+        return try {
             val pb = ProcessBuilder(cmdArgs)
             pb.directory(context.filesDir)
             pb.redirectErrorStream(true)
             val proc = pb.start()
             process = proc
-            isRunning = true
             Log.i(TAG, "opera-proxy started with args: $cmdArgs")
-            NotificationLogger.log(context, "operaproxy", "Opera Proxy запущен ($bindAddress)")
 
             scope.launch(Dispatchers.IO) {
                 try {
@@ -133,26 +140,95 @@ class OperaProxyServer(
                             NotificationLogger.log(context, "operaproxy", line)
                         }
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // stream closed
                 }
+                val exitCode = try { proc.waitFor() } catch (_: Exception) { -1 }
+                Log.w(TAG, "opera-proxy exited with code $exitCode")
+                if (process == proc) {
+                    val wasStopped = isStopped
+                    isServerRunning = false
+                    isRunning = false
+                    if (!wasStopped) {
+                        onStateChanged?.invoke(false, "opera-proxy exited with code $exitCode")
+                    }
+                }
+            }
+
+            val port = bindAddress.split(":").lastOrNull()?.toIntOrNull() ?: 1785
+            val waitStart = System.currentTimeMillis()
+            var bound = false
+            var processAlive = true
+            while (System.currentTimeMillis() - waitStart < 2500L) {
+                processAlive = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    proc.isAlive
+                } else {
+                    try { proc.exitValue(); false } catch (_: IllegalThreadStateException) { true }
+                }
+                if (!processAlive || isStopped) break
+                try {
+                    java.net.Socket().use { s ->
+                        s.connect(java.net.InetSocketAddress("127.0.0.1", port), 100)
+                        bound = true
+                    }
+                } catch (_: Exception) {}
+                if (bound) break
+                try { Thread.sleep(50) } catch (_: InterruptedException) { break }
+            }
+
+            if (!processAlive || isStopped) {
+                isServerRunning = false
+                isRunning = false
+                NotificationLogger.log(context, "operaproxy", "Opera Proxy завершился при запуске")
+                false
+            } else {
+                if (!bound) {
+                    Log.w(TAG, "opera-proxy alive after 2500ms, port $port not bound yet")
+                }
+                synchronized(this) {
+                    if (isStopped) {
+                        isServerRunning = false
+                        isRunning = false
+                        return false
+                    }
+                    isServerRunning = true
+                    isRunning = true
+                }
+                NotificationLogger.log(context, "operaproxy", "Opera Proxy запущен ($bindAddress)")
+                onStateChanged?.invoke(true, null)
+                true
             }
         } catch (e: Exception) {
             val errMsg = "Ошибка запуска процесса opera-proxy: ${e.message}"
             Log.e(TAG, errMsg, e)
             NotificationLogger.log(context, "operaproxy", errMsg)
+            isServerRunning = false
+            isRunning = false
+            false
         }
     }
 
     fun stop() {
+        isStopped = true
+        val wasRunning = isServerRunning || isRunning
+        isServerRunning = false
+        isRunning = false
         try {
-            process?.destroy()
-        } catch (e: Exception) {
+            val oldProc = process
+            if (oldProc != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    oldProc.destroyForcibly()
+                    try { oldProc.waitFor(500, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: Exception) {}
+                } else {
+                    oldProc.destroy()
+                    try { Thread.sleep(100) } catch (_: Exception) {}
+                }
+            }
+        } catch (_: Exception) {
             // ignore
         }
         process = null
-        if (isRunning) {
-            isRunning = false
+        if (wasRunning) {
             NotificationLogger.log(context, "operaproxy", "Opera Proxy остановлен")
         }
         Log.i(TAG, "opera-proxy stopped")

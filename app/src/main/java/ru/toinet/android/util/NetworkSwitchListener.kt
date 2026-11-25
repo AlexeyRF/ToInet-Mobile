@@ -51,10 +51,12 @@ object NetworkSwitchListener {
     }
 
     private fun checkAndSwitchZdpiStrategy(context: Context, networkType: Int, typeName: String) {
-        val isZdpiActive = ByeDpiProxyService.status == ServiceStatus.Connected ||
-                (Prefs.isGlobalVpnEnabled && Prefs.vpnProvider == "byedpi") ||
-                (Prefs.isGlobalVpnEnabled && Prefs.appRoutingEnabled &&
-                        try { ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().contains("byedpi") } catch (_: Throwable) { false })
+        val neededByVpn = Prefs.isGlobalVpnEnabled && try {
+            ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders().contains("byedpi")
+        } catch (_: Throwable) {
+            false
+        }
+        val isZdpiActive = ByeDpiProxyService.status == ServiceStatus.Connected || neededByVpn
 
         if (!isZdpiActive) {
             Log.d(TAG, "zDPI is not active, skipping strategy switch")
@@ -79,8 +81,8 @@ object NetworkSwitchListener {
 
         val intent = Intent(context, ByeDpiProxyService::class.java).apply {
             action = ByeDpiProxyService.ACTION_RESTART
-            putExtra("is_foreground", !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi"))
+            putExtra("is_foreground", true)
         }
-        context.sendIntentToService(intent, isForeground = false)
+        context.sendIntentToService(intent, isForeground = true)
     }
 }

@@ -12,9 +12,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.toinet.android.databinding.SvpnBottomSheetBinding
 import ru.toinet.android.svpn.SshTunnel
-import ru.toinet.android.svpn.SvpnService
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.syncStandaloneComponent
 
 class SvpnBottomSheet : ToInetBottomSheetDialogFragment() {
 
@@ -111,8 +111,17 @@ class SvpnBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         binding.btnSave.setOnClickListener {
-            val oldEnabled = Prefs.svpnEnabled
             val newEnabled = binding.swSvpnEnabled.isChecked
+            val oldHost = Prefs.svpnHost
+            val oldPort = Prefs.svpnPort
+            val oldUser = Prefs.svpnUser
+            val oldAuthType = Prefs.svpnAuthType
+            val oldPassword = Prefs.svpnPassword
+            val oldPrivateKey = Prefs.svpnPrivateKey
+            val oldKeyPassphrase = Prefs.svpnKeyPassphrase
+            val oldLocalPort = Prefs.svpnLocalPort
+            val oldDnsServer = Prefs.svpnDnsServer
+            val oldDnsPort = Prefs.svpnDnsPort
 
             Prefs.svpnEnabled = newEnabled
             Prefs.svpnHost = binding.etHost.text.toString().trim()
@@ -130,13 +139,18 @@ class SvpnBottomSheet : ToInetBottomSheetDialogFragment() {
             Prefs.svpnDnsServer = dnsServer
             Prefs.svpnDnsPort = binding.etDnsPort.text.toString().trim().toIntOrNull() ?: 53
 
-            if (!Prefs.isGlobalVpnEnabled) {
-                if (newEnabled) {
-                    SvpnService.start(requireContext())
-                } else if (oldEnabled) {
-                    SvpnService.stop(requireContext())
-                }
-            }
+            val configChanged = (oldHost != Prefs.svpnHost) ||
+                (oldPort != Prefs.svpnPort) ||
+                (oldUser != Prefs.svpnUser) ||
+                (oldAuthType != Prefs.svpnAuthType) ||
+                (oldPassword != Prefs.svpnPassword) ||
+                (oldPrivateKey != Prefs.svpnPrivateKey) ||
+                (oldKeyPassphrase != Prefs.svpnKeyPassphrase) ||
+                (oldLocalPort != Prefs.svpnLocalPort) ||
+                (oldDnsServer != Prefs.svpnDnsServer) ||
+                (oldDnsPort != Prefs.svpnDnsPort)
+
+            requireContext().syncStandaloneComponent("svpn", newEnabled, configChanged)
 
             viewModel.triggerRefreshMenuList()
             Toast.makeText(requireContext(), "Настройки SVPN сохранены", Toast.LENGTH_SHORT).show()

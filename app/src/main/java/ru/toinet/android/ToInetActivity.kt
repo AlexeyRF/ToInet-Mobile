@@ -203,6 +203,10 @@ class ToInetActivity : BaseActivity() {
         if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
             connectViewModel.updateState(this, TorService.STATUS_ON)
             previousReceivedTorStatus = TorService.STATUS_ON
+        } else if (!Prefs.isGlobalVpnEnabled && (Prefs.vpnProvider == "svpn" || Prefs.vpnProvider == "ssh" || Prefs.svpnEnabled)) {
+            val status = if (ru.toinet.android.svpn.SvpnService.isRunning) TorService.STATUS_ON else TorService.STATUS_OFF
+            connectViewModel.updateState(this, status)
+            previousReceivedTorStatus = status
         }
         sendIntentToService(ToInetConstants.CMD_ACTIVE)
         checkStartVpnFromIntent()

@@ -1,5 +1,6 @@
 package ru.toinet.android.ui.connect
 
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,11 +10,43 @@ import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 
 import androidx.fragment.app.activityViewModels
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.syncStandaloneComponent
 
 class TorConfigBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private lateinit var binding: TorConfigBottomSheetBinding
     private val viewModel: ConnectViewModel by activityViewModels()
+
+    private var initialTransport: ru.toinet.android.service.circumvention.Transport? = null
+    private var initialIgnoreEmptyUrl: Boolean = true
+    private var initialBridges: List<String> = emptyList()
+    private var initialProxyEnabled: Boolean = false
+    private var initialTorUpstream: String = "none"
+
+    private fun syncTorConfigIfNeeded() {
+        val ctx = context ?: return
+        val configChanged = (initialTransport != null && initialTransport != Prefs.transport) ||
+            (initialIgnoreEmptyUrl != Prefs.torIgnoreEmptyUrl) ||
+            (initialBridges != Prefs.bridgesList) ||
+            (initialProxyEnabled != Prefs.proxyEnabled) ||
+            (initialTorUpstream != Prefs.torUpstreamProvider)
+
+        if (configChanged) {
+            initialTransport = Prefs.transport
+            initialIgnoreEmptyUrl = Prefs.torIgnoreEmptyUrl
+            initialBridges = Prefs.bridgesList
+            initialProxyEnabled = Prefs.proxyEnabled
+            initialTorUpstream = Prefs.torUpstreamProvider
+            if (Prefs.torEnabled) {
+                ctx.syncStandaloneComponent("tor", true, configChanged = true)
+            }
+        }
+    }
+
+    override fun onCancel(dialog: DialogInterface) {
+        syncTorConfigIfNeeded()
+        super.onCancel(dialog)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -21,6 +54,12 @@ class TorConfigBottomSheet : ToInetBottomSheetDialogFragment() {
         savedInstanceState: Bundle?
     ): View {
         binding = TorConfigBottomSheetBinding.inflate(inflater, container, false)
+
+        initialTransport = Prefs.transport
+        initialIgnoreEmptyUrl = Prefs.torIgnoreEmptyUrl
+        initialBridges = Prefs.bridgesList
+        initialProxyEnabled = Prefs.proxyEnabled
+        initialTorUpstream = Prefs.torUpstreamProvider
 
         binding.swTorEnabled.isChecked = Prefs.torEnabled
         val isCustom = Prefs.transport == ru.toinet.android.service.circumvention.Transport.CUSTOM
@@ -38,6 +77,7 @@ class TorConfigBottomSheet : ToInetBottomSheetDialogFragment() {
                 binding.rgTorMode.getChildAt(i).isEnabled = isChecked
             }
             binding.cbIgnoreEmptyUrl.isEnabled = isChecked
+            requireContext().syncStandaloneComponent("tor", isChecked, configChanged = false)
             viewModel.triggerRefreshMenuList()
         }
 
@@ -104,6 +144,7 @@ class TorConfigBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         binding.btnClose.setOnClickListener {
+            syncTorConfigIfNeeded()
             dismiss()
         }
 

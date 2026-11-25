@@ -130,7 +130,6 @@ enum class Transport(val id: String) {
         private val HARDCODED_WEBTUNNEL = listOf(
             "webtunnel [2001:db8:11d3:d5e7:2939:8453:7baf:868f]:443 531640559965FB7501EB5C006018F61D1E9FA1BB url=https://cdn-34.triplebit.dev/Aec3euCh4ux3deij ver=0.0.2",
             "webtunnel [2001:db8:8229:577b:8f3a:bc4c:7d18:24be]:443 4C26D2BA24011E89875857BDB338969D08CAAE0B url=https://test.notalot.org/ApKhNDWZv4MCjbH05W6eQFkF ver=0.0.4",
-            "webtunnel [2001:db8:9830:b7ec:bb37:f12:ec5f:aace]:443 67DFB4E30EF8CC5EFD87CC066D919D12DEDB5170 url= ver=0.0.4",
             "webtunnel [2001:db8:840a:a2c2:644c:3c92:be5e:7002]:443 27E99E2571072995A06118ECDA706FB695E2998D url=https://miau.sillykittens.net/4incE0XB3Pm13wHctbckvfhP ver=0.0.7"
         )
     }
@@ -272,8 +271,8 @@ enum class Transport(val id: String) {
 
             WEBTUNNEL -> {
                 HARDCODED_WEBTUNNEL.forEach {
-                    val hasEmptyUrl = it.contains("url= ") || it.endsWith("url=")
-                    if (!Prefs.torIgnoreEmptyUrl || !hasEmptyUrl) {
+                    val hasEmptyUrl = it.contains("url= ") || it.endsWith("url=") || !it.contains("url=http")
+                    if (!hasEmptyUrl) {
                         result.add("Bridge $it")
                     }
                 }
@@ -336,19 +335,18 @@ enum class Transport(val id: String) {
             }
 
             SNOWFLAKE_SQS -> {
-                /* TODO Make sure SQS queue and credentials are up to date in assets/fronts when
-                    re-enabling this feature. also remove android:visibility="gone" from the SQS
-                    container in app project's layout/config_connection_bottom_sheet.xml
-                    */
-                throw RuntimeException("Snowflake SQS Not supported right now https://github.com/guardianproject/toinet-android/issues/1320")
+                Log.w(TAG, "Snowflake SQS Not supported right now, falling back to standard Snowflake")
+                val snowflake = BuiltInBridges.getInstance(context)?.snowflake?.firstOrNull()
+                val fronts = mutableSetOf<String>()
+                snowflake?.front?.let { fronts.add(it) }
+                snowflake?.fronts?.let { fronts.addAll(it) }
 
-                controller.snowflakeIceServers =
-                    BuiltInBridges.getInstance(context)?.snowflake?.firstOrNull()?.ice ?: ""
-                controller.snowflakeBrokerUrl = ""
-                controller.snowflakeFrontDomains = ""
+                controller.snowflakeIceServers = snowflake?.ice ?: ""
+                controller.snowflakeBrokerUrl = snowflake?.url ?: ""
+                controller.snowflakeFrontDomains = fronts.joinToString(",")
                 controller.snowflakeAmpCacheUrl = ""
-                controller.snowflakeSqsUrl = SQS_QUEUE
-                controller.snowflakeSqsCreds = SQS_CREDENTIALS
+                controller.snowflakeSqsUrl = ""
+                controller.snowflakeSqsCreds = ""
             }
 
             BYEDPI -> {
@@ -362,7 +360,11 @@ enum class Transport(val id: String) {
         val proxy: String? = if (pair.first == null) null else pair.first.toString()
 
         for (transport in transportNames) {
-            controller.start(transport, if (transport == IPtProxy.Snowflake) null else proxy)
+            try {
+                controller.start(transport, if (transport == IPtProxy.Snowflake) null else proxy)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start transport $transport", e)
+            }
         }
     }
 

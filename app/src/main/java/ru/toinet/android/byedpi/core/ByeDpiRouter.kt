@@ -6,8 +6,11 @@ import android.util.Log
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import ru.toinet.android.byedpi.services.*
+import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.util.stopServiceCompat
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -27,8 +30,8 @@ object ByeDpiRouter {
     private val domainToPort = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private var defaultPort = 11081
 
-    fun start(context: Context, jsonStr: String, listenPort: Int, bindIp: String) {
-        if (routerJob != null) return
+    fun start(context: Context, jsonStr: String, listenPort: Int, bindIp: String): Boolean {
+        if (routerJob != null) return true
 
         try {
             val jsonObj = JSONObject(jsonStr)
@@ -57,11 +60,13 @@ object ByeDpiRouter {
                     val port = currentPort++
                     cmdToPort[cmd] = port
                     
-                    val intent = Intent(context, instances[launchedCount])
-                    intent.action = "START"
-                    intent.putExtra("CMD", cmd)
-                    intent.putExtra("PORT", port)
-                    context.startService(intent)
+                    val intent = Intent(context, instances[launchedCount]).apply {
+                        action = "START"
+                        putExtra("CMD", cmd)
+                        putExtra("PORT", port)
+                        putExtra("is_foreground", true)
+                    }
+                    context.sendIntentToService(intent, isForeground = true)
                     launchedCount++
                 }
             }
@@ -75,20 +80,28 @@ object ByeDpiRouter {
             }
             defaultPort = cmdToPort.values.firstOrNull() ?: 11081
 
+            val ss = ServerSocket()
+            ss.reuseAddress = true
+            ss.bind(InetSocketAddress(InetAddress.getByName(bindIp), listenPort), 50)
+            serverSocket = ss
+
             routerJob = CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    serverSocket = ServerSocket(listenPort, 50, java.net.InetAddress.getByName(bindIp))
                     while (isActive) {
                         val clientSocket = serverSocket?.accept() ?: break
                         launch { handleClient(clientSocket) }
                     }
                 } catch (e: Exception) {
-                    Log.e("ByeDpiRouter", "Router Server error", e)
+                    if (isActive) {
+                        Log.e("ByeDpiRouter", "Router Server error", e)
+                    }
                 }
             }
-
+            return true
         } catch (e: Exception) {
-            Log.e("ByeDpiRouter", "Failed to parse JSON", e)
+            Log.e("ByeDpiRouter", "Failed to start ByeDpiRouter", e)
+            stop(context)
+            return false
         }
     }
 
@@ -101,7 +114,7 @@ object ByeDpiRouter {
         for (i in 0 until usedInstances) {
             val intent = Intent(context, instances[i])
             intent.action = "STOP"
-            context.startService(intent)
+            context.stopServiceCompat(intent)
         }
         usedInstances = 0
     }

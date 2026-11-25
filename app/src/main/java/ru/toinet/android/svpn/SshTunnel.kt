@@ -180,6 +180,11 @@ class SshTunnel(
                 Log.d(TAG, "Connecting to SSH server...")
                 sess.connect(connectTimeoutMs)
 
+                if (!isRunning) {
+                    try { sess.disconnect() } catch (_: Exception) {}
+                    return@Thread
+                }
+
                 Log.d(TAG, "Starting local SOCKS5 proxy on $bindHost:$localPort")
                 val proxy = SocksProxyServer(sess, bindHost, localPort)
                 proxy.start()

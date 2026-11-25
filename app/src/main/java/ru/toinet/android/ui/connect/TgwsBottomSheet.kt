@@ -12,6 +12,7 @@ import ru.toinet.android.databinding.TgwsBottomSheetBinding
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.putPref
+import ru.toinet.android.util.syncStandaloneComponent
 import android.widget.Toast
 import java.security.SecureRandom
 
@@ -93,7 +94,20 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         binding.btnSave.setOnClickListener {
-            Prefs.tgwsEnabled = binding.swEnabled.isChecked
+            val newEnabled = binding.swEnabled.isChecked
+            val oldPort = Prefs.tgwsPort
+            val oldSecret = Prefs.tgwsSecret
+            val oldFakeTls = Prefs.tgwsFakeTls
+            val oldCfWorkers = Prefs.tgwsCfWorkerDomains
+            val oldCfProxies = Prefs.tgwsCfProxyDomains
+            val oldFrontingSni = Prefs.tgwsFrontingSni
+            val oldFallbackCfProxy = Prefs.tgwsFallbackCfProxy
+            val oldCfProxyH2Media = Prefs.tgwsCfProxyH2Media
+            val oldDisableSecure = Prefs.tgwsDisableSecure
+            val oldForceTestDc = Prefs.tgwsForceTestDc
+            val oldMappings = Prefs.tgwsDcMappings
+
+            Prefs.tgwsEnabled = newEnabled
             val port = binding.etPort.text.toString().toIntOrNull() ?: 1480
             Prefs.tgwsPort = port
             
@@ -118,10 +132,19 @@ class TgwsBottomSheet : ToInetBottomSheetDialogFragment() {
                 }.toMap()
             Prefs.tgwsDcMappings = mappings
 
-            if (ru.toinet.android.tgws.TgwsService.isRunning) {
-                ru.toinet.android.tgws.TgwsService.stop(requireContext())
-                ru.toinet.android.tgws.TgwsService.start(requireContext())
-            }
+            val configChanged = (oldPort != Prefs.tgwsPort) ||
+                (oldSecret != Prefs.tgwsSecret) ||
+                (oldFakeTls != Prefs.tgwsFakeTls) ||
+                (oldCfWorkers != Prefs.tgwsCfWorkerDomains) ||
+                (oldCfProxies != Prefs.tgwsCfProxyDomains) ||
+                (oldFrontingSni != Prefs.tgwsFrontingSni) ||
+                (oldFallbackCfProxy != Prefs.tgwsFallbackCfProxy) ||
+                (oldCfProxyH2Media != Prefs.tgwsCfProxyH2Media) ||
+                (oldDisableSecure != Prefs.tgwsDisableSecure) ||
+                (oldForceTestDc != Prefs.tgwsForceTestDc) ||
+                (oldMappings != Prefs.tgwsDcMappings)
+
+            requireContext().syncStandaloneComponent("tgws", newEnabled, configChanged)
             
             viewModel.triggerRefreshMenuList()
             dismiss()

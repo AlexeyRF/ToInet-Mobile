@@ -31,11 +31,15 @@ class TgwsCore(
     val forceTestDc: Boolean = false,
     val poolSize: Int = 4,
     val bufferSize: Int = 256 * 1024,
-    val onLog: ((String) -> Unit)? = null
+    val onLog: ((String) -> Unit)? = null,
+    val onStateChanged: ((running: Boolean, error: String?) -> Unit)? = null
 ) {
     private var serverSocket: ServerSocket? = null
     private var job: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    @Volatile
+    var isServerRunning: Boolean = false
+        private set
 
     private val balancer = TgwsBalancer()
     private val pool = TgwsPool(
@@ -91,31 +95,42 @@ class TgwsCore(
         if (job != null) return
         job = scope.launch {
             try {
-                serverSocket = ServerSocket(port, 128, InetAddress.getByName(host))
+                val ss = ServerSocket()
+                ss.reuseAddress = true
+                ss.bind(InetSocketAddress(InetAddress.getByName(host), port), 128)
+                serverSocket = ss
+                isServerRunning = true
                 log("TGWS Proxy listening on $host:$port (FakeTLS: '${actualFakeTlsDomain}', PoolSize: $poolSize)")
+                onStateChanged?.invoke(true, null)
                 pool.warmup(dcMappings, forceTestDc)
                 while (isActive) {
                     val client = try {
-                        serverSocket?.accept()
+                        ss.accept()
                     } catch (_: Exception) {
                         null
                     } ?: break
                     launch { handleClient(client) }
                 }
             } catch (e: Exception) {
+                isServerRunning = false
                 if (e !is CancellationException) {
                     log("Server error: ${e.message}")
+                    onStateChanged?.invoke(false, e.message)
                 }
+            } finally {
+                isServerRunning = false
             }
         }
     }
 
     fun stop() {
+        isServerRunning = false
         job?.cancel()
         job = null
         try {
             serverSocket?.close()
         } catch (_: Exception) {}
+        serverSocket = null
         balancer.stopAutoRefresh()
         pool.close()
         log("TGWS Proxy stopped")

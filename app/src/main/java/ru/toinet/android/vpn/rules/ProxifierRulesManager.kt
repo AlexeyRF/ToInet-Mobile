@@ -13,24 +13,42 @@ object ProxifierRulesManager {
     private data class CacheHolder(
         val rules: List<ProxifierRule>,
         val packageToRuleMap: Map<String, ProxifierRule>,
-        val neededProviders: Set<String>
+        val neededProviders: Set<String>,
+        val version: Long,
+        val defaultAction: String
     )
 
     @Volatile
     private var cacheHolder: CacheHolder? = null
 
     private fun getOrLoadCache(): CacheHolder {
-        cacheHolder?.let { return it }
+        val currentVersion = Prefs.appRoutingRulesVersion
+        val currentDefault = Prefs.appRoutingDefaultAction
+        cacheHolder?.let {
+            if (it.version == currentVersion && it.defaultAction == currentDefault) {
+                return it
+            }
+        }
         return synchronized(lock) {
-            cacheHolder?.let { return it }
+            val ver = Prefs.appRoutingRulesVersion
+            val def = Prefs.appRoutingDefaultAction
+            cacheHolder?.let {
+                if (it.version == ver && it.defaultAction == def) {
+                    return it
+                }
+            }
             val loaded = loadRulesFromPrefs()
-            val newCache = buildCacheHolder(loaded)
+            val newCache = buildCacheHolder(loaded, ver, def)
             cacheHolder = newCache
             newCache
         }
     }
 
-    private fun buildCacheHolder(rules: List<ProxifierRule>): CacheHolder {
+    private fun buildCacheHolder(
+        rules: List<ProxifierRule>,
+        version: Long = Prefs.appRoutingRulesVersion,
+        defaultAction: String = Prefs.appRoutingDefaultAction
+    ): CacheHolder {
         val map = mutableMapOf<String, ProxifierRule>()
         val needed = mutableSetOf<String>()
 
@@ -47,12 +65,11 @@ object ProxifierRulesManager {
             }
         }
 
-        val def = Prefs.appRoutingDefaultAction
-        if (def != ProxifierRule.ACTION_DIRECT && def != ProxifierRule.ACTION_BLOCK) {
-            needed.add(def)
+        if (defaultAction != ProxifierRule.ACTION_DIRECT && defaultAction != ProxifierRule.ACTION_BLOCK) {
+            needed.add(defaultAction)
         }
 
-        return CacheHolder(rules, map, needed)
+        return CacheHolder(rules, map, needed, version, defaultAction)
     }
 
     fun getRules(): MutableList<ProxifierRule> {
@@ -85,8 +102,10 @@ object ProxifierRulesManager {
     fun saveRules(rules: List<ProxifierRule>) {
         synchronized(lock) {
             saveRulesInternal(rules)
+            val newVersion = maxOf(System.currentTimeMillis(), Prefs.appRoutingRulesVersion + 1L)
+            Prefs.appRoutingRulesVersion = newVersion
             val defensiveCopy = rules.map { it.copy(targetPackages = it.targetPackages.toMutableList()) }
-            cacheHolder = buildCacheHolder(defensiveCopy)
+            cacheHolder = buildCacheHolder(defensiveCopy, newVersion, Prefs.appRoutingDefaultAction)
         }
     }
 
@@ -98,6 +117,7 @@ object ProxifierRulesManager {
 
     fun invalidateCache() {
         synchronized(lock) {
+            Prefs.appRoutingRulesVersion = maxOf(System.currentTimeMillis(), Prefs.appRoutingRulesVersion + 1L)
             cacheHolder = null
         }
     }
@@ -264,6 +284,42 @@ object ProxifierRulesManager {
 
     fun getNeededProviders(): Set<String> {
         return getOrLoadCache().neededProviders
+    }
+
+    fun getAllNeededVpnProviders(): Set<String> {
+        val needed = getNeededProviders().toMutableSet()
+        // Resolve one-hop and chained upstreams cleanly
+        repeat(2) {
+            if (needed.contains(ProxifierRule.ACTION_TOR) && Prefs.proxyEnabled) {
+                var u = Prefs.torUpstreamProvider
+                if (u.isBlank() || u == "none") {
+                    val pair = Prefs.outboundProxy.first
+                    if (pair != null && pair.host == "127.0.0.1") {
+                        u = when (pair.port) {
+                            Prefs.easyVpnProxyPort -> ProxifierRule.ACTION_EASYVPN
+                            1780 -> ProxifierRule.ACTION_BYEDPI
+                            else -> u
+                        }
+                    }
+                }
+                if (u != "none" && u != "custom" && u.isNotBlank()) {
+                    needed.add(u)
+                }
+            }
+            if (needed.contains(ProxifierRule.ACTION_EASYVPN) && Prefs.easyVpnUpstreamEnabled) {
+                val u = Prefs.easyVpnUpstreamProvider
+                if (u != "none" && u != "custom" && u.isNotBlank()) {
+                    needed.add(u)
+                }
+            }
+            if (needed.contains(ProxifierRule.ACTION_BYEDPI) && Prefs.byedpiUpstreamEnabled) {
+                val u = Prefs.byedpiUpstreamProvider
+                if (u != "none" && u != "custom" && u.isNotBlank()) {
+                    needed.add(u)
+                }
+            }
+        }
+        return needed
     }
 
     fun getAvailableActions(): List<Pair<String, String>> {

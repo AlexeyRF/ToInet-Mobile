@@ -34,8 +34,7 @@ class AppRoutingServer(
 
     fun start() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            Log.w(TAG, "AppRoutingServer is only supported on Android Q (API 29) or higher")
-            return
+            Log.i(TAG, "Android < Q: per-app UID lookup unavailable, using domain and default routing rules")
         }
         if (isRunning.getAndSet(true)) return
 
@@ -432,7 +431,11 @@ class AppRoutingServer(
             ProxifierRule.ACTION_EASYVPN -> if (Prefs.easyVpnProxyPort in 1..65535) Prefs.easyVpnProxyPort else 1790
             ProxifierRule.ACTION_TOR -> {
                 try {
-                    ru.toinet.android.util.Prefs.proxySocksPort?.toIntOrNull()?.takeIf { it in 1..65535 } ?: 9853
+                    val resolved = ru.toinet.android.util.Prefs.torSocksPortResolved
+                    val prefPort = ru.toinet.android.util.Prefs.proxySocksPort?.toIntOrNull()
+                    if (prefPort != null && prefPort in 1..65535) prefPort
+                    else if (resolved in 1..65535) resolved
+                    else 9853
                 } catch (_: Exception) { 9853 }
             }
             ProxifierRule.ACTION_OPERAPROXY -> {

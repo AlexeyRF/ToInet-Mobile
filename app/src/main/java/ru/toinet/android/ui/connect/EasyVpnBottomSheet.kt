@@ -14,7 +14,7 @@ import ru.toinet.android.databinding.EasyvpnBottomSheetBinding
 import ru.toinet.android.easyvpn.EasyVpnUpdater
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.Prefs
-import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.util.syncStandaloneComponent
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -94,8 +94,12 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         binding.btnSave.setOnClickListener {
-            val wasEnabled = Prefs.easyVpnProxyEnabled
             val newEnabled = binding.swEasyVpnProxyEnabled.isChecked
+            val oldSubs = Prefs.easyVpnSubs
+            val oldUpstreamEnabled = Prefs.easyVpnUpstreamEnabled
+            val oldUpstreamProvider = Prefs.easyVpnUpstreamProvider
+            val oldUpstreamHost = Prefs.easyVpnUpstreamHost
+            val oldUpstreamPort = Prefs.easyVpnUpstreamPort
 
             Prefs.easyVpnProxyEnabled = newEnabled
             Prefs.easyVpnServerNumberOnly = binding.swEasyVpnNumberOnly.isChecked
@@ -115,15 +119,13 @@ class EasyVpnBottomSheet : ToInetBottomSheetDialogFragment() {
                 Prefs.easyVpnUpstreamPort = ru.toinet.android.util.UpstreamProxyCoordinator.getPortForProvider(chosenProvider)
             }
 
-            if (newEnabled && !wasEnabled) {
-                if (!Prefs.isGlobalVpnEnabled || Prefs.vpnProvider != "easyvpn") {
-                    ru.toinet.android.easyvpn.EasyVpnService.start(requireContext())
-                }
-            } else if (newEnabled) {
-                requireContext().sendIntentToService("ACTIVE")
-            } else if (wasEnabled) {
-                ru.toinet.android.easyvpn.EasyVpnService.stop(requireContext())
-            }
+            val configChanged = (oldSubs != Prefs.easyVpnSubs) ||
+                (oldUpstreamEnabled != Prefs.easyVpnUpstreamEnabled) ||
+                (oldUpstreamProvider != Prefs.easyVpnUpstreamProvider) ||
+                (oldUpstreamHost != Prefs.easyVpnUpstreamHost) ||
+                (oldUpstreamPort != Prefs.easyVpnUpstreamPort)
+
+            requireContext().syncStandaloneComponent("easyvpn", newEnabled, configChanged)
 
             viewModel.triggerRefreshMenuList()
             dismiss()

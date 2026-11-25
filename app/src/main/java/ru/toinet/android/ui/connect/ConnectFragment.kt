@@ -126,10 +126,6 @@ class ConnectFragment : Fragment(),
             SettingsBottomSheet().show(childFragmentManager, SettingsBottomSheet.TAG)
         }
 
-        binding.btnDisconnect.setOnClickListener {
-            stopTorAndVpn()
-        }
-
         if (ArchHelper.isX86Family) {
             binding.tvArchWarning.visibility = View.VISIBLE
             binding.tvArchWarning.text = if (ArchHelper.isX86_64) {
@@ -156,6 +152,8 @@ class ConnectFragment : Fragment(),
         binding = FragmentConnectBinding.inflate(inflater, container, false)
         val effectiveStatus = if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
             TorService.STATUS_ON
+        } else if (!Prefs.isGlobalVpnEnabled && (Prefs.vpnProvider == "svpn" || Prefs.vpnProvider == "ssh" || Prefs.svpnEnabled)) {
+            if (ru.toinet.android.svpn.SvpnService.isRunning) TorService.STATUS_ON else TorService.STATUS_OFF
         } else {
             lastStatus
         }
@@ -167,6 +165,8 @@ class ConnectFragment : Fragment(),
         super.onResume()
         val effectiveStatus = if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
             TorService.STATUS_ON
+        } else if (!Prefs.isGlobalVpnEnabled && (Prefs.vpnProvider == "svpn" || Prefs.vpnProvider == "ssh" || Prefs.svpnEnabled)) {
+            if (ru.toinet.android.svpn.SvpnService.isRunning) TorService.STATUS_ON else TorService.STATUS_OFF
         } else {
             lastStatus
         }
@@ -174,8 +174,8 @@ class ConnectFragment : Fragment(),
     }
 
     fun stopTorAndVpn() {
-        doLayoutOff()
         setState(TorService.ACTION_STOP)
+        doLayoutOff()
     }
 
     fun attemptToStartTorPowerUserMode() {
@@ -237,7 +237,6 @@ class ConnectFragment : Fragment(),
     private fun doLayoutNoInternet() {
         binding.progressBar.visibility = View.INVISIBLE
         binding.tvTitle.text = getString(R.string.no_internet_title)
-        binding.btnDisconnect.visibility = View.GONE
         
         binding.btnConnectCard.setCardBackgroundColor(android.graphics.Color.LTGRAY)
         binding.ivPowerIcon.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.DKGRAY)
@@ -246,16 +245,15 @@ class ConnectFragment : Fragment(),
     fun doLayoutOn(context: Context) {
         binding.progressBar.visibility = View.INVISIBLE
         binding.tvTitle.text = context.getString(R.string.connected_title)
-        binding.btnDisconnect.visibility = View.VISIBLE
         
         binding.btnConnectCard.setCardBackgroundColor(android.graphics.Color.parseColor("#4CAF50"))
         binding.ivPowerIcon.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
     }
 
     fun doLayoutOff() {
+        lastState = TorService.ACTION_STOP
         binding.progressBar.visibility = View.INVISIBLE
         binding.tvTitle.text = getString(R.string.secure_your_connection_title)
-        binding.btnDisconnect.visibility = View.GONE
         
         binding.btnConnectCard.setCardBackgroundColor(android.graphics.Color.parseColor("#424242"))
         binding.ivPowerIcon.imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
@@ -266,7 +264,6 @@ class ConnectFragment : Fragment(),
             visibility = View.VISIBLE
             // LinearProgressIndicator doesn't need progress reset if it's indeterminate
         }
-        binding.btnDisconnect.visibility = View.GONE
         binding.tvTitle.text = context.getString(R.string.trying_to_connect_title)
     }
 
@@ -277,7 +274,8 @@ class ConnectFragment : Fragment(),
 
         requireContext().sendIntentToService(
             Intent(requireActivity(), ToInetService::class.java)
-                .setAction(ToInetConstants.CMD_SET_EXIT).putExtra("exit", countryCode)
+                .setAction(ToInetConstants.CMD_SET_EXIT).putExtra("exit", countryCode),
+            isForeground = false
         )
 
         refreshMenuList(requireContext())

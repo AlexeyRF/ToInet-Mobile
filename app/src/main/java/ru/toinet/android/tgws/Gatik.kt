@@ -27,7 +27,10 @@ object Gatik {
 
     fun start(context: Context, tgwsPort: Int = ru.toinet.android.util.Prefs.tgwsPort) {
         val bindHost = if (ru.toinet.android.util.Prefs.openProxyOnAllInterfaces) "0.0.0.0" else "127.0.0.1"
-        val torPort = TOR_PORT
+        val torPort = try {
+            val p = ru.toinet.android.util.Prefs.torSocksPortResolved
+            if (p in 1..65535) p else TOR_PORT
+        } catch (_: Exception) { TOR_PORT }
         if (GatikNative.isLoaded) {
             try {
                 val started = GatikNative.nativeStartGatik(bindHost, LISTEN_PORT, "127.0.0.1", torPort, "127.0.0.1", tgwsPort)

@@ -9,14 +9,12 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.activityViewModels
-import ru.toinet.android.byedpi.services.ByeDpiProxyService
 import ru.toinet.android.databinding.ByedpiBottomSheetBinding
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.util.NetworkUtils
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.UpstreamProxyCoordinator
-import ru.toinet.android.util.sendIntentToService
-import ru.toinet.android.vpn.data.ServiceStatus
+import ru.toinet.android.util.syncStandaloneComponent
 
 class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
 
@@ -86,6 +84,8 @@ class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
         binding.btnSave.setOnClickListener {
             val oldWifiArgs = Prefs.byedpiWifiArgs
             val oldMobileArgs = Prefs.byedpiMobileArgs
+            val oldUpstreamEnabled = Prefs.byedpiUpstreamEnabled
+            val oldUpstreamProvider = Prefs.byedpiUpstreamProvider
 
             val newWifiArgs = binding.etWifiArgs.text.toString().trim()
             val newMobileArgs = binding.etMobileArgs.text.toString().trim()
@@ -95,16 +95,13 @@ class ByeDpiBottomSheet : ToInetBottomSheetDialogFragment() {
             Prefs.byedpiArgs = Prefs.getCurrentByedpiArgs(requireContext())
             saveCommonSettings()
 
-            // If zDPI is running and the active strategy changed, reload it
+            // Sync zDPI standalone service with enabled state and config changes
             val isCurrentWifi = NetworkUtils.isWifiConnected(requireContext())
-            val activeChanged = if (isCurrentWifi) oldWifiArgs != newWifiArgs else oldMobileArgs != newMobileArgs
-            if (ByeDpiProxyService.status == ServiceStatus.Connected && activeChanged) {
-                val restartIntent = Intent(requireContext(), ByeDpiProxyService::class.java).apply {
-                    action = ByeDpiProxyService.ACTION_RESTART
-                    putExtra("is_foreground", !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("byedpi"))
-                }
-                requireContext().sendIntentToService(restartIntent, isForeground = false)
-            }
+            val activeChanged = if (isCurrentWifi) oldWifiArgs != Prefs.byedpiWifiArgs else oldMobileArgs != Prefs.byedpiMobileArgs
+            val upstreamChanged = (oldUpstreamEnabled != Prefs.byedpiUpstreamEnabled) ||
+                (Prefs.byedpiUpstreamEnabled && oldUpstreamProvider != Prefs.byedpiUpstreamProvider)
+            val configChanged = activeChanged || upstreamChanged
+            requireContext().syncStandaloneComponent("byedpi", Prefs.byedpiEnabled, configChanged)
 
             Toast.makeText(requireContext(), "Настройки zDPI сохранены", Toast.LENGTH_SHORT).show()
             viewModel.triggerRefreshMenuList()

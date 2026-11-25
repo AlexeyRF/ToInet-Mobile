@@ -206,8 +206,13 @@ object Prefs {
         get() = cr?.getPrefString(ToInetConstants.PREF_TRANSPORT)
 
     var torIgnoreEmptyUrl: Boolean
-        get() = cr?.getPrefBoolean("pref_tor_ignore_empty_url", false) ?: false
+        get() = cr?.getPrefBoolean("pref_tor_ignore_empty_url", true) ?: true
         set(value) = cr?.putPref("pref_tor_ignore_empty_url", value) ?: Unit
+
+    @JvmStatic
+    var torSocksPortResolved: Int
+        get() = cr?.getPrefInt("pref_tor_socks_port_resolved", 9853) ?: 9853
+        set(value) = cr?.putPref("pref_tor_socks_port_resolved", value) ?: Unit
 
     val torDnsPort: String?
         get() = cr?.getPrefString(ToInetConstants.PREF_DNSPORT)
@@ -299,6 +304,11 @@ object Prefs {
         get() = cr?.getPrefString("pref_app_routing_rules_json") ?: ""
         set(value) = cr?.putPref("pref_app_routing_rules_json", value) ?: Unit
 
+    @JvmStatic
+    var appRoutingRulesVersion: Long
+        get() = cr?.getPrefLong("pref_app_routing_rules_version", 0L) ?: 0L
+        set(value) = cr?.putPref("pref_app_routing_rules_version", value) ?: Unit
+
     var appRoutingDefaultAction: String
         get() = cr?.getPrefString("pref_app_routing_default_action") ?: "direct"
         set(value) = cr?.putPref("pref_app_routing_default_action", value) ?: Unit
@@ -348,6 +358,7 @@ object Prefs {
         get() = cr?.getPrefInt("pref_byedpi_upstream_port") ?: 10808
         set(value) = cr?.putPref("pref_byedpi_upstream_port", value) ?: Unit
 
+    @JvmStatic
     var byedpiEnabled: Boolean
         get() = cr?.getPrefBoolean("byedpi_enabled", false) ?: false
         set(value) = cr?.putPref("byedpi_enabled", value) ?: Unit
@@ -647,24 +658,53 @@ object Prefs {
         set(value) = cr?.putPref("pref_vpn_bypass_lan", value) ?: Unit
 
     @JvmStatic
-    fun isProviderActive(provider: String): Boolean {
-        if (isGlobalVpnEnabled && appRoutingEnabled) {
-            try {
-                if (ru.toinet.android.vpn.rules.ProxifierRulesManager.getNeededProviders().contains(provider)) {
-                    return true
-                }
-            } catch (_: Throwable) {}
-        }
+    fun isProviderNeededStandalone(provider: String): Boolean {
+        val torNeedsByedpi = torEnabled && proxyEnabled && (
+            torUpstreamProvider == "byedpi" ||
+                ((torUpstreamProvider.isBlank() || torUpstreamProvider == "none") &&
+                    outboundProxy.first?.let { it.host == "127.0.0.1" && it.port == 1780 } == true)
+            )
+        val torNeedsEasyVpn = torEnabled && proxyEnabled && (
+            torUpstreamProvider == "easyvpn" ||
+                ((torUpstreamProvider.isBlank() || torUpstreamProvider == "none") &&
+                    outboundProxy.first?.let { it.host == "127.0.0.1" && it.port == easyVpnProxyPort } == true)
+            )
         return when (provider) {
-            "vpn" -> isGlobalVpnEnabled
-            "tor" -> if (isGlobalVpnEnabled) vpnProvider == "tor" else ((vpnProvider == "tor" || vpnProvider.isBlank()) && torEnabled)
-            "byedpi" -> (vpnProvider == "byedpi") || byedpiEnabled
+            "tor" -> torEnabled ||
+                (byedpiEnabled && byedpiUpstreamEnabled && byedpiUpstreamProvider == "tor") ||
+                (easyVpnProxyEnabled && easyVpnUpstreamEnabled && easyVpnUpstreamProvider == "tor")
+            "byedpi" -> byedpiEnabled ||
+                (easyVpnProxyEnabled && easyVpnUpstreamEnabled && easyVpnUpstreamProvider == "byedpi") ||
+                torNeedsByedpi
             "tgws" -> tgwsEnabled
-            "operaproxy" -> ((vpnProvider == "operaproxy") || operaProxyEnabled) && ArchHelper.isOperaSupported
-            "easyvpn" -> (vpnProvider == "easyvpn") || easyVpnProxyEnabled
-            "svpn", "ssh" -> (vpnProvider == "svpn" || vpnProvider == "ssh") || svpnEnabled
+            "operaproxy" -> ArchHelper.isOperaSupported && operaProxyEnabled
+            "easyvpn" -> easyVpnProxyEnabled ||
+                (byedpiEnabled && byedpiUpstreamEnabled && byedpiUpstreamProvider == "easyvpn") ||
+                torNeedsEasyVpn
+            "svpn", "ssh" -> svpnEnabled
             else -> false
         }
+    }
+
+    @JvmStatic
+    fun isProviderActive(provider: String): Boolean {
+        if (provider == "vpn") return isGlobalVpnEnabled
+        val vpnNeeded = if (isGlobalVpnEnabled) {
+            try {
+                ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders()
+            } catch (_: Throwable) {
+                emptySet()
+            }
+        } else {
+            emptySet()
+        }
+        val inVpn = when (provider) {
+            "operaproxy" -> ArchHelper.isOperaSupported && vpnNeeded.contains("operaproxy")
+            "svpn", "ssh" -> vpnNeeded.contains("svpn") || vpnNeeded.contains("ssh")
+            "tgws" -> false
+            else -> vpnNeeded.contains(provider)
+        }
+        return inVpn || isProviderNeededStandalone(provider)
     }
 
     @JvmStatic
@@ -672,16 +712,16 @@ object Prefs {
         if (isGlobalVpnEnabled) {
             return serviceKey == "vpn"
         }
-        val activeProvider = vpnProvider
-        if (activeProvider.isNotBlank()) {
-            return serviceKey == activeProvider
-        }
         if (byedpiEnabled) return serviceKey == "byedpi"
         if (easyVpnProxyEnabled) return serviceKey == "easyvpn"
         if (operaProxyEnabled && ArchHelper.isOperaSupported) return serviceKey == "operaproxy"
-        if (svpnEnabled) return serviceKey == "svpn"
+        if (svpnEnabled) return serviceKey == "svpn" || serviceKey == "ssh"
         if (torEnabled) return serviceKey == "tor"
         if (tgwsEnabled) return serviceKey == "tgws"
+        // Fallback when only an implicit upstream is needed standalone
+        if (isProviderNeededStandalone("byedpi")) return serviceKey == "byedpi"
+        if (isProviderNeededStandalone("easyvpn")) return serviceKey == "easyvpn"
+        if (isProviderNeededStandalone("tor")) return serviceKey == "tor"
         return false
     }
 

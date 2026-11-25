@@ -36,7 +36,7 @@ class Bridge(var raw: String) {
         constructor(bridge: Bridge) : this(bridge.transport, bridge.ip ?: "", bridge.port ?: 0, bridge.fingerprint1) {
             if (ip.isEmpty() || port < 1)
             {
-                throw RuntimeException("Tried to create Bridge.Builder with invalid bridge!")
+                android.util.Log.w("Bridge", "Creating Bridge.Builder with potentially incomplete bridge: ip=$ip, port=$port")
             }
 
             fingerprint2 = bridge.fingerprint2
@@ -149,7 +149,7 @@ class Bridge(var raw: String) {
         }
 
     val port
-        get() = address?.split(":")?.lastOrNull()?.toInt()
+        get() = address?.split(":")?.lastOrNull()?.toIntOrNull()
 
     val fingerprint1: String?
         get() {

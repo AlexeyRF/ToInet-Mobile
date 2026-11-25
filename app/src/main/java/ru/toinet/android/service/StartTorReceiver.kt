@@ -4,9 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.text.TextUtils
-import androidx.core.content.ContextCompat
 import ru.toinet.android.service.ToInetConstants.STATUS_STARTS_DISABLED
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.sendIntentToService
 import org.torproject.jni.TorService.ACTION_START
 import org.torproject.jni.TorService.ACTION_STATUS
 import org.torproject.jni.TorService.EXTRA_PACKAGE_NAME
@@ -18,16 +18,19 @@ class StartTorReceiver : BroadcastReceiver() {
             /* sanitize the Intent before forwarding it to ToInetService */
             Prefs.setContext(context.applicationContext)
             val action = intent.action
-            if (TextUtils.equals(action, ACTION_START)) {
+            val isStart = TextUtils.equals(action, ACTION_START) ||
+                    TextUtils.equals(action, "ru.toinet.android.intent.action.START")
+            if (isStart) {
                 val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME)
                 if (Prefs.allowBackgroundStarts()) {
                     val startTorIntent = Intent(context, ToInetService::class.java)
-                        .setAction(action)
+                        .setAction(ACTION_START)
                         .putExtra(ToInetConstants.EXTRA_NOT_SYSTEM, true)
+                        .putExtra("is_foreground", true)
                     if (packageName != null) {
                         startTorIntent.putExtra(EXTRA_PACKAGE_NAME, packageName)
                     }
-                    ContextCompat.startForegroundService(context, startTorIntent)
+                    context.sendIntentToService(startTorIntent, isForeground = true)
                 } else if (!TextUtils.isEmpty(packageName)) {
                     // let the requesting app know that the user has disabled starting via Intent
                     val startsDisabledIntent = Intent(ACTION_STATUS).apply {

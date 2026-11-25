@@ -15,14 +15,28 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.torproject.jni.TorService
 import ru.toinet.android.R
 import ru.toinet.android.ToInetActivity
+import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.broadcastStandaloneStatus
+import ru.toinet.android.util.isAnyStandaloneServiceRunning
 import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.util.stopServiceCompat
+import ru.toinet.android.vpn.rules.ProxifierRulesManager
+import ru.toinet.android.vpn.services.AppVpnService
 
 class SvpnService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val mutex = Mutex()
+    @Volatile
     private var server: SvpnServer? = null
+    @Volatile
+    private var isForegroundService = false
 
     companion object {
         private const val TAG = "SvpnService"
@@ -32,23 +46,48 @@ class SvpnService : Service() {
         const val ACTION_START = "ru.toinet.android.svpn.START"
         const val ACTION_STOP = "ru.toinet.android.svpn.STOP"
 
+        @Volatile
+        var activeService: SvpnService? = null
+            private set
+
         val isRunning: Boolean
-            get() = SvpnServer.isRunning
+            get() = activeService?.server?.isServerRunning == true
 
         fun start(context: Context) {
-            val isForeground = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("svpn")
             val intent = Intent(context, SvpnService::class.java).apply {
                 action = ACTION_START
-                putExtra("is_foreground", isForeground)
+                putExtra("is_foreground", true)
             }
-            context.sendIntentToService(intent, isForeground = isForeground)
+            context.sendIntentToService(intent, isForeground = true)
         }
 
         fun stop(context: Context) {
             val intent = Intent(context, SvpnService::class.java).apply {
                 action = ACTION_STOP
             }
-            context.sendIntentToService(intent, isForeground = false)
+            context.stopServiceCompat(intent)
+        }
+
+        fun stopAndWait(context: Context, timeoutMs: Long = 2000L) {
+            activeService?.stopImmediate()
+            if (activeService != null) {
+                stop(context)
+            }
+            val port = if (Prefs.svpnLocalPort in 1..65535) Prefs.svpnLocalPort else 1770
+            val start = System.currentTimeMillis()
+            while (System.currentTimeMillis() - start < timeoutMs) {
+                if (!isRunning && activeService == null) {
+                    var inUse = false
+                    try {
+                        java.net.Socket().use { s ->
+                            s.connect(java.net.InetSocketAddress("127.0.0.1", port), 100)
+                            inUse = true
+                        }
+                    } catch (_: Exception) {}
+                    if (!inUse) break
+                }
+                try { Thread.sleep(50) } catch (_: InterruptedException) { break }
+            }
         }
     }
 
@@ -56,55 +95,110 @@ class SvpnService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        activeService = this
         ru.toinet.android.vpn.utility.registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "SVPN Service")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent == null) {
-            if (Prefs.isProviderActive("svpn") || Prefs.isProviderActive("ssh")) {
-                val isForeground = !Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("svpn")
-                if (isForeground) {
-                    startForegroundNotification()
-                }
-                if (server == null) {
-                    server = SvpnServer(this, scope)
-                }
-                server?.start()
+            val needed = try { ProxifierRulesManager.getAllNeededVpnProviders() } catch (_: Throwable) { emptySet() }
+            val managedByVpn = AppVpnService.activeService != null &&
+                (needed.contains("svpn") || needed.contains("ssh"))
+            if ((Prefs.isProviderActive("svpn") || Prefs.isProviderActive("ssh")) && !managedByVpn) {
+                startForegroundNotification()
+                scope.launch { startServerInternal() }
                 return START_STICKY
             } else {
                 stopSelf()
                 return START_NOT_STICKY
             }
         }
+
+        val fgRequested = intent.getBooleanExtra("is_foreground", false)
         when (intent.action) {
             ACTION_START -> {
-                val isForeground = intent.getBooleanExtra("is_foreground", false) ||
-                        (!Prefs.isGlobalVpnEnabled && Prefs.isPrimaryNotificationService("svpn"))
-                if (isForeground) {
+                if (fgRequested || !Prefs.isGlobalVpnEnabled) {
                     startForegroundNotification()
                 }
-                if (server == null) {
-                    server = SvpnServer(this, scope)
-                }
-                server?.start()
+                scope.launch { startServerInternal() }
                 return START_STICKY
             }
             "ACTIVE" -> {
-                val isForeground = intent.getBooleanExtra("is_foreground", false)
-                if (server != null && isForeground) {
+                if (server != null && (fgRequested || isForegroundService)) {
                     startForegroundNotification()
                 }
                 return START_STICKY
             }
             ACTION_STOP, ru.toinet.android.vpn.data.STOP_ACTION -> {
-                server?.stop()
-                server = null
-                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                if (fgRequested) startForegroundNotification()
+                stopImmediate()
                 return START_NOT_STICKY
             }
         }
         return START_NOT_STICKY
+    }
+
+    private suspend fun startServerInternal() {
+        mutex.withLock {
+            val needed = try { ProxifierRulesManager.getAllNeededVpnProviders() } catch (_: Throwable) { emptySet() }
+            val managedByVpn = AppVpnService.activeService != null &&
+                (needed.contains("svpn") || needed.contains("ssh"))
+            if (managedByVpn) {
+                Log.w(TAG, "SVPN is managed in-process by AppVpnService; skipping standalone start")
+                stopImmediate()
+                return
+            }
+
+            if (!Prefs.isGlobalVpnEnabled &&
+                Prefs.isPrimaryNotificationService("svpn") &&
+                !isAnyStandaloneServiceRunning()
+            ) {
+                val startingIntent = Intent(ToInetConstants.LOCAL_ACTION_STATUS).apply {
+                    putExtra(TorService.EXTRA_STATUS, TorService.STATUS_STARTING)
+                    setPackage(packageName)
+                }
+                sendBroadcast(startingIntent)
+            }
+
+            server?.stop()
+            val newServer = SvpnServer(this, scope).apply {
+                onConnectionStateChanged = { connected, error ->
+                    if (connected) {
+                        broadcastStandaloneStatus(this@SvpnService)
+                    } else {
+                        Log.w(TAG, "SVPN connection failed/disconnected: $error")
+                        scope.launch {
+                            mutex.withLock {
+                                if (server === this@apply) {
+                                    stopImmediate()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            server = newServer
+            if (!newServer.start()) {
+                Log.e(TAG, "SVPN failed to initiate start")
+                stopImmediate()
+            }
+        }
+    }
+
+    fun stopImmediate() {
+        server?.stop()
+        server = null
+        if (isForegroundService) {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            isForegroundService = false
+        }
+        val nm = getSystemService(NotificationManager::class.java)
+        nm?.cancel(NOTIFICATION_ID)
+        if (activeService == this) {
+            activeService = null
+        }
+        stopSelf()
+        broadcastStandaloneStatus(this)
     }
 
     private fun startForegroundNotification() {
@@ -148,9 +242,12 @@ class SvpnService : Service() {
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
+            isForegroundService = true
         } catch (e: Exception) {
+            Log.e(TAG, "Failed startForeground in SvpnService", e)
             try {
                 startForeground(NOTIFICATION_ID, notification)
+                isForegroundService = true
             } catch (_: Exception) {}
         }
     }
@@ -158,7 +255,11 @@ class SvpnService : Service() {
     override fun onDestroy() {
         server?.stop()
         server = null
+        if (activeService == this) {
+            activeService = null
+        }
         scope.cancel()
+        broadcastStandaloneStatus(this)
         super.onDestroy()
     }
 }

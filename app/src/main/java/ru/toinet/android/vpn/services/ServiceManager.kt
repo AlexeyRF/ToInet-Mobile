@@ -9,6 +9,7 @@ import ru.toinet.android.vpn.data.START_ACTION
 import ru.toinet.android.vpn.data.STOP_ACTION
 import ru.toinet.android.byedpi.services.ByeDpiProxyService
 import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.util.stopServiceCompat
 
 object ServiceManager {
     private val TAG: String = ServiceManager::class.java.simpleName
@@ -19,22 +20,18 @@ object ServiceManager {
                 Log.i(TAG, "Starting VPN")
                 val intent = Intent(context, AppVpnService::class.java).apply {
                     action = START_ACTION
+                    putExtra("is_foreground", true)
                 }
-                try {
-                    ContextCompat.startForegroundService(context, intent)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to start VPN foreground service", e)
-                }
+                context.sendIntentToService(intent, isForeground = true)
             }
 
             Mode.Proxy -> {
                 Log.i(TAG, "Starting proxy")
-                val isForeground = !ru.toinet.android.util.Prefs.isGlobalVpnEnabled && ru.toinet.android.util.Prefs.isPrimaryNotificationService("byedpi")
                 val intent = Intent(context, ByeDpiProxyService::class.java).apply {
                     action = START_ACTION
-                    putExtra("is_foreground", isForeground)
+                    putExtra("is_foreground", true)
                 }
-                context.sendIntentToService(intent, isForeground = isForeground)
+                context.sendIntentToService(intent, isForeground = true)
             }
         }
     }
@@ -46,23 +43,19 @@ object ServiceManager {
                 Log.i(TAG, "Stopping VPN")
                 val intent = Intent(context, AppVpnService::class.java).apply {
                     action = STOP_ACTION
+                    putExtra("is_foreground", false)
                 }
-                try {
-                    context.startService(intent)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to stop VPN service", e)
-                }
+                context.sendIntentToService(intent, isForeground = false)
             }
 
             Mode.Proxy -> {
                 Log.i(TAG, "Stopping proxy")
                 val intent = Intent(context, ByeDpiProxyService::class.java).apply {
                     action = STOP_ACTION
+                    putExtra("is_foreground", false)
                 }
-                try {
-                    context.startService(intent)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to stop proxy service", e)
+                if (!context.sendIntentToService(intent, isForeground = false)) {
+                    context.stopServiceCompat(intent)
                 }
             }
         }
