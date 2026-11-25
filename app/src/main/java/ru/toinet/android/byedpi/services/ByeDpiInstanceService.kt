@@ -1,17 +1,18 @@
 package ru.toinet.android.byedpi.services
 
-import android.app.PendingIntent
+import android.app.ActivityManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import ru.toinet.android.R
-import ru.toinet.android.ToInetActivity
 import ru.toinet.android.byedpi.core.ByeDpiProxy
 import ru.toinet.android.byedpi.core.ByeDpiProxyCmdPreferences
+import ru.toinet.android.vpn.utility.ACTION_REFRESH_FOREGROUND_NOTIFICATION
+import ru.toinet.android.vpn.utility.SHARED_FOREGROUND_ID
+import ru.toinet.android.vpn.utility.buildSilentFallbackNotification
 import ru.toinet.android.vpn.utility.registerNotificationChannel
 import kotlin.concurrent.thread
 
@@ -22,7 +23,6 @@ open class ByeDpiInstanceService : Service() {
 
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "byedpi_instance"
-        private const val NOTIFICATION_ID_BASE = 11080
     }
 
     override fun onCreate() {
@@ -39,7 +39,7 @@ open class ByeDpiInstanceService : Service() {
         }
 
         if (action == "START") {
-            val cmd = intent?.getStringExtra("CMD")
+            val cmd = intent.getStringExtra("CMD")
             if (cmd == null) {
                 stopForegroundAndSelf()
                 return START_NOT_STICKY
@@ -79,48 +79,61 @@ open class ByeDpiInstanceService : Service() {
     }
 
     private fun startSilentForeground() {
-        registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "zDPI Router Instance")
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, ToInetActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        val notification = NotificationCompat.Builder(this, "${NOTIFICATION_CHANNEL_ID}_silent")
-            .setSmallIcon(R.drawable.ic_stat_tor)
-            .setContentTitle("ToInet")
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setSilent(true)
-            .setOngoing(true)
-            .setGroup("toinet_services")
-            .setContentIntent(pendingIntent)
-            .build()
-
-        val notifId = NOTIFICATION_ID_BASE + (javaClass.simpleName.hashCode() and 0xFF)
+        val notification = buildSilentFallbackNotification(this)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(notifId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                startForeground(SHARED_FOREGROUND_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
             } else {
-                startForeground(notifId, notification)
+                startForeground(SHARED_FOREGROUND_ID, notification)
             }
             isForegroundService = true
         } catch (_: Exception) {
             try {
-                startForeground(notifId, notification)
+                startForeground(SHARED_FOREGROUND_ID, notification)
                 isForegroundService = true
             } catch (_: Exception) {}
+        }
+        if (isParentForegroundRunning()) {
+            sendBroadcast(Intent(ACTION_REFRESH_FOREGROUND_NOTIFICATION).setPackage(packageName))
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun isParentForegroundRunning(): Boolean {
+        return try {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return false
+            am.getRunningServices(100).any {
+                it.service.packageName == packageName &&
+                    it.foreground &&
+                    !it.service.className.startsWith("ru.toinet.android.byedpi.services.ByeDpiInstance")
+            }
+        } catch (_: Exception) {
+            false
         }
     }
 
     private fun stopForegroundAndSelf() {
         if (isForegroundService) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            if (isParentForegroundRunning()) {
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
+                sendBroadcast(Intent(ACTION_REFRESH_FOREGROUND_NOTIFICATION).setPackage(packageName))
+            } else {
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            }
             isForegroundService = false
         }
         stopSelf()
     }
 
     override fun onDestroy() {
+        if (isForegroundService) {
+            if (isParentForegroundRunning()) {
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
+            } else {
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            }
+            isForegroundService = false
+        }
         super.onDestroy()
         proxy?.stopProxy()
         proxyThread?.interrupt()

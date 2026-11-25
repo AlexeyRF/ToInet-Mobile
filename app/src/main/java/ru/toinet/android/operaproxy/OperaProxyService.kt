@@ -1,17 +1,13 @@
 package ru.toinet.android.operaproxy
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,6 +23,11 @@ import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.util.stopServiceCompat
 import ru.toinet.android.vpn.rules.ProxifierRulesManager
 import ru.toinet.android.vpn.services.AppVpnService
+import ru.toinet.android.vpn.utility.NOTIFICATION_GROUP_KEY
+import ru.toinet.android.vpn.utility.ensureSharedNotificationChannels
+import ru.toinet.android.vpn.utility.resolveNotificationChannelAndPriority
+import ru.toinet.android.vpn.utility.startSharedForeground
+import ru.toinet.android.vpn.utility.stopSharedForeground
 
 class OperaProxyService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -39,7 +40,6 @@ class OperaProxyService : Service() {
     companion object {
         private const val TAG = "OperaProxyService"
         private const val NOTIFICATION_CHANNEL_ID = "operaproxy_channel"
-        private const val NOTIFICATION_ID = 1002
 
         const val ACTION_START = "ru.toinet.android.operaproxy.START"
         const val ACTION_STOP = "ru.toinet.android.operaproxy.STOP"
@@ -169,12 +169,9 @@ class OperaProxyService : Service() {
     fun stopImmediate() {
         server?.stop()
         server = null
-        if (isForegroundService) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            isForegroundService = false
-        }
-        val nm = getSystemService(NotificationManager::class.java)
-        nm?.cancel(NOTIFICATION_ID)
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "operaproxy", wasForeground = wasFg)
         if (activeService == this) {
             activeService = null
         }
@@ -182,27 +179,28 @@ class OperaProxyService : Service() {
         ru.toinet.android.util.broadcastStandaloneStatus(this)
     }
 
-    private fun startForegroundNotification() {
+    private fun buildNotification(): Notification {
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
             notificationIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val bindAddress = Prefs.operaProxyBindAddress.takeIf { it.isNotBlank() } ?: "127.0.0.1:1785"
 
-        ru.toinet.android.vpn.utility.registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "Opera Proxy Service")
+        ensureSharedNotificationChannels(this)
 
-        val (actualId, priority) = ru.toinet.android.vpn.utility.resolveNotificationChannelAndPriority("operaproxy", NOTIFICATION_CHANNEL_ID)
+        val (actualId, priority) = resolveNotificationChannelAndPriority("operaproxy", NOTIFICATION_CHANNEL_ID)
         val isDetailed = Prefs.shouldShowDetailedNotification("operaproxy")
 
         val builder = NotificationCompat.Builder(this, actualId)
             .setSmallIcon(R.drawable.ic_stat_tor)
             .setSilent(true)
+            .setOnlyAlertOnce(true)
             .setOngoing(true)
-            .setGroup("toinet_services")
+            .setGroup(NOTIFICATION_GROUP_KEY)
             .setContentIntent(pendingIntent)
             .setPriority(priority)
 
@@ -215,26 +213,20 @@ class OperaProxyService : Service() {
                 .setContentText("SOCKS5: $bindAddress")
         }
 
-        val notification = builder.build()
+        return builder.build()
+    }
 
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-            isForegroundService = true
-        } catch (e: Exception) {
-            try {
-                startForeground(NOTIFICATION_ID, notification)
-                isForegroundService = true
-            } catch (_: Exception) {}
-        }
+    private fun startForegroundNotification() {
+        startSharedForeground(this, "operaproxy") { buildNotification() }
+        isForegroundService = true
     }
 
     override fun onDestroy() {
         server?.stop()
         server = null
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "operaproxy", wasForeground = wasFg)
         if (activeService == this) {
             activeService = null
         }

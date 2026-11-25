@@ -1,75 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:layout_height="wrap_content">
 
-    <TextView
-        android:id="@+id/tvDialogTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Редактирование правила"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
-
-    <com.google.android.material.textfield.TextInputLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Имя правила (Rule Name)"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        android:layout_marginBottom="12dp">
+        android:orientation="vertical"
+        android:padding="20dp">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etRuleName"
+        <TextView
+            android:id="@+id/tvDialogTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Редактирование правила"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="textCapSentences" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:hint="Имя правила (если пусто — заполнится само)"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_marginBottom="12dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Приложения (Applications):"
-        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
-        android:layout_marginBottom="4dp" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etRuleName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapSentences" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnChooseApps"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Выбрать приложения (0 выбрано)"
-        app:icon="@drawable/ic_choose_apps"
-        android:layout_marginBottom="12dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Приложения (Applications):"
+            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:layout_marginBottom="4dp" />
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Домены через запятую (напр. *.googlevideo.com, youtube.com)"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        android:layout_marginBottom="12dp">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etCustomDomains"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnChooseApps"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="textUri" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:text="Выбрать приложения (0 выбрано)"
+            app:icon="@drawable/ic_choose_apps"
+            android:layout_marginBottom="12dp" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Действие (Action / Proxy):"
-        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
-        android:layout_marginBottom="4dp" />
+        <!-- Domain filtering commented out
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Домены через запятую (напр. *.googlevideo.com, youtube.com)"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_marginBottom="12dp">
 
-    <Spinner
-        android:id="@+id/spAction"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etCustomDomains"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri" />
+        </com.google.android.material.textfield.TextInputLayout>
+        -->
 
-</LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Действие (Action / Proxy):"
+            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:layout_marginBottom="6dp" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/cgAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:chipSpacingHorizontal="8dp"
+            app:chipSpacingVertical="4dp"
+            app:selectionRequired="true"
+            app:singleSelection="true" />
+
+    </LinearLayout>
+</ScrollView>

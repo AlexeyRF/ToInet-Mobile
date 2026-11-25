@@ -1,15 +1,11 @@
 package ru.toinet.android.easyvpn
 
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +20,9 @@ import ru.toinet.android.vpn.rules.ProxifierRulesManager
 import ru.toinet.android.vpn.services.AppVpnService
 import ru.toinet.android.vpn.utility.createConnectionNotificationString
 import ru.toinet.android.vpn.utility.registerNotificationChannel
+import ru.toinet.android.vpn.utility.startSharedForeground
+import ru.toinet.android.vpn.utility.stopSharedForeground
+import ru.toinet.android.vpn.utility.updateSharedForegroundNotification
 
 class EasyVpnService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -36,7 +35,6 @@ class EasyVpnService : Service() {
     companion object {
         private const val TAG = "EasyVpnService"
         private const val NOTIFICATION_CHANNEL_ID = "EasyVpnProxy"
-        private const val NOTIFICATION_ID = 1001
 
         const val ACTION_START = "ru.toinet.android.easyvpn.START"
         const val ACTION_STOP = "ru.toinet.android.easyvpn.STOP"
@@ -151,8 +149,7 @@ class EasyVpnService : Service() {
                 server = EasyVpnServer(this, scope).apply {
                     onServerChanged = {
                         if (isForegroundService || Prefs.shouldServiceShowNotification("easyvpn")) {
-                            val nm = getSystemService(NotificationManager::class.java)
-                            nm?.notify(NOTIFICATION_ID, buildNotification())
+                            updateSharedForegroundNotification(this@EasyVpnService, "easyvpn") { buildNotification() }
                         }
                     }
                     onStateChanged = { running, error ->
@@ -177,12 +174,9 @@ class EasyVpnService : Service() {
     fun stopImmediate() {
         server?.stop()
         server = null
-        if (isForegroundService) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            isForegroundService = false
-        }
-        val nm = getSystemService(NotificationManager::class.java)
-        nm?.cancel(NOTIFICATION_ID)
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "easyvpn", wasForeground = wasFg)
         if (activeService == this) {
             activeService = null
         }
@@ -214,26 +208,16 @@ class EasyVpnService : Service() {
     }
 
     private fun startForegroundNotification() {
-        val notification = buildNotification()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-            isForegroundService = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed startForeground in EasyVpnService", e)
-            try {
-                startForeground(NOTIFICATION_ID, notification)
-                isForegroundService = true
-            } catch (_: Exception) {}
-        }
+        startSharedForeground(this, "easyvpn") { buildNotification() }
+        isForegroundService = true
     }
 
     override fun onDestroy() {
         server?.stop()
         server = null
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "easyvpn", wasForeground = wasFg)
         if (activeService == this) {
             activeService = null
         }

@@ -160,11 +160,7 @@ class OperaProxyServer(
             var bound = false
             var processAlive = true
             while (System.currentTimeMillis() - waitStart < 2500L) {
-                processAlive = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    proc.isAlive
-                } else {
-                    try { proc.exitValue(); false } catch (_: IllegalThreadStateException) { true }
-                }
+                processAlive = proc.isAlive
                 if (!processAlive || isStopped) break
                 try {
                     java.net.Socket().use { s ->
@@ -216,13 +212,8 @@ class OperaProxyServer(
         try {
             val oldProc = process
             if (oldProc != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    oldProc.destroyForcibly()
-                    try { oldProc.waitFor(500, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: Exception) {}
-                } else {
-                    oldProc.destroy()
-                    try { Thread.sleep(100) } catch (_: Exception) {}
-                }
+                oldProc.destroyForcibly()
+                try { oldProc.waitFor(500, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: Exception) {}
             }
         } catch (_: Exception) {
             // ignore

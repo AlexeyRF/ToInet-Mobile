@@ -11,7 +11,6 @@ import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
 
-import android.os.Build
 import android.util.TypedValue
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowInsetsControllerCompat
@@ -54,13 +53,8 @@ open class ToInetBottomSheetDialogFragment : BottomSheetDialogFragment() {
             }
 
             window.navigationBarColor = colorSurfaceContainer
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                window.navigationBarDividerColor = Color.TRANSPARENT
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window.isNavigationBarContrastEnforced = false
-            }
+            window.navigationBarDividerColor = Color.TRANSPARENT
+            window.isNavigationBarContrastEnforced = false
 
             val isLight = ColorUtils.calculateLuminance(colorSurfaceContainer) > 0.5
             WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = isLight

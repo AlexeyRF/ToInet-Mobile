@@ -1,16 +1,13 @@
 package ru.toinet.android.tgws
 
-import android.app.NotificationManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +26,11 @@ import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.broadcastStandaloneStatus
 import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.util.stopServiceCompat
+import ru.toinet.android.vpn.utility.NOTIFICATION_GROUP_KEY
+import ru.toinet.android.vpn.utility.ensureSharedNotificationChannels
+import ru.toinet.android.vpn.utility.resolveNotificationChannelAndPriority
+import ru.toinet.android.vpn.utility.startSharedForeground
+import ru.toinet.android.vpn.utility.stopSharedForeground
 import java.net.InetSocketAddress
 import java.net.Socket
 
@@ -45,7 +47,6 @@ class TgwsService : Service() {
         const val ACTION_START = "ru.toinet.android.tgws.START"
         const val ACTION_STOP = "ru.toinet.android.tgws.STOP"
         private const val NOTIFICATION_CHANNEL_ID = "tgws_channel"
-        private const val NOTIFICATION_ID = 1480
 
         private val _logs = MutableSharedFlow<String>(extraBufferCapacity = 100)
         val logs = _logs.asSharedFlow()
@@ -309,12 +310,9 @@ class TgwsService : Service() {
         Gatik.stop()
         tgwsCore?.stop()
         tgwsCore = null
-        if (isForegroundService) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            isForegroundService = false
-        }
-        val nm = getSystemService(NotificationManager::class.java)
-        nm?.cancel(NOTIFICATION_ID)
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "tgws", wasForeground = wasFg)
         if (activeService == this) {
             activeService = null
         }
@@ -326,6 +324,9 @@ class TgwsService : Service() {
         Gatik.stop()
         tgwsCore?.stop()
         tgwsCore = null
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "tgws", wasForeground = wasFg)
         if (activeService == this) {
             activeService = null
         }
@@ -336,26 +337,23 @@ class TgwsService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun startForegroundNotification() {
+    private fun buildNotification(): Notification {
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this, 0, notificationIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        ru.toinet.android.vpn.utility.registerNotificationChannel(
-            this,
-            NOTIFICATION_CHANNEL_ID,
-            getString(R.string.tgws_proxy_channel_name)
-        )
-        val (actualId, priority) = ru.toinet.android.vpn.utility.resolveNotificationChannelAndPriority("tgws", NOTIFICATION_CHANNEL_ID)
+        ensureSharedNotificationChannels(this)
+        val (actualId, priority) = resolveNotificationChannelAndPriority("tgws", NOTIFICATION_CHANNEL_ID)
         val isDetailed = Prefs.shouldShowDetailedNotification("tgws")
 
         val builder = NotificationCompat.Builder(this, actualId)
             .setSmallIcon(R.drawable.ic_send_airplane)
             .setSilent(true)
+            .setOnlyAlertOnce(true)
             .setOngoing(true)
-            .setGroup("toinet_services")
+            .setGroup(NOTIFICATION_GROUP_KEY)
             .setContentIntent(pendingIntent)
             .setPriority(priority)
 
@@ -368,21 +366,11 @@ class TgwsService : Service() {
                 .setContentText("TGWS Proxy запущен на порту ${Prefs.tgwsPort}")
         }
 
-        val notification = builder.build()
+        return builder.build()
+    }
 
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-            isForegroundService = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed startForeground in TgwsService", e)
-            try {
-                startForeground(NOTIFICATION_ID, notification)
-                isForegroundService = true
-            } catch (_: Exception) {}
-        }
+    private fun startForegroundNotification() {
+        startSharedForeground(this, "tgws") { buildNotification() }
+        isForegroundService = true
     }
 }

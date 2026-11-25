@@ -1,7 +1,6 @@
 package ru.toinet.android.util
 
 import android.content.Context
-import android.os.Build
 import ru.toinet.android.vpn.services.AppVpnService
 import java.net.InetAddress
 
@@ -87,7 +86,7 @@ object AddressStatusHelper {
     @JvmStatic
     fun isUsedForRuApps(context: Context): Boolean {
         // If Proxifier (per-app routing) is active
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && Prefs.appRoutingEnabled) {
+        if (Prefs.appRoutingEnabled) {
             try {
                 val rules = ru.toinet.android.vpn.rules.ProxifierRulesManager.getRules()
                 for (rule in rules) {
@@ -138,7 +137,7 @@ object AddressStatusHelper {
         }
 
         // Check if VPN is used for the whole device (not per-app Proxifier)
-        val isWholeDevice = !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && Prefs.appRoutingEnabled)
+        val isWholeDevice = !Prefs.appRoutingEnabled
         if (isWholeDevice) {
             return STATUS_HIDDEN
         }

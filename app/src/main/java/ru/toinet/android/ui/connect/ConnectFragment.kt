@@ -47,9 +47,6 @@ class ConnectFragment : Fragment(),
         }
     }
 
-    private val lastStatus: String
-        get() = (activity as? ToInetActivity)?.previousReceivedTorStatus ?: ""
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -112,14 +109,6 @@ class ConnectFragment : Fragment(),
         
         binding.btnProvider.setOnClickListener {
             ProxifierRulesBottomSheet().show(requireActivity().supportFragmentManager, ProxifierRulesBottomSheet.TAG)
-            /*
-            // Single provider selector (commented out as requested):
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && Prefs.appRoutingEnabled) {
-                ProxifierRulesBottomSheet().show(requireActivity().supportFragmentManager, ProxifierRulesBottomSheet.TAG)
-            } else {
-                VpnBottomSheet().show(requireActivity().supportFragmentManager, VpnBottomSheet.TAG)
-            }
-            */
         }
         
         binding.btnSettings.setOnClickListener {
@@ -150,30 +139,33 @@ class ConnectFragment : Fragment(),
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         binding = FragmentConnectBinding.inflate(inflater, container, false)
-        val effectiveStatus = if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
-            TorService.STATUS_ON
-        } else if (!Prefs.isGlobalVpnEnabled && (Prefs.vpnProvider == "svpn" || Prefs.vpnProvider == "ssh" || Prefs.svpnEnabled)) {
-            if (ru.toinet.android.svpn.SvpnService.isRunning) TorService.STATUS_ON else TorService.STATUS_OFF
-        } else {
-            lastStatus
-        }
-        viewModel.updateState(requireContext(), effectiveStatus)
+        syncConnectionState(requireContext())
         return binding.root
     }
 
     override fun onResume() {
         super.onResume()
-        val effectiveStatus = if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
-            TorService.STATUS_ON
-        } else if (!Prefs.isGlobalVpnEnabled && (Prefs.vpnProvider == "svpn" || Prefs.vpnProvider == "ssh" || Prefs.svpnEnabled)) {
-            if (ru.toinet.android.svpn.SvpnService.isRunning) TorService.STATUS_ON else TorService.STATUS_OFF
-        } else {
-            lastStatus
+        syncConnectionState(requireContext())
+        refreshMenuList(requireContext())
+    }
+
+    private fun syncConnectionState(context: Context) {
+        val act = activity as? ToInetActivity
+        val isViewModelStarting = viewModel.uiState.value is ConnectUiState.Starting
+        val effectiveStatus = ToInetActivity.resolveEffectiveStatus(
+            context,
+            act?.previousReceivedTorStatus,
+            isViewModelStarting
+        )
+        act?.previousReceivedTorStatus = effectiveStatus
+        if (effectiveStatus != TorService.STATUS_STARTING || !isViewModelStarting) {
+            viewModel.updateState(context, effectiveStatus)
         }
-        viewModel.updateState(requireContext(), effectiveStatus)
     }
 
     fun stopTorAndVpn() {
+        (activity as? ToInetActivity)?.previousReceivedTorStatus = TorService.STATUS_OFF
+        viewModel.updateState(requireContext(), TorService.STATUS_OFF)
         setState(TorService.ACTION_STOP)
         doLayoutOff()
     }
@@ -186,6 +178,8 @@ class ConnectFragment : Fragment(),
             PowerUserForegroundPermDialog().createTransactionAndShow(requireActivity())
             return // user can try again after granting permission
         }
+        (activity as? ToInetActivity)?.previousReceivedTorStatus = TorService.STATUS_STARTING
+        viewModel.updateState(requireContext(), TorService.STATUS_STARTING)
         doLayoutStarting(requireContext())
         setState(TorService.ACTION_START)
     }
@@ -222,15 +216,15 @@ class ConnectFragment : Fragment(),
     }
 
     fun refreshMenuList(context: Context) {
-        binding.btnProvider.text = "VPN Правила"
-        /*
-        // Single provider menu text (commented out):
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && Prefs.appRoutingEnabled) {
-            binding.btnProvider.text = "VPN Правила"
+        binding.btnProvider.text = if (Prefs.vpnSeparateNetworkProfiles) {
+            if (Prefs.currentVpnNetworkType == Prefs.VPN_PROFILE_WIFI) {
+                "VPN Правила (Wi-Fi)"
+            } else {
+                "VPN Правила (Моб.)"
+            }
         } else {
-            binding.btnProvider.text = "VPN Провайдер"
+            "VPN Правила"
         }
-        */
     }
 
 

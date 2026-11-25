@@ -1,16 +1,13 @@
 package ru.toinet.android.svpn
 
-import android.app.NotificationManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,6 +26,11 @@ import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.util.stopServiceCompat
 import ru.toinet.android.vpn.rules.ProxifierRulesManager
 import ru.toinet.android.vpn.services.AppVpnService
+import ru.toinet.android.vpn.utility.NOTIFICATION_GROUP_KEY
+import ru.toinet.android.vpn.utility.ensureSharedNotificationChannels
+import ru.toinet.android.vpn.utility.resolveNotificationChannelAndPriority
+import ru.toinet.android.vpn.utility.startSharedForeground
+import ru.toinet.android.vpn.utility.stopSharedForeground
 
 class SvpnService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -41,7 +43,6 @@ class SvpnService : Service() {
     companion object {
         private const val TAG = "SvpnService"
         private const val NOTIFICATION_CHANNEL_ID = "svpn_channel"
-        private const val NOTIFICATION_ID = 1003
 
         const val ACTION_START = "ru.toinet.android.svpn.START"
         const val ACTION_STOP = "ru.toinet.android.svpn.STOP"
@@ -188,12 +189,9 @@ class SvpnService : Service() {
     fun stopImmediate() {
         server?.stop()
         server = null
-        if (isForegroundService) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            isForegroundService = false
-        }
-        val nm = getSystemService(NotificationManager::class.java)
-        nm?.cancel(NOTIFICATION_ID)
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "svpn", wasForeground = wasFg)
         if (activeService == this) {
             activeService = null
         }
@@ -201,27 +199,28 @@ class SvpnService : Service() {
         broadcastStandaloneStatus(this)
     }
 
-    private fun startForegroundNotification() {
+    private fun buildNotification(): Notification {
         val notificationIntent = Intent(this, ToInetActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
             notificationIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val bindAddress = if (Prefs.openProxyOnAllInterfaces) "0.0.0.0:${Prefs.svpnLocalPort}" else "127.0.0.1:${Prefs.svpnLocalPort}"
 
-        ru.toinet.android.vpn.utility.registerNotificationChannel(this, NOTIFICATION_CHANNEL_ID, "SVPN Service")
+        ensureSharedNotificationChannels(this)
 
-        val (actualId, priority) = ru.toinet.android.vpn.utility.resolveNotificationChannelAndPriority("svpn", NOTIFICATION_CHANNEL_ID)
+        val (actualId, priority) = resolveNotificationChannelAndPriority("svpn", NOTIFICATION_CHANNEL_ID)
         val isDetailed = Prefs.shouldShowDetailedNotification("svpn")
 
         val builder = NotificationCompat.Builder(this, actualId)
             .setSmallIcon(R.drawable.ic_stat_tor)
             .setSilent(true)
+            .setOnlyAlertOnce(true)
             .setOngoing(true)
-            .setGroup("toinet_services")
+            .setGroup(NOTIFICATION_GROUP_KEY)
             .setContentIntent(pendingIntent)
             .setPriority(priority)
 
@@ -234,27 +233,20 @@ class SvpnService : Service() {
                 .setContentText("SOCKS5: $bindAddress")
         }
 
-        val notification = builder.build()
+        return builder.build()
+    }
 
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-            isForegroundService = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed startForeground in SvpnService", e)
-            try {
-                startForeground(NOTIFICATION_ID, notification)
-                isForegroundService = true
-            } catch (_: Exception) {}
-        }
+    private fun startForegroundNotification() {
+        startSharedForeground(this, "svpn") { buildNotification() }
+        isForegroundService = true
     }
 
     override fun onDestroy() {
         server?.stop()
         server = null
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "svpn", wasForeground = wasFg)
         if (activeService == this) {
             activeService = null
         }

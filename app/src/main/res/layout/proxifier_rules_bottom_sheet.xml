@@ -18,40 +18,67 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:orientation="vertical"
             android:layout_marginBottom="8dp">
 
-            <LinearLayout
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Proxification Rules"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Раздельное туннелирование по приоритету (сверху вниз)"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?android:textColorSecondary" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvCurrentNetwork"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Текущая сеть: Wi-Fi"
+            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:textColor="?attr/colorPrimary"
+            android:layout_marginBottom="4dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swSeparateVpnProfiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Раздельные профили Wi-Fi и мобильной сети"
+            android:layout_marginBottom="4dp" />
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggleNetworkProfile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnProfileWifi"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:maxLines="1"
+                android:text="Wi-Fi" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Proxification Rules"
-                    android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Раздельное туннелирование по приоритету (сверху вниз)"
-                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                    android:textColor="?android:textColorSecondary" />
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/btnStandardSettings"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:visibility="gone"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/baseline_settings_24"
-                android:contentDescription="Стандартные настройки VPN" />
-        </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnProfileMobile"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:text="Мобильная" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/swVpnEnabled"
@@ -60,14 +87,13 @@
             android:text="Включить VPN"
             android:layout_marginBottom="8dp" />
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/swAppRouting"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddRule"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:text="Включить правила Proxifier"
-            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-            android:layout_marginBottom="12dp" />
+            android:text="+ Добавить правило"
+            android:layout_marginBottom="8dp" />
 
         <!-- Table Columns Header -->
         <LinearLayout
@@ -162,18 +188,10 @@
 
         <!-- Action Buttons -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnAddRule"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="+ Добавить правило"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Применить и сохранить" />
+            android:text="Готово" />
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

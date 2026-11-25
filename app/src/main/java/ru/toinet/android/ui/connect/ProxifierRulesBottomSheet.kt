@@ -1,7 +1,9 @@
 package ru.toinet.android.ui.connect
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Bundle
@@ -9,29 +11,33 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.materialswitch.MaterialSwitch
 import ru.toinet.android.R
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
+import ru.toinet.android.util.ACTION_VPN_PROFILE_CHANGED
+import ru.toinet.android.util.NetworkUtils
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.sendIntentToService
-import ru.toinet.android.util.setGlobalVpnEnabled
+import ru.toinet.android.util.setGlobalVpnEnabledForProfile
+import ru.toinet.android.util.setSeparateVpnProfilesEnabled
 import ru.toinet.android.vpn.rules.ProxifierRule
 import ru.toinet.android.vpn.rules.ProxifierRulesManager
 import ru.toinet.android.vpn.services.AppVpnService
@@ -44,26 +50,49 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     private lateinit var adapter: RulesAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
     private var defaultAction = ProxifierRule.ACTION_DIRECT
+    private var selectedProfileKey = Prefs.VPN_PROFILE_UNIFIED
+    private var pendingVpnProfileKey: String? = null
     private var isUpdatingVpnSwitch = false
+    private var isUpdatingProfileUi = false
     private var swVpnEnabledView: MaterialSwitch? = null
+    private var tvCurrentNetworkView: TextView? = null
+    private var btnDefaultActionView: MaterialButton? = null
+
+    private val profileChangedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ACTION_VPN_PROFILE_CHANGED) {
+                updateCurrentNetworkBanner(Prefs.currentVpnNetworkType == Prefs.VPN_PROFILE_WIFI)
+            }
+        }
+    }
 
     private val vpnPrepareLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         val ctx = context ?: return@registerForActivityResult
+        val targetProfile = pendingVpnProfileKey ?: selectedProfileKey
+        pendingVpnProfileKey = null
         if (result.resultCode == AppCompatActivity.RESULT_OK) {
-            ctx.setGlobalVpnEnabled(true)
+            ctx.setGlobalVpnEnabledForProfile(targetProfile, true)
             viewModel.triggerRefreshMenuList()
         } else {
-            isUpdatingVpnSwitch = true
-            swVpnEnabledView?.isChecked = false
-            isUpdatingVpnSwitch = false
-            ctx.setGlobalVpnEnabled(false)
+            if (selectedProfileKey == targetProfile) {
+                isUpdatingVpnSwitch = true
+                swVpnEnabledView?.isChecked = false
+                isUpdatingVpnSwitch = false
+            }
+            ctx.setGlobalVpnEnabledForProfile(targetProfile, false)
             viewModel.triggerRefreshMenuList()
         }
     }
 
     override fun getHeightRatio(): Float = -1f
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_SELECTED_PROFILE, selectedProfileKey)
+        outState.putString(KEY_PENDING_VPN_PROFILE, pendingVpnProfileKey)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -72,57 +101,114 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     ): View {
         val view = inflater.inflate(R.layout.proxifier_rules_bottom_sheet, container, false)
 
+        val tvCurrentNetwork = view.findViewById<TextView>(R.id.tvCurrentNetwork)
+        val swSeparateVpnProfiles = view.findViewById<MaterialSwitch>(R.id.swSeparateVpnProfiles)
+        val toggleNetworkProfile = view.findViewById<MaterialButtonToggleGroup>(R.id.toggleNetworkProfile)
         val swVpnEnabled = view.findViewById<MaterialSwitch>(R.id.swVpnEnabled)
-        val swAppRouting = view.findViewById<MaterialSwitch>(R.id.swAppRouting)
-        val btnStandardSettings = view.findViewById<ImageButton>(R.id.btnStandardSettings)
         val rvRules = view.findViewById<RecyclerView>(R.id.rvRules)
         val btnDefaultAction = view.findViewById<MaterialButton>(R.id.btnDefaultAction)
         val btnAddRule = view.findViewById<MaterialButton>(R.id.btnAddRule)
         val btnSave = view.findViewById<MaterialButton>(R.id.btnSave)
 
+        tvCurrentNetworkView = tvCurrentNetwork
         swVpnEnabledView = swVpnEnabled
-        isUpdatingVpnSwitch = true
-        swVpnEnabled.isChecked = Prefs.isGlobalVpnEnabled
-        isUpdatingVpnSwitch = false
+        btnDefaultActionView = btnDefaultAction
 
-        swVpnEnabled.setOnCheckedChangeListener { _, isChecked ->
-            if (isUpdatingVpnSwitch) return@setOnCheckedChangeListener
-            if (isChecked) {
-                val prepareIntent = VpnService.prepare(requireContext())
-                if (prepareIntent != null) {
-                    vpnPrepareLauncher.launch(prepareIntent)
-                } else {
-                    requireContext().setGlobalVpnEnabled(true)
-                    viewModel.triggerRefreshMenuList()
-                }
-            } else {
-                requireContext().setGlobalVpnEnabled(false)
-                viewModel.triggerRefreshMenuList()
-            }
-        }
-
-        // Proxifier rules are now the main VPN operation mode
-        swAppRouting.visibility = View.GONE
-        swAppRouting.isChecked = true
-        btnStandardSettings.visibility = View.GONE
-
-        defaultAction = Prefs.appRoutingDefaultAction
-        btnDefaultAction.text = ProxifierRule.getActionTitle(defaultAction)
-        btnDefaultAction.setOnClickListener {
-            showActionPicker(it) { chosenAction ->
-                defaultAction = chosenAction
-                btnDefaultAction.text = ProxifierRule.getActionTitle(chosenAction)
-            }
-        }
-
-        rulesList.clear()
-        rulesList.addAll(ProxifierRulesManager.getRules())
+        pendingVpnProfileKey = savedInstanceState?.getString(KEY_PENDING_VPN_PROFILE)
 
         rvRules.layoutManager = LinearLayoutManager(requireContext())
         adapter = RulesAdapter()
         rvRules.adapter = adapter
 
+        val separateEnabled = Prefs.vpnSeparateNetworkProfiles
+        val isWifi = NetworkUtils.isWifiConnected(requireContext())
+        updateCurrentNetworkBanner(isWifi)
+
+        val restoredProfile = savedInstanceState?.getString(KEY_SELECTED_PROFILE)
+        selectedProfileKey = when {
+            !separateEnabled -> Prefs.VPN_PROFILE_UNIFIED
+            restoredProfile == Prefs.VPN_PROFILE_WIFI || restoredProfile == Prefs.VPN_PROFILE_MOBILE ->
+                restoredProfile
+            isWifi -> Prefs.VPN_PROFILE_WIFI
+            else -> Prefs.VPN_PROFILE_MOBILE
+        }
+
+        isUpdatingProfileUi = true
+        swSeparateVpnProfiles.isChecked = separateEnabled
+        toggleNetworkProfile.visibility = if (separateEnabled) View.VISIBLE else View.GONE
+        if (separateEnabled) {
+            toggleNetworkProfile.check(
+                if (selectedProfileKey == Prefs.VPN_PROFILE_WIFI) R.id.btnProfileWifi else R.id.btnProfileMobile
+            )
+        }
+        isUpdatingProfileUi = false
+
+        loadProfileIntoUi(selectedProfileKey)
+
+        swSeparateVpnProfiles.setOnCheckedChangeListener { _, isChecked ->
+            if (isUpdatingProfileUi) return@setOnCheckedChangeListener
+            val ctx = requireContext()
+            ctx.setSeparateVpnProfilesEnabled(isChecked)
+            val nowWifi = NetworkUtils.isWifiConnected(ctx)
+            updateCurrentNetworkBanner(nowWifi)
+            toggleNetworkProfile.visibility = if (isChecked) View.VISIBLE else View.GONE
+            val nextProfile = if (isChecked) {
+                if (nowWifi) Prefs.VPN_PROFILE_WIFI else Prefs.VPN_PROFILE_MOBILE
+            } else {
+                Prefs.VPN_PROFILE_UNIFIED
+            }
+            isUpdatingProfileUi = true
+            if (isChecked) {
+                toggleNetworkProfile.check(
+                    if (nextProfile == Prefs.VPN_PROFILE_WIFI) R.id.btnProfileWifi else R.id.btnProfileMobile
+                )
+            }
+            isUpdatingProfileUi = false
+            loadProfileIntoUi(nextProfile)
+            viewModel.triggerRefreshMenuList()
+        }
+
+        toggleNetworkProfile.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isUpdatingProfileUi || !isChecked) return@addOnButtonCheckedListener
+            val nextProfile = when (checkedId) {
+                R.id.btnProfileWifi -> Prefs.VPN_PROFILE_WIFI
+                R.id.btnProfileMobile -> Prefs.VPN_PROFILE_MOBILE
+                else -> return@addOnButtonCheckedListener
+            }
+            if (nextProfile != selectedProfileKey) {
+                loadProfileIntoUi(nextProfile)
+            }
+        }
+
+        swVpnEnabled.setOnCheckedChangeListener { _, isChecked ->
+            if (isUpdatingVpnSwitch) return@setOnCheckedChangeListener
+            val targetProfile = selectedProfileKey
+            if (isChecked) {
+                val prepareIntent = VpnService.prepare(requireContext())
+                if (prepareIntent != null) {
+                    pendingVpnProfileKey = targetProfile
+                    vpnPrepareLauncher.launch(prepareIntent)
+                } else {
+                    requireContext().setGlobalVpnEnabledForProfile(targetProfile, true)
+                    viewModel.triggerRefreshMenuList()
+                }
+            } else {
+                requireContext().setGlobalVpnEnabledForProfile(targetProfile, false)
+                viewModel.triggerRefreshMenuList()
+            }
+        }
+
+        btnDefaultAction.setOnClickListener {
+            showActionPicker(it) { chosenAction ->
+                defaultAction = chosenAction
+                btnDefaultAction.text = ProxifierRule.getActionTitle(chosenAction)
+                saveAndApplyRules()
+            }
+        }
+
         val touchCallback = object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
+            private var dragMoved = false
+
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
@@ -133,13 +219,21 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
                 if (fromPos != RecyclerView.NO_POSITION && toPos != RecyclerView.NO_POSITION && fromPos != toPos) {
                     Collections.swap(rulesList, fromPos, toPos)
                     adapter.notifyItemMoved(fromPos, toPos)
-                    adapter.notifyItemChanged(fromPos)
-                    adapter.notifyItemChanged(toPos)
+                    dragMoved = true
                 }
                 return true
             }
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                if (dragMoved) {
+                    dragMoved = false
+                    adapter.notifyDataSetChanged()
+                    saveAndApplyRules()
+                }
+            }
         }
         itemTouchHelper = ItemTouchHelper(touchCallback)
         itemTouchHelper.attachToRecyclerView(rvRules)
@@ -149,29 +243,131 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
         }
 
         btnSave.setOnClickListener {
-            Prefs.appRoutingEnabled = true
-            Prefs.appRoutingDefaultAction = defaultAction
-            ProxifierRulesManager.saveRules(rulesList)
-
-            if (Prefs.isGlobalVpnEnabled && AppVpnService.isConnected) {
-                requireContext().sendIntentToService(
-                    Intent(requireContext(), AppVpnService::class.java).apply {
-                        action = "ACTIVE"
-                    },
-                    isForeground = false
-                )
-            }
-            viewModel.triggerRefreshMenuList()
-            Toast.makeText(requireContext(), "Правила и приоритеты сохранены", Toast.LENGTH_SHORT).show()
             dismiss()
         }
 
         return view
     }
 
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            requireContext(),
+            profileChangedReceiver,
+            IntentFilter(ACTION_VPN_PROFILE_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        context?.let { updateCurrentNetworkBanner(NetworkUtils.isWifiConnected(it)) }
+    }
+
+    override fun onStop() {
+        try {
+            requireContext().unregisterReceiver(profileChangedReceiver)
+        } catch (_: IllegalArgumentException) {}
+        super.onStop()
+    }
+
     override fun onDestroyView() {
         swVpnEnabledView = null
+        tvCurrentNetworkView = null
+        btnDefaultActionView = null
         super.onDestroyView()
+    }
+
+    private fun updateCurrentNetworkBanner(isWifi: Boolean) {
+        tvCurrentNetworkView?.text = if (isWifi) {
+            "Текущая сеть: Wi-Fi"
+        } else {
+            "Текущая сеть: Мобильная сеть"
+        }
+    }
+
+    private fun loadProfileIntoUi(profileKey: String) {
+        selectedProfileKey = profileKey
+
+        isUpdatingVpnSwitch = true
+        swVpnEnabledView?.isChecked = Prefs.isGlobalVpnEnabledForProfile(profileKey)
+        isUpdatingVpnSwitch = false
+
+        defaultAction = Prefs.getAppRoutingDefaultActionForProfile(profileKey)
+        btnDefaultActionView?.text = ProxifierRule.getActionTitle(defaultAction)
+
+        rulesList.clear()
+        rulesList.addAll(
+            ProxifierRulesManager.getRulesForProfile(profileKey)
+                .map { it.copy(targetPackages = it.targetPackages.toMutableList()) }
+        )
+        if (::adapter.isInitialized) {
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun saveAndApplyRules() {
+        val ctx = context ?: return
+        Prefs.appRoutingEnabled = true
+        Prefs.setAppRoutingDefaultActionForProfile(selectedProfileKey, defaultAction)
+        ProxifierRulesManager.saveRulesForProfile(selectedProfileKey, rulesList)
+
+        if (selectedProfileKey == Prefs.getActiveVpnProfileKey() &&
+            Prefs.isGlobalVpnEnabled &&
+            AppVpnService.isConnected
+        ) {
+            ctx.sendIntentToService(
+                Intent(ctx, AppVpnService::class.java).apply {
+                    action = AppVpnService.ACTION_RELOAD_PROFILE
+                },
+                isForeground = false
+            )
+        }
+        viewModel.triggerRefreshMenuList()
+    }
+
+    private fun getInstalledAppLabel(pm: PackageManager, packageName: String): String? {
+        if (packageName.startsWith("*")) return null
+        return try {
+            val info = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                pm.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getApplicationInfo(packageName, 0)
+            }
+            pm.getApplicationLabel(info).toString()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun isKnownUninstalledAppPackage(target: String): Boolean {
+        return !target.startsWith("*") &&
+            target.contains('.') &&
+            (target.startsWith("com.") || target.startsWith("org.") || target.startsWith("app."))
+    }
+
+    private fun buildAppsButtonText(appLabels: List<String>): String = when {
+        appLabels.isEmpty() -> "Выбрать приложения (0 выбрано)"
+        appLabels.size <= 2 -> "Приложения: ${appLabels.joinToString(", ")}"
+        else -> "Приложения: ${appLabels.take(2).joinToString(", ")} (+${appLabels.size - 2})"
+    }
+
+    private fun buildDefaultRuleName(
+        appLabels: List<String>,
+        // Domain filtering commented out:
+        // customDomains: List<String>,
+        action: String
+    ): String {
+        val targets = appLabels // + customDomains
+        if (targets.isEmpty()) return "Правило"
+        val summary = if (targets.size <= 2) {
+            targets.joinToString(", ")
+        } else {
+            "${targets.take(2).joinToString(", ")} (+${targets.size - 2})"
+        }
+        val actionShort = ProxifierRule.getActionTitle(action).substringBefore(" (")
+        return "$summary → $actionShort"
     }
 
     private fun showActionPicker(anchor: View, onChosen: (String) -> Unit) {
@@ -189,75 +385,89 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     }
 
     private fun showRuleEditor(existingRule: ProxifierRule?) {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_rule, null)
+        val inflater = LayoutInflater.from(requireContext())
+        val dialogView = inflater.inflate(R.layout.dialog_edit_rule, null)
         val tvTitle = dialogView.findViewById<TextView>(R.id.tvDialogTitle)
         val etRuleName = dialogView.findViewById<EditText>(R.id.etRuleName)
         val btnChooseApps = dialogView.findViewById<MaterialButton>(R.id.btnChooseApps)
-        val etCustomDomains = dialogView.findViewById<EditText>(R.id.etCustomDomains)
-        val spAction = dialogView.findViewById<Spinner>(R.id.spAction)
+        // Domain filtering commented out:
+        // val etCustomDomains = dialogView.findViewById<EditText>(R.id.etCustomDomains)
+        val cgAction = dialogView.findViewById<ChipGroup>(R.id.cgAction)
 
         val isEdit = existingRule != null
         tvTitle.text = if (isEdit) "Редактирование правила" else "Новое правило"
-
-        val selectedPackages = existingRule?.targetPackages?.toMutableList() ?: mutableListOf()
         etRuleName.setText(existingRule?.name ?: "")
 
-        val initialDomains = selectedPackages.filter { it.startsWith("*") || (!it.startsWith("com.") && !it.startsWith("org.") && !it.startsWith("app.") && it.contains(".")) }
-        etCustomDomains.setText(initialDomains.joinToString(", "))
+        val pm = requireContext().packageManager
+        val selectedAppPackages = mutableListOf<String>()
+        val uninstalledPackages = mutableListOf<String>()
+        // val initialDomains = mutableListOf<String>()
+
+        existingRule?.targetPackages?.forEach { target ->
+            when {
+                getInstalledAppLabel(pm, target) != null -> selectedAppPackages.add(target)
+                isKnownUninstalledAppPackage(target) -> uninstalledPackages.add(target)
+                // else -> initialDomains.add(target)
+            }
+        }
+        // etCustomDomains.setText(initialDomains.joinToString(", "))
 
         fun updateAppsButtonText() {
-            val appCount = selectedPackages.count { !it.startsWith("*") && (it.startsWith("com.") || it.startsWith("org.") || it.startsWith("app.") || !it.contains(".")) }
-            btnChooseApps.text = if (appCount == 0) {
-                "Выбрать приложения (0 выбрано)"
-            } else {
-                "Приложений выбрано: $appCount"
-            }
+            val labels = selectedAppPackages.mapNotNull { getInstalledAppLabel(pm, it) }
+            btnChooseApps.text = buildAppsButtonText(labels)
         }
         updateAppsButtonText()
 
         btnChooseApps.setOnClickListener {
-            val pm = requireContext().packageManager
-            val appPkgsOnly = selectedPackages.filter {
-                !it.startsWith("*") && (it.startsWith("com.") || it.startsWith("org.") || it.startsWith("app.") || !it.contains("."))
-            }.filter { pkg ->
-                try {
-                    pm.getApplicationInfo(pkg, 0)
-                    true
-                } catch (_: Exception) {
-                    false
-                }
-            }.toMutableList()
-            AppSelectDialog(appPkgsOnly) { newSelection ->
-                val domains = etCustomDomains.text.toString().split(',', ' ', '\n').map { it.trim().lowercase() }.filter { it.isNotBlank() }
-                selectedPackages.clear()
-                selectedPackages.addAll(newSelection)
-                selectedPackages.addAll(domains)
+            AppSelectDialog(selectedAppPackages.toList()) { newSelection ->
+                selectedAppPackages.clear()
+                selectedAppPackages.addAll(newSelection)
                 updateAppsButtonText()
             }.show(childFragmentManager, AppSelectDialog.TAG)
         }
 
         val availableActions = ProxifierRulesManager.getAvailableActions()
-        val actionTitles = availableActions.map { it.second }
-        val spinnerAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, actionTitles)
-        spAction.adapter = spinnerAdapter
-
         val initialAction = existingRule?.action ?: ProxifierRule.ACTION_BYEDPI
-        val initialIndex = availableActions.indexOfFirst { it.first == initialAction }.coerceAtLeast(0)
-        spAction.setSelection(initialIndex)
+        var checkedChipId = View.NO_ID
+        var firstChipId = View.NO_ID
+
+        availableActions.forEach { (actionKey, actionTitle) ->
+            val chip = inflater.inflate(R.layout.item_action_chip, cgAction, false) as Chip
+            val chipId = View.generateViewId()
+            chip.id = chipId
+            chip.tag = actionKey
+            chip.text = actionTitle
+            cgAction.addView(chip)
+            if (firstChipId == View.NO_ID) firstChipId = chipId
+            if (actionKey == initialAction) checkedChipId = chipId
+        }
+        val targetChipId = if (checkedChipId != View.NO_ID) checkedChipId else firstChipId
+        if (targetChipId != View.NO_ID) {
+            cgAction.check(targetChipId)
+        }
 
         AlertDialog.Builder(requireContext())
             .setView(dialogView)
             .setPositiveButton("Сохранить") { _, _ ->
-                val name = etRuleName.text.toString().trim().ifEmpty { "Правило" }
-                val chosenAction = availableActions[spAction.selectedItemPosition].first
+                val chosenChip = cgAction.findViewById<Chip>(cgAction.checkedChipId)
+                val chosenAction = chosenChip?.tag as? String ?: initialAction
 
-                val customDomains = etCustomDomains.text.toString()
-                    .split(',', ' ', '\n')
-                    .map { it.trim().lowercase() }
-                    .filter { it.isNotBlank() }
+                // Domain filtering commented out:
+                // val customDomains = etCustomDomains.text.toString()
+                //     .split(',', ' ', '\n')
+                //     .map { it.trim().lowercase() }
+                //     .filter { it.isNotBlank() }
 
-                val finalTargets = selectedPackages.filter { !customDomains.contains(it) }.toMutableList()
-                customDomains.forEach { if (!finalTargets.contains(it)) finalTargets.add(it) }
+                val finalTargets = linkedSetOf<String>().apply {
+                    addAll(selectedAppPackages)
+                    addAll(uninstalledPackages)
+                    // addAll(customDomains)
+                }.toMutableList()
+
+                val appLabels = selectedAppPackages.mapNotNull { getInstalledAppLabel(pm, it) }
+                val name = etRuleName.text.toString().trim().ifEmpty {
+                    buildDefaultRuleName(appLabels, /* customDomains, */ chosenAction)
+                }
 
                 if (existingRule != null) {
                     existingRule.name = name
@@ -280,6 +490,7 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
                     rulesList.add(newRule)
                     adapter.notifyItemInserted(rulesList.size - 1)
                 }
+                saveAndApplyRules()
             }
             .setNegativeButton("Отмена", null)
             .show()
@@ -310,6 +521,7 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
             holder.cbEnabled.isChecked = rule.enabled
             holder.cbEnabled.setOnCheckedChangeListener { _, isChecked ->
                 rule.enabled = isChecked
+                saveAndApplyRules()
             }
 
             // Up / Down Priority buttons
@@ -318,11 +530,12 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
 
             holder.btnMoveUp.setOnClickListener {
                 val pos = holder.bindingAdapterPosition
-                if (pos > 0) {
+                if (pos != RecyclerView.NO_POSITION && pos > 0) {
                     Collections.swap(rulesList, pos, pos - 1)
                     notifyItemMoved(pos, pos - 1)
                     notifyItemChanged(pos)
                     notifyItemChanged(pos - 1)
+                    saveAndApplyRules()
                 }
             }
 
@@ -333,6 +546,7 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
                     notifyItemMoved(pos, pos + 1)
                     notifyItemChanged(pos)
                     notifyItemChanged(pos + 1)
+                    saveAndApplyRules()
                 }
             }
 
@@ -345,21 +559,9 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
 
             val pm = holder.itemView.context.packageManager
             val installedOrDomainList = rule.targetPackages.mapNotNull { item ->
-                if (item.contains('.') && (item.startsWith("com.") || item.startsWith("org.") || item.startsWith("app."))) {
-                    try {
-                        val info = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                            pm.getApplicationInfo(item, PackageManager.ApplicationInfoFlags.of(0))
-                        } else {
-                            @Suppress("DEPRECATION")
-                            pm.getApplicationInfo(item, 0)
-                        }
-                        pm.getApplicationLabel(info).toString()
-                    } catch (_: Exception) {
-                        null
-                    }
-                } else {
-                    item
-                }
+                getInstalledAppLabel(pm, item)
+                // Domain filtering commented out:
+                // ?: if (isKnownUninstalledAppPackage(item)) null else item
             }
             val displayItems = installedOrDomainList.take(3)
             val appsText = when {
@@ -374,6 +576,7 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
                 showActionPicker(it) { newAction ->
                     rule.action = newAction
                     holder.btnAction.text = ProxifierRule.getActionTitle(newAction).substringBefore(" (")
+                    saveAndApplyRules()
                 }
             }
 
@@ -386,7 +589,13 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
                 if (pos != RecyclerView.NO_POSITION) {
                     rulesList.removeAt(pos)
                     notifyItemRemoved(pos)
-                    notifyItemRangeChanged(pos, rulesList.size - pos)
+                    if (pos < rulesList.size) {
+                        notifyItemRangeChanged(pos, rulesList.size - pos)
+                    }
+                    if (pos == rulesList.size && pos > 0) {
+                        notifyItemChanged(pos - 1)
+                    }
+                    saveAndApplyRules()
                 }
             }
         }
@@ -396,5 +605,7 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
 
     companion object {
         const val TAG = "ProxifierRulesBottomSheet"
+        private const val KEY_SELECTED_PROFILE = "key_selected_profile"
+        private const val KEY_PENDING_VPN_PROFILE = "key_pending_vpn_profile"
     }
 }

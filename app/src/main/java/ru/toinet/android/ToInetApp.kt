@@ -48,6 +48,13 @@ class ToInetApp : Application() {
             return
         }
 
+        Prefs.currentVpnNetworkType = if (ru.toinet.android.util.NetworkUtils.isWifiConnected(this)) {
+            Prefs.VPN_PROFILE_WIFI
+        } else {
+            Prefs.VPN_PROFILE_MOBILE
+        }
+        Prefs.isVpnOrProxySessionActive = false
+
         AppCompatDelegate.setDefaultNightMode(Prefs.themeMode)
         if (Prefs.useDynamicColors) {
             DynamicColors.applyToActivitiesIfAvailable(this)
@@ -86,13 +93,7 @@ class ToInetApp : Application() {
     }
 
     private fun isMainProcess(): Boolean {
-        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            packageName == Application.getProcessName()
-        } else {
-            val pid = android.os.Process.myPid()
-            val am = getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
-            am?.runningAppProcesses?.firstOrNull { it.pid == pid }?.processName == packageName
-        }
+        return packageName == Application.getProcessName()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

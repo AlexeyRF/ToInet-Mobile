@@ -11,7 +11,6 @@ import android.app.Service;
 import android.content.*;
 import android.content.pm.ServiceInfo;
 import android.net.VpnService;
-import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.text.TextUtils;
@@ -42,7 +41,7 @@ import kotlin.Unit;
 
 public class ToInetService extends Service {
 
-    static final int NOTIFY_ID = 1, ERROR_NOTIFY_ID = 3;
+    static final int NOTIFY_ID = ru.toinet.android.vpn.utility.NotificationUtilsKt.SHARED_FOREGROUND_ID, ERROR_NOTIFY_ID = 3;
     public static int mPortSOCKS = -1, mPortHTTP = -1, mPortDns = -1, mPortTrans = -1;
     public static File appBinHome, appCacheHome;
     protected final ExecutorService mExecutor = Executors.newCachedThreadPool();
@@ -55,6 +54,8 @@ public class ToInetService extends Service {
     private boolean shouldUnbindTorService;
     private NotificationManager mNotificationManager = null;
     private NotificationCompat.Builder mNotifyBuilder;
+    private volatile boolean mTorExplicitlyStarted = false;
+    private volatile boolean mIsForeground = false;
     private static final String TAG = "ToInetService";
     private static final String ACTION_RESTART_TOR = "ru.toinet.android.tor.RESTART";
 
@@ -107,7 +108,7 @@ public class ToInetService extends Service {
     };
 
     private void scheduleAutoReconnectIfEnabled() {
-        if (isTorDesired() && !STATUS_ON.equals(mCurrentStatus) && !STATUS_STARTING.equals(mCurrentStatus)) {
+        if (mTorExplicitlyStarted && isTorDesired() && !STATUS_ON.equals(mCurrentStatus) && !STATUS_STARTING.equals(mCurrentStatus)) {
             if (mReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
                 Log.w(TAG, "Max reconnect attempts reached (" + MAX_RECONNECT_ATTEMPTS + "). Halting auto-reconnect.");
                 logNotice("Превышено количество попыток подключения к Tor");
@@ -123,35 +124,79 @@ public class ToInetService extends Service {
         }
     }
 
-    protected void showToolbarNotification(String notifyMsg, int notifyType, int icon) {
-        boolean isPrimary = !ru.toinet.android.util.Prefs.isGlobalVpnEnabled() && ru.toinet.android.util.Prefs.isPrimaryNotificationService("tor");
-        boolean isDetailed = ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor");
+    @SuppressWarnings("deprecation")
+    private boolean isMainProcessForegroundActive() {
+        try {
+            var am = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            if (am == null) return false;
+            String pkg = getPackageName();
+            for (var info : am.getRunningServices(100)) {
+                if (pkg.equals(info.service.getPackageName()) && info.foreground) {
+                    String cls = info.service.getClassName();
+                    if (!ToInetService.class.getName().equals(cls) &&
+                        !cls.startsWith("ru.toinet.android.byedpi.services.ByeDpiInstance")) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notifications.createNotificationChannel(this);
+    private void stopTorForegroundSafely() {
+        mIsForeground = false;
+        if (isMainProcessForegroundActive()) {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH);
+            sendBroadcast(new Intent(ru.toinet.android.vpn.utility.NotificationUtilsKt.ACTION_REFRESH_FOREGROUND_NOTIFICATION)
+                    .setPackage(getPackageName()));
+        } else {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE);
+            if (mNotificationManager == null) {
+                mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            }
+            if (mNotificationManager != null) {
+                mNotificationManager.cancel(NOTIFY_ID);
+            }
         }
+    }
+
+    protected void showToolbarNotification(String notifyMsg, int notifyType, int icon) {
+        boolean mainFgActive = isMainProcessForegroundActive();
+        boolean isPrimary = !ru.toinet.android.util.Prefs.isGlobalVpnEnabled()
+                && !mainFgActive
+                && ru.toinet.android.util.Prefs.isPrimaryNotificationService("tor");
+        boolean isDetailed = !mainFgActive
+                && !ru.toinet.android.util.Prefs.isGlobalVpnEnabled()
+                && ru.toinet.android.util.Prefs.shouldShowDetailedNotification("tor");
+
+        Notifications.createNotificationChannel(this);
 
         if (!isPrimary && !isDetailed) {
+            var launchIntent = new Intent(this, ru.toinet.android.ToInetActivity.class);
+            var pendIntent = PendingIntent.getActivity(this, 0, launchIntent, PendingIntent.FLAG_IMMUTABLE);
+            var silentChannel = Notifications.TOINET_SERVICE_NOTIFICATION_CHANNEL_SILENT;
+            var silentNotification = new NotificationCompat.Builder(this, silentChannel)
+                    .setSmallIcon(R.drawable.ic_stat_tor)
+                    .setContentTitle("ToInet")
+                    .setPriority(NotificationCompat.PRIORITY_MIN)
+                    .setSilent(true)
+                    .setOnlyAlertOnce(true)
+                    .setOngoing(true)
+                    .setGroup(ru.toinet.android.vpn.utility.NotificationUtilsKt.NOTIFICATION_GROUP_KEY)
+                    .setContentIntent(pendIntent)
+                    .build();
             try {
-                var silentChannel = Notifications.TOINET_SERVICE_NOTIFICATION_CHANNEL_SILENT;
-                var silentNotification = new NotificationCompat.Builder(this, silentChannel)
-                        .setSmallIcon(R.drawable.ic_stat_tor)
-                        .setPriority(NotificationCompat.PRIORITY_MIN)
-                        .setSilent(true)
-                        .setOngoing(true)
-                        .build();
                 ServiceCompat.startForeground(this, NOTIFY_ID, silentNotification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+                mIsForeground = true;
             } catch (Exception e) {
                 try {
-                    var silentChannel = Notifications.TOINET_SERVICE_NOTIFICATION_CHANNEL_SILENT;
-                    var silentNotification = new NotificationCompat.Builder(this, silentChannel)
-                            .setSmallIcon(R.drawable.ic_stat_tor)
-                            .setPriority(NotificationCompat.PRIORITY_MIN)
-                            .setSilent(true)
-                            .setOngoing(true)
-                            .build();
                     ServiceCompat.startForeground(this, NOTIFY_ID, silentNotification, 0);
+                    mIsForeground = true;
                 } catch (Exception ignored) {}
+            }
+            if (mainFgActive) {
+                sendBroadcast(new Intent(ru.toinet.android.vpn.utility.NotificationUtilsKt.ACTION_REFRESH_FOREGROUND_NOTIFICATION)
+                        .setPackage(getPackageName()));
             }
             return;
         }
@@ -167,9 +212,10 @@ public class ToInetService extends Service {
         mNotifyBuilder = new NotificationCompat
                 .Builder(this, channelId)
                 .setCategory(Notification.CATEGORY_SERVICE)
-                .setGroup("toinet_services")
+                .setGroup(ru.toinet.android.vpn.utility.NotificationUtilsKt.NOTIFICATION_GROUP_KEY)
                 .setSmallIcon(R.drawable.ic_stat_tor)
                 .setSilent(true)
+                .setOnlyAlertOnce(true)
                 .setOngoing(true);
 
         String title = "ToInet";
@@ -212,22 +258,19 @@ public class ToInetService extends Service {
                     .setSubText(null)
                     .setProgress(0, 0, false)
                     .setTicker(null);
-
-            scheduleAutoReconnectIfEnabled();
         }
         var notification = mNotifyBuilder.build();
         try {
             ServiceCompat.startForeground(this, NOTIFY_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            mIsForeground = true;
         } catch (Exception e) {
             Log.w(TAG, "Failed to startForeground with specialUse, fallback to standard", e);
             try {
                 ServiceCompat.startForeground(this, NOTIFY_ID, notification, 0);
+                mIsForeground = true;
             } catch (Exception e2) {
                 Log.e(TAG, "Failed fallback startForeground", e2);
             }
-        }
-        if (mNotificationManager != null) {
-            mNotificationManager.notify(NOTIFY_ID, notification);
         }
     }
 
@@ -240,6 +283,11 @@ public class ToInetService extends Service {
 
             String action = intent.getAction();
             boolean isStartOrRestart = ACTION_START.equals(action) || ACTION_RESTART_TOR.equals(action);
+            if (ACTION_START.equals(action) || (ACTION_RESTART_TOR.equals(action) && isTorDesired())) {
+                mTorExplicitlyStarted = true;
+            } else if (ACTION_STOP.equals(action)) {
+                mTorExplicitlyStarted = false;
+            }
             boolean fgRequested = intent.getBooleanExtra("is_foreground", false);
             boolean isActuallyRunning = !mCurrentStatus.equals(STATUS_OFF);
 
@@ -262,6 +310,12 @@ public class ToInetService extends Service {
 
     @Override
     public void onDestroy() {
+        mTorExplicitlyStarted = false;
+        mCurrentStatus = STATUS_OFF;
+        Prefs.setTorRuntimeStatus(STATUS_OFF);
+        if (mIsForeground) {
+            stopTorForegroundSafely();
+        }
         try {
             unregisterReceiver(mActionBroadcastReceiver);
         } catch (Exception iae) {
@@ -288,19 +342,15 @@ public class ToInetService extends Service {
 
     private void stopTorAsync(boolean showNotification) {
         Log.d(TAG, "stopTorAsync");
+        mTorExplicitlyStarted = false;
         if (showNotification) sendCallbackLogMessage(getString(R.string.status_shutting_down));
         mCurrentStatus = STATUS_OFF;
+        Prefs.setTorRuntimeStatus(STATUS_OFF);
         Prefs.getTransport().stop();
         stopTor();
 
-        //stop the foreground priority and remove the persistent notification
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE);
-        if (mNotificationManager == null) {
-            mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        }
-        if (mNotificationManager != null) {
-            mNotificationManager.cancel(NOTIFY_ID);
-        }
+        //stop the foreground priority and remove/detach the persistent notification
+        stopTorForegroundSafely();
         if (showNotification) sendCallbackLogMessage(getString(R.string.status_disabled));
 
         mPortDns = -1;
@@ -371,6 +421,8 @@ public class ToInetService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        mCurrentStatus = STATUS_OFF;
+        Prefs.setTorRuntimeStatus(STATUS_OFF);
         configLanguage();
 
         try {
@@ -393,8 +445,7 @@ public class ToInetService extends Service {
                 mActionBroadcastReceiver = new ActionBroadcastReceiver();
                 ContextCompat.registerReceiver(this, mActionBroadcastReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    Notifications.createNotificationChannel(this);
+                Notifications.createNotificationChannel(this);
 
                 var hasGeoip = new File(appBinHome, GEOIP_ASSET_KEY).exists();
                 var hasGeoip6 = new File(appBinHome, GEOIP6_ASSET_KEY).exists();
@@ -492,6 +543,7 @@ public class ToInetService extends Service {
 
 
     private synchronized void startTorService() throws Exception {
+        Prefs.setTorRuntimeStatus(STATUS_STARTING);
         if (Prefs.getProxyEnabled()) {
             String upstream = Prefs.getTorUpstreamProvider();
             if (upstream == null || upstream.isEmpty() || "none".equals(upstream)) {
@@ -596,6 +648,7 @@ public class ToInetService extends Service {
                 torServiceConnection = null;
                 shouldUnbindTorService = false;
                 mCurrentStatus = STATUS_OFF;
+                Prefs.setTorRuntimeStatus(STATUS_OFF);
                 sendLocalStatusOffBroadcast();
                 scheduleAutoReconnectIfEnabled();
             }
@@ -614,6 +667,7 @@ public class ToInetService extends Service {
                 torServiceConnection = null;
                 shouldUnbindTorService = false;
                 mCurrentStatus = STATUS_OFF;
+                Prefs.setTorRuntimeStatus(STATUS_OFF);
                 sendLocalStatusOffBroadcast();
                 scheduleAutoReconnectIfEnabled();
             }
@@ -627,10 +681,7 @@ public class ToInetService extends Service {
             Log.w(TAG, "Failed startService for TorService", e);
         }
         int bindFlags = Context.BIND_AUTO_CREATE | Context.BIND_IMPORTANT;
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
-            shouldUnbindTorService = bindService(serviceIntent, torServiceConnection, bindFlags);
-        else
-            shouldUnbindTorService = bindService(serviceIntent, bindFlags, mExecutor, torServiceConnection);
+        shouldUnbindTorService = bindService(serviceIntent, bindFlags, mExecutor, torServiceConnection);
     }
 
     private void sendLocalStatusOffBroadcast() {
@@ -829,12 +880,7 @@ public class ToInetService extends Service {
     }
 
     private PendingIntent getServiceIntent(Intent i) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return PendingIntent.getForegroundService(this, 0, i,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        }
-
-        return PendingIntent.getService(this, 0, i,
+        return PendingIntent.getForegroundService(this, 0, i,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
@@ -851,6 +897,7 @@ public class ToInetService extends Service {
             boolean fgRequested = mIntent.getBooleanExtra("is_foreground", false);
             switch (action) {
                 case ACTION_START -> {
+                    mTorExplicitlyStarted = true;
                     mReconnectAttempts = 0;
                     try {
                         var transport = Prefs.getTransport();
@@ -872,6 +919,7 @@ public class ToInetService extends Service {
                     mPortTrans = -1;
                     Prefs.setTorSocksPortResolved(-1);
                     if (isTorDesired()) {
+                        mTorExplicitlyStarted = true;
                         try {
                             var transport = Prefs.getTransport();
                             transport.start(ToInetService.this);
@@ -881,39 +929,47 @@ public class ToInetService extends Service {
                         startTor();
                         replyWithStatus(mIntent);
                     } else {
+                        mTorExplicitlyStarted = false;
                         stopTorAsync(false);
                     }
                 }
                 case ACTION_STOP -> {
+                    mTorExplicitlyStarted = false;
                     if (mHandler != null) mHandler.removeCallbacks(autoReconnectRunnable);
                     var userIsQuittingToInet = mIntent.getBooleanExtra(ACTION_STOP_FOREGROUND_TASK, false);
                     stopTorAsync(!userIsQuittingToInet);
                 }
-                case ACTION_STOP_FOREGROUND_TASK -> ServiceCompat.stopForeground(ToInetService.this, ServiceCompat.STOP_FOREGROUND_REMOVE);
+                case ACTION_STOP_FOREGROUND_TASK -> stopTorForegroundSafely();
                 case ACTION_STATUS -> {
                     replyWithStatus(mIntent);
-                    if (fgRequested && STATUS_OFF.equals(mCurrentStatus)) {
-                        ServiceCompat.stopForeground(ToInetService.this, ServiceCompat.STOP_FOREGROUND_REMOVE);
+                    if (STATUS_OFF.equals(mCurrentStatus) && !mTorExplicitlyStarted) {
+                        if (fgRequested || mIsForeground) {
+                            stopTorForegroundSafely();
+                        }
                         stopSelf();
                     }
                 }
                 case TorControlCommands.SIGNAL_RELOAD -> requestTorRereadConfig();
                 case TorControlCommands.SIGNAL_NEWNYM -> newIdentity();
                 case CMD_ACTIVE -> {
-                    sendSignalActive();
-                    if (!STATUS_OFF.equals(mCurrentStatus)) {
-                        showToolbarNotification("", NOTIFY_ID, R.drawable.ic_stat_tor);
-                    }
-                    replyWithStatus(mIntent);
-                    if (fgRequested && STATUS_OFF.equals(mCurrentStatus)) {
-                        ServiceCompat.stopForeground(ToInetService.this, ServiceCompat.STOP_FOREGROUND_REMOVE);
+                    if (STATUS_OFF.equals(mCurrentStatus) && !mTorExplicitlyStarted) {
+                        replyWithStatus(mIntent);
+                        if (fgRequested || mIsForeground) {
+                            stopTorForegroundSafely();
+                        }
                         stopSelf();
+                    } else {
+                        sendSignalActive();
+                        if (!STATUS_OFF.equals(mCurrentStatus)) {
+                            showToolbarNotification("", NOTIFY_ID, R.drawable.ic_stat_tor);
+                        }
+                        replyWithStatus(mIntent);
                     }
                 }
                 case CMD_SET_EXIT -> {
                     setExitNode(mIntent.getStringExtra("exit"));
-                    if (fgRequested && STATUS_OFF.equals(mCurrentStatus)) {
-                        ServiceCompat.stopForeground(ToInetService.this, ServiceCompat.STOP_FOREGROUND_REMOVE);
+                    if (fgRequested && STATUS_OFF.equals(mCurrentStatus) && !mTorExplicitlyStarted) {
+                        stopTorForegroundSafely();
                         stopSelf();
                     }
                 }
@@ -955,6 +1011,7 @@ public class ToInetService extends Service {
                     if (STATUS_OFF.equals(mCurrentStatus) && STATUS_STOPPING.equals(newStatus))
                         break;
                     mCurrentStatus = newStatus;
+                    Prefs.setTorRuntimeStatus(mCurrentStatus);
                     ru.toinet.android.util.NetworkBlackoutMonitor.onTorStatus(mCurrentStatus);
 
                     if (STATUS_OFF.equals(mCurrentStatus)) {

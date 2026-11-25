@@ -3,7 +3,6 @@ package ru.toinet.android.vpn.rules
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.VpnService
-import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.*
 import ru.toinet.android.util.Prefs
@@ -33,9 +32,6 @@ class AppRoutingServer(
     private var serverScope: CoroutineScope? = null
 
     fun start() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            Log.i(TAG, "Android < Q: per-app UID lookup unavailable, using domain and default routing rules")
-        }
         if (isRunning.getAndSet(true)) return
 
         val sScope = CoroutineScope(Dispatchers.IO + SupervisorJob(scope.coroutineContext[Job]))
@@ -214,14 +210,16 @@ class AppRoutingServer(
                 this[4 + rawAddrBytes.size + 1] = (dstPort and 0xFF).toByte()
             }
 
-            // Step 1: Initial resolution by package UID or explicit destination host
+            // Step 1: Initial resolution by package UID
             var targetAction = resolveAction(srcIp, srcPort, dstHost, dstPort)
+            /* Domain filtering disabled: per-app routing only
             if (targetAction == Prefs.appRoutingDefaultAction && dstHost.isNotBlank()) {
                 val domainAction = findActionForDomain(dstHost)
                 if (domainAction != null) {
                     targetAction = domainAction
                 }
             }
+            */
 
             if (targetAction == ProxifierRule.ACTION_BLOCK) {
                 // 0x02 = Connection not allowed by ruleset
@@ -231,6 +229,7 @@ class AppRoutingServer(
                 return
             }
 
+            /* Domain filtering disabled: skip first-packet peeking & domain rule matching
             // Signal success to tun2socks to immediately unblock and read the first data chunk
             clientOut.write(byteArrayOf(5, 0, 0, 1, 0, 0, 0, 0, 0, 0))
             clientOut.flush()
@@ -266,6 +265,7 @@ class AppRoutingServer(
                 clientSocket.close()
                 return
             }
+            */
 
             when (targetAction) {
                 ProxifierRule.ACTION_DIRECT -> {
@@ -280,14 +280,23 @@ class AppRoutingServer(
                             directSocket.connect(InetSocketAddress(dstHost, dstPort), 10000)
                         }
                     } catch (e: Exception) {
+                        try {
+                            clientOut.write(byteArrayOf(5, 1, 0, 1, 0, 0, 0, 0, 0, 0))
+                            clientOut.flush()
+                        } catch (_: Exception) {}
                         try { directSocket.close() } catch (_: Exception) {}
                         clientSocket.close()
                         return
                     }
                     upstreamSocket = directSocket
 
+                    clientOut.write(byteArrayOf(5, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+                    clientOut.flush()
+
+                    /* Domain filtering disabled: no pre-read firstChunk to flush
                     directSocket.getOutputStream().write(firstChunk, 0, firstChunkLen)
                     directSocket.getOutputStream().flush()
+                    */
 
                     pipeSockets(clientSocket, directSocket)
                 }
@@ -326,6 +335,10 @@ class AppRoutingServer(
                     }
 
                     if (!connected) {
+                        try {
+                            clientOut.write(byteArrayOf(5, 1, 0, 1, 0, 0, 0, 0, 0, 0))
+                            clientOut.flush()
+                        } catch (_: Exception) {}
                         clientSocket.close()
                         return
                     }
@@ -340,6 +353,10 @@ class AppRoutingServer(
                     val upAuthResp = ByteArray(2)
                     upIn.readFully(upAuthResp)
                     if (upAuthResp[0].toInt() != 5 || upAuthResp[1].toInt() != 0) {
+                        try {
+                            clientOut.write(byteArrayOf(5, 1, 0, 1, 0, 0, 0, 0, 0, 0))
+                            clientOut.flush()
+                        } catch (_: Exception) {}
                         clientSocket.close()
                         proxySocket.close()
                         return
@@ -371,14 +388,23 @@ class AppRoutingServer(
                     upIn.readFully(discardBuf)
 
                     if (upRespHeader[1].toInt() != 0) {
+                        try {
+                            clientOut.write(byteArrayOf(5, upRespHeader[1], 0, 1, 0, 0, 0, 0, 0, 0))
+                            clientOut.flush()
+                        } catch (_: Exception) {}
                         clientSocket.close()
                         proxySocket.close()
                         return
                     }
 
+                    clientOut.write(byteArrayOf(5, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+                    clientOut.flush()
+
+                    /* Domain filtering disabled: no pre-read firstChunk to flush
                     // Forward first data payload to upstream
                     proxySocket.getOutputStream().write(firstChunk, 0, firstChunkLen)
                     proxySocket.getOutputStream().flush()
+                    */
 
                     pipeSockets(clientSocket, proxySocket)
                 }
@@ -391,29 +417,27 @@ class AppRoutingServer(
     }
 
     private fun resolveAction(srcIp: String, srcPort: Int, dstHost: String, dstPort: Int): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val cm = vpnService.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            if (cm != null && srcPort > 0) {
-                try {
-                    val local = InetSocketAddress(InetAddress.getByName(srcIp), srcPort)
-                    val remote = InetSocketAddress(InetAddress.getByName(dstHost), dstPort)
-                    val uid = cm.getConnectionOwnerUid(android.system.OsConstants.IPPROTO_TCP, local, remote)
-                    if (uid > 0) {
-                        // Prevent self-loop if connection originated from ToInet itself
-                        if (uid == android.os.Process.myUid()) {
-                            return ProxifierRule.ACTION_DIRECT
-                        }
-                        val packages = vpnService.packageManager.getPackagesForUid(uid)
-                        if (packages != null) {
-                            val rule = ProxifierRulesManager.findRuleForPackages(packages)
-                            if (rule != null) {
-                                return rule.action
-                            }
+        val cm = vpnService.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (cm != null && srcPort > 0) {
+            try {
+                val local = InetSocketAddress(InetAddress.getByName(srcIp), srcPort)
+                val remote = InetSocketAddress(InetAddress.getByName(dstHost), dstPort)
+                val uid = cm.getConnectionOwnerUid(android.system.OsConstants.IPPROTO_TCP, local, remote)
+                if (uid > 0) {
+                    // Prevent self-loop if connection originated from ToInet itself
+                    if (uid == android.os.Process.myUid()) {
+                        return ProxifierRule.ACTION_DIRECT
+                    }
+                    val packages = vpnService.packageManager.getPackagesForUid(uid)
+                    if (packages != null) {
+                        val rule = ProxifierRulesManager.findRuleForPackages(packages)
+                        if (rule != null) {
+                            return rule.action
                         }
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Error resolving connection owner: $srcIp:$srcPort -> $dstHost:$dstPort", e)
                 }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error resolving connection owner: $srcIp:$srcPort -> $dstHost:$dstPort", e)
             }
         }
         return Prefs.appRoutingDefaultAction
@@ -446,6 +470,7 @@ class AppRoutingServer(
         }
     }
 
+    /* Domain filtering disabled: per-app routing only
     private fun findActionForDomain(domain: String): String? {
         val rule = ProxifierRulesManager.findRuleForDomain(domain)
         if (rule != null) {
@@ -530,6 +555,7 @@ class AppRoutingServer(
 
         return null
     }
+    */
 
     private suspend fun pipeSockets(s1: Socket, s2: Socket) = coroutineScope {
         try {

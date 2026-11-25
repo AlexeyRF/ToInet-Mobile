@@ -3,7 +3,6 @@ package ru.toinet.android.svpn
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.VpnService
-import android.os.Build
 import android.util.Log
 import com.jcraft.jsch.*
 import java.io.InputStream
@@ -89,7 +88,7 @@ class SshTunnel(
         }
 
         private fun resolveHostSafely(vpnService: VpnService?, targetHost: String): InetAddress {
-            if (vpnService != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (vpnService != null) {
                 try {
                     val cm = vpnService.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
                     val activeNet = cm?.activeNetwork

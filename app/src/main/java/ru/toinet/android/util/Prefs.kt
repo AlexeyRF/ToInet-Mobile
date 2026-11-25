@@ -26,6 +26,9 @@ object Prefs {
     private const val PREF_CONNECTION_PATHWAY = "pref_connection_pathway"
 
     const val PREF_SECURE_WINDOW_FLAG: String = "pref_flag_secure"
+    const val VPN_PROFILE_UNIFIED: String = "unified"
+    const val VPN_PROFILE_WIFI: String = "wifi"
+    const val VPN_PROFILE_MOBILE: String = "mobile"
 
     private var cr: ContentResolver? = null
 
@@ -100,7 +103,7 @@ object Prefs {
         set(value) = cr?.putPref("pref_direct_ping_warning_dismissed", value) ?: Unit
 
     fun startOnBoot(): Boolean {
-        return cr?.getPrefBoolean(PREF_START_ON_BOOT, true) ?: true
+        return cr?.getPrefBoolean(PREF_START_ON_BOOT, false) ?: false
     }
 
     @JvmStatic
@@ -264,9 +267,156 @@ object Prefs {
         set(value) = cr?.putPref("tor_enabled", value) ?: Unit
 
     @JvmStatic
+    var torRuntimeStatus: String
+        get() = cr?.getPrefString("pref_tor_runtime_status") ?: org.torproject.jni.TorService.STATUS_OFF
+        set(value) = cr?.putPref("pref_tor_runtime_status", value) ?: Unit
+
+    @JvmStatic
+    var vpnSeparateNetworkProfiles: Boolean
+        get() = cr?.getPrefBoolean("pref_vpn_separate_network_profiles", false) ?: false
+        set(value) = cr?.putPref("pref_vpn_separate_network_profiles", value) ?: Unit
+
+    @JvmStatic
+    var vpnNetworkProfilesInitialized: Boolean
+        get() = cr?.getPrefBoolean("pref_vpn_network_profiles_initialized", false) ?: false
+        set(value) = cr?.putPref("pref_vpn_network_profiles_initialized", value) ?: Unit
+
+    @JvmStatic
+    var currentVpnNetworkType: String
+        get() {
+            val v = cr?.getPrefString("pref_current_vpn_network_type")
+            return if (v == VPN_PROFILE_WIFI) VPN_PROFILE_WIFI else VPN_PROFILE_MOBILE
+        }
+        set(value) {
+            val normalized = if (value == VPN_PROFILE_WIFI) VPN_PROFILE_WIFI else VPN_PROFILE_MOBILE
+            cr?.putPref("pref_current_vpn_network_type", normalized)
+        }
+
+    @JvmStatic
+    var isVpnOrProxySessionActive: Boolean
+        get() = cr?.getPrefBoolean("pref_vpn_or_proxy_session_active", false) ?: false
+        set(value) = cr?.putPref("pref_vpn_or_proxy_session_active", value) ?: Unit
+
+    @JvmStatic
+    @Synchronized
+    fun ensureVpnNetworkProfilesInitialized() {
+        if (vpnNetworkProfilesInitialized) return
+        val unifiedEnabled = cr?.getPrefBoolean("pref_global_vpn_enabled", false) ?: false
+        val unifiedRules = cr?.getPrefString("pref_app_routing_rules_json") ?: ""
+        val unifiedDefault = cr?.getPrefString("pref_app_routing_default_action") ?: "direct"
+
+        if (cr?.getPrefString("pref_app_routing_rules_json_wifi") == null) {
+            cr?.putPref("pref_app_routing_rules_json_wifi", unifiedRules)
+            cr?.putPref("pref_app_routing_default_action_wifi", unifiedDefault)
+            cr?.putPref("pref_global_vpn_enabled_wifi", unifiedEnabled)
+        }
+        if (cr?.getPrefString("pref_app_routing_rules_json_mobile") == null) {
+            cr?.putPref("pref_app_routing_rules_json_mobile", unifiedRules)
+            cr?.putPref("pref_app_routing_default_action_mobile", unifiedDefault)
+            cr?.putPref("pref_global_vpn_enabled_mobile", unifiedEnabled)
+        }
+        vpnNetworkProfilesInitialized = true
+    }
+
+    @JvmStatic
+    fun getActiveVpnProfileKey(): String {
+        return if (!vpnSeparateNetworkProfiles) VPN_PROFILE_UNIFIED else currentVpnNetworkType
+    }
+
+    @JvmStatic
+    fun isGlobalVpnEnabledForProfile(profile: String): Boolean {
+        return when (profile) {
+            VPN_PROFILE_WIFI -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.getPrefBoolean("pref_global_vpn_enabled_wifi", false) ?: false
+            }
+            VPN_PROFILE_MOBILE -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.getPrefBoolean("pref_global_vpn_enabled_mobile", false) ?: false
+            }
+            else -> cr?.getPrefBoolean("pref_global_vpn_enabled", false) ?: false
+        }
+    }
+
+    @JvmStatic
+    fun setGlobalVpnEnabledForProfile(profile: String, enabled: Boolean) {
+        when (profile) {
+            VPN_PROFILE_WIFI -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.putPref("pref_global_vpn_enabled_wifi", enabled)
+            }
+            VPN_PROFILE_MOBILE -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.putPref("pref_global_vpn_enabled_mobile", enabled)
+            }
+            else -> cr?.putPref("pref_global_vpn_enabled", enabled)
+        }
+    }
+
+    @JvmStatic
+    fun getAppRoutingRulesJsonForProfile(profile: String): String {
+        return when (profile) {
+            VPN_PROFILE_WIFI -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.getPrefString("pref_app_routing_rules_json_wifi") ?: ""
+            }
+            VPN_PROFILE_MOBILE -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.getPrefString("pref_app_routing_rules_json_mobile") ?: ""
+            }
+            else -> cr?.getPrefString("pref_app_routing_rules_json") ?: ""
+        }
+    }
+
+    @JvmStatic
+    fun setAppRoutingRulesJsonForProfile(profile: String, json: String) {
+        when (profile) {
+            VPN_PROFILE_WIFI -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.putPref("pref_app_routing_rules_json_wifi", json)
+            }
+            VPN_PROFILE_MOBILE -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.putPref("pref_app_routing_rules_json_mobile", json)
+            }
+            else -> cr?.putPref("pref_app_routing_rules_json", json)
+        }
+    }
+
+    @JvmStatic
+    fun getAppRoutingDefaultActionForProfile(profile: String): String {
+        return when (profile) {
+            VPN_PROFILE_WIFI -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.getPrefString("pref_app_routing_default_action_wifi") ?: "direct"
+            }
+            VPN_PROFILE_MOBILE -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.getPrefString("pref_app_routing_default_action_mobile") ?: "direct"
+            }
+            else -> cr?.getPrefString("pref_app_routing_default_action") ?: "direct"
+        }
+    }
+
+    @JvmStatic
+    fun setAppRoutingDefaultActionForProfile(profile: String, action: String) {
+        when (profile) {
+            VPN_PROFILE_WIFI -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.putPref("pref_app_routing_default_action_wifi", action)
+            }
+            VPN_PROFILE_MOBILE -> {
+                ensureVpnNetworkProfilesInitialized()
+                cr?.putPref("pref_app_routing_default_action_mobile", action)
+            }
+            else -> cr?.putPref("pref_app_routing_default_action", action)
+        }
+    }
+
+    @JvmStatic
     var isGlobalVpnEnabled: Boolean
-        get() = cr?.getPrefBoolean("pref_global_vpn_enabled", false) ?: false
-        set(value) = cr?.putPref("pref_global_vpn_enabled", value) ?: Unit
+        get() = isGlobalVpnEnabledForProfile(getActiveVpnProfileKey())
+        set(value) = setGlobalVpnEnabledForProfile(getActiveVpnProfileKey(), value)
 
     var vpnAppsInitialized: Boolean
         get() = cr?.getPrefBoolean("pref_vpn_apps_initialized", false) ?: false
@@ -291,18 +441,12 @@ object Prefs {
         set(value) = cr?.putPref("pref_vpn_provider", value) ?: Unit
 
     var appRoutingEnabled: Boolean
-        get() {
-            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return false
-            return cr?.getPrefBoolean("pref_app_routing_enabled", true) ?: true
-        }
-        set(value) {
-            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return
-            cr?.putPref("pref_app_routing_enabled", value) ?: Unit
-        }
+        get() = cr?.getPrefBoolean("pref_app_routing_enabled", true) ?: true
+        set(value) = cr?.putPref("pref_app_routing_enabled", value) ?: Unit
 
     var appRoutingRulesJson: String
-        get() = cr?.getPrefString("pref_app_routing_rules_json") ?: ""
-        set(value) = cr?.putPref("pref_app_routing_rules_json", value) ?: Unit
+        get() = getAppRoutingRulesJsonForProfile(getActiveVpnProfileKey())
+        set(value) = setAppRoutingRulesJsonForProfile(getActiveVpnProfileKey(), value)
 
     @JvmStatic
     var appRoutingRulesVersion: Long
@@ -310,8 +454,8 @@ object Prefs {
         set(value) = cr?.putPref("pref_app_routing_rules_version", value) ?: Unit
 
     var appRoutingDefaultAction: String
-        get() = cr?.getPrefString("pref_app_routing_default_action") ?: "direct"
-        set(value) = cr?.putPref("pref_app_routing_default_action", value) ?: Unit
+        get() = getAppRoutingDefaultActionForProfile(getActiveVpnProfileKey())
+        set(value) = setAppRoutingDefaultActionForProfile(getActiveVpnProfileKey(), value)
 
     @JvmStatic
     var torUpstreamProvider: String

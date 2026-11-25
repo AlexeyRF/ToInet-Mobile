@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
@@ -86,8 +85,23 @@ object NetworkBlackoutMonitor {
     }
 
     private fun checkNetwork(context: Context) {
-        // Skip check if already running EasyVPN
-        if (Prefs.isGlobalVpnEnabled && Prefs.vpnProvider == "easyvpn") {
+        // Skip check if EasyVPN is already running (VPN or standalone) or if Tor is disabled / not attempting bridge connection
+        if ((Prefs.isGlobalVpnEnabled && ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders().contains("easyvpn")) ||
+            ru.toinet.android.easyvpn.EasyVpnServer.isRunning ||
+            ru.toinet.android.easyvpn.EasyVpnService.isRunning
+        ) {
+            return
+        }
+        val isTorWithBridge = Prefs.torEnabled && (
+                (Prefs.transport != Transport.NONE && Prefs.transport != Transport.BYEDPI) || Prefs.bridgesList.isNotEmpty()
+        )
+        if (!isTorWithBridge ||
+            torStatus == TorService.STATUS_ON ||
+            torStatus == TorService.STATUS_OFF ||
+            !sawPluggableTransportConnected ||
+            torProgress >= 100 ||
+            (System.currentTimeMillis() - ptConnectedTimestamp < 20_000L)
+        ) {
             return
         }
 
@@ -114,21 +128,8 @@ object NetworkBlackoutMonitor {
             return
         }
 
-        // 2. Check Tor connection through bridge
-        val isTorWithBridge = Prefs.torEnabled && (
-                (Prefs.transport != Transport.NONE && Prefs.transport != Transport.BYEDPI) || Prefs.bridgesList.isNotEmpty()
-        )
-
-        val isTorBridgeStuck = isTorWithBridge &&
-                torStatus != TorService.STATUS_ON &&
-                torProgress < 100 &&
-                sawPluggableTransportConnected &&
-                (System.currentTimeMillis() - ptConnectedTimestamp >= 20_000L)
-
-        if (isTorBridgeStuck) {
-            Log.w(TAG, "Blackout detected: Non-whitelisted sites unreachable AND Tor stuck on Pluggable Transport!")
-            sendAlertNotification(context)
-        }
+        Log.w(TAG, "Blackout detected: Non-whitelisted sites unreachable AND Tor stuck on Pluggable Transport!")
+        sendAlertNotification(context)
     }
 
     private fun isHostReachable(host: String, port: Int, timeoutMs: Int): Boolean {
@@ -154,18 +155,16 @@ object NetworkBlackoutMonitor {
 
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    "Оповещения связи",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Предупреждения об ограничении мобильной связи"
-                    enableLights(true)
-                    enableVibration(true)
-                }
-                nm.createNotificationChannel(channel)
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Оповещения связи",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Предупреждения об ограничении мобильной связи"
+                enableLights(true)
+                enableVibration(true)
             }
+            nm.createNotificationChannel(channel)
 
             val contentIntent = PendingIntent.getActivity(
                 context,

@@ -12,11 +12,6 @@ import android.view.ViewGroup
 import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.launch
 import ru.toinet.android.R
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.ui.ToInetMenuAction
@@ -24,9 +19,6 @@ import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.Prefs
 
 class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
-
-    private val viewModel: ConnectViewModel by activityViewModels()
-    private var lvSettingsView: ListView? = null
 
     override fun getHeightRatio(): Float = -1f
 
@@ -36,47 +28,8 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
     ): View? {
         val view = inflater.inflate(R.layout.settings_bottom_sheet, container, false)
         val lvSettings = view.findViewById<ListView>(R.id.lvSettings)
-        lvSettingsView = lvSettings
-        refreshMenu(lvSettings)
-        return view
-    }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.events.collect { event ->
-                    if (event is ConnectEvent.RefreshMenuList && isAdded) {
-                        lvSettingsView?.let { refreshMenu(it) }
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        lvSettingsView?.let { refreshMenu(it) }
-    }
-
-    override fun onDestroyView() {
-        lvSettingsView = null
-        super.onDestroyView()
-    }
-
-    private fun refreshMenu(lvSettings: ListView) {
         val listItems = arrayListOf(
-            ToInetMenuAction(
-                0,
-                R.drawable.ic_server,
-                statusString = "Настройки VPN (${if (Prefs.isGlobalVpnEnabled) "VPN: ВКЛ" else "VPN: ВЫКЛ"})\n(туннелирование и правила маршрутизации)"
-            ) {
-                ProxifierRulesBottomSheet().show(
-                    parentFragmentManager,
-                    ProxifierRulesBottomSheet.TAG
-                )
-                dismiss()
-            },
             ToInetMenuAction(
                 0,
                 R.drawable.ic_server,
@@ -145,6 +98,7 @@ class SettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             }
         )
         lvSettings.adapter = ConnectMenuActionAdapter(requireContext(), listItems)
+        return view
     }
 
     companion object {

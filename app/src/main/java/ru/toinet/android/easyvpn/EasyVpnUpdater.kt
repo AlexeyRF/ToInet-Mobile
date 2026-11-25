@@ -1,7 +1,6 @@
 package ru.toinet.android.easyvpn
 
 import android.content.Context
-import android.os.Build
 import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.*
@@ -163,7 +162,7 @@ object EasyVpnUpdater {
                                 try {
                                     sslSocket.soTimeout = 3000
                                     val sniHost = node.sni.trim().ifEmpty { node.server.trim() }
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && sniHost.isNotEmpty()) {
+                                    if (sniHost.isNotEmpty()) {
                                         val params = sslSocket.sslParameters
                                         params.serverNames = listOf(SNIHostName(sniHost))
                                         sslSocket.sslParameters = params

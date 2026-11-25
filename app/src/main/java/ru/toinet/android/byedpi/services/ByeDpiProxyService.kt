@@ -1,10 +1,7 @@
 package ru.toinet.android.byedpi.services
 
 import android.app.Notification
-import android.app.NotificationManager
 import android.content.Intent
-import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-import android.os.Build
 import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
@@ -39,7 +36,6 @@ class ByeDpiProxyService : LifecycleService() {
 
     companion object {
         private val TAG: String = ByeDpiProxyService::class.java.simpleName
-        private const val FOREGROUND_SERVICE_ID: Int = 1780
         private const val NOTIFICATION_CHANNEL_ID: String = "ByeDPI Proxy"
 
         const val ACTION_RESTART = "ru.toinet.android.byedpi.RESTART"
@@ -67,6 +63,7 @@ class ByeDpiProxyService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         if (intent == null) {
             if (Prefs.isProviderActive("byedpi")) {
+                Prefs.isVpnOrProxySessionActive = true
                 isForegroundService = true
                 startForeground()
                 lifecycleScope.launch { start() }
@@ -181,25 +178,8 @@ class ByeDpiProxyService : LifecycleService() {
     }
 
     private fun startForeground() {
-        val notification: Notification = createNotification()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(
-                    FOREGROUND_SERVICE_ID,
-                    notification,
-                    FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-                )
-            } else {
-                startForeground(FOREGROUND_SERVICE_ID, notification)
-            }
-            isForegroundService = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed startForeground in ByeDpiProxyService", e)
-            try {
-                startForeground(FOREGROUND_SERVICE_ID, notification)
-                isForegroundService = true
-            } catch (_: Exception) {}
-        }
+        startSharedForeground(this, "byedpi") { createNotification() }
+        isForegroundService = true
     }
 
     private suspend fun stop() {
@@ -210,17 +190,9 @@ class ByeDpiProxyService : LifecycleService() {
             }
             updateStatus(ServiceStatus.Disconnected)
         }
-        if (isForegroundService) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
-            isForegroundService = false
-            val nm = getSystemService(NotificationManager::class.java)
-            nm?.cancel(FOREGROUND_SERVICE_ID)
-        }
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "byedpi", wasForeground = wasFg)
         stopSelf()
     }
 
@@ -228,17 +200,9 @@ class ByeDpiProxyService : LifecycleService() {
         withContext(Dispatchers.IO) {
             stopProxyLocked()
         }
-        if (isForegroundService) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
-            isForegroundService = false
-            val nm = getSystemService(NotificationManager::class.java)
-            nm?.cancel(FOREGROUND_SERVICE_ID)
-        }
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "byedpi", wasForeground = wasFg)
         stopSelf()
     }
 
@@ -466,6 +430,9 @@ class ByeDpiProxyService : LifecycleService() {
         if (status != ServiceStatus.Disconnected) {
             updateStatus(ServiceStatus.Disconnected)
         }
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "byedpi", wasForeground = wasFg)
         super.onDestroy()
     }
 

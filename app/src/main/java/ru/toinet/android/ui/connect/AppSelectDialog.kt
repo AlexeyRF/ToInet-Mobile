@@ -20,6 +20,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +47,7 @@ class AppSelectDialog() : BottomSheetDialogFragment() {
     private val selectedPackages = mutableSetOf<String>()
     private val iconCache = LruCache<String, Drawable>(80)
     private lateinit var adapter: AppAdapter
+    private var btnDoneView: MaterialButton? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,7 +74,9 @@ class AppSelectDialog() : BottomSheetDialogFragment() {
         val progressBar = view.findViewById<ProgressBar>(R.id.progressBar)
         val rvApps = view.findViewById<RecyclerView>(R.id.rvApps)
         val btnCancel = view.findViewById<View>(R.id.btnCancel)
-        val btnDone = view.findViewById<View>(R.id.btnDone)
+        val btnDone = view.findViewById<MaterialButton>(R.id.btnDone)
+        btnDoneView = btnDone
+        updateDoneButtonText()
 
         rvApps.layoutManager = LinearLayoutManager(requireContext())
         adapter = AppAdapter()
@@ -103,6 +107,16 @@ class AppSelectDialog() : BottomSheetDialogFragment() {
 
         loadApps(progressBar, rvApps)
         return view
+    }
+
+    override fun onDestroyView() {
+        btnDoneView = null
+        super.onDestroyView()
+    }
+
+    private fun updateDoneButtonText() {
+        val count = selectedPackages.size
+        btnDoneView?.text = if (count == 0) "Готово" else "Готово ($count)"
     }
 
     private fun loadApps(progressBar: ProgressBar, rvApps: RecyclerView) {
@@ -181,17 +195,22 @@ class AppSelectDialog() : BottomSheetDialogFragment() {
                 }
             }
 
+            holder.cbSelected.setOnCheckedChangeListener(null)
             holder.cbSelected.isChecked = selectedPackages.contains(app.packageName)
 
-            holder.itemView.setOnClickListener {
-                if (selectedPackages.contains(app.packageName)) {
-                    selectedPackages.remove(app.packageName)
-                    holder.cbSelected.isChecked = false
-                } else {
+            val toggleSelection = View.OnClickListener {
+                val newSelected = !selectedPackages.contains(app.packageName)
+                if (newSelected) {
                     selectedPackages.add(app.packageName)
-                    holder.cbSelected.isChecked = true
+                } else {
+                    selectedPackages.remove(app.packageName)
                 }
+                holder.cbSelected.isChecked = newSelected
+                updateDoneButtonText()
             }
+
+            holder.itemView.setOnClickListener(toggleSelection)
+            holder.cbSelected.setOnClickListener(toggleSelection)
         }
 
         override fun getItemCount(): Int = filteredApps.size

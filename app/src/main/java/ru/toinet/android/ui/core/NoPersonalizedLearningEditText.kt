@@ -1,7 +1,6 @@
 package ru.toinet.android.ui.core
 
 import android.content.Context
-import android.os.Build
 import android.util.AttributeSet
 import android.view.inputmethod.EditorInfo
 import androidx.appcompat.widget.AppCompatEditText
@@ -14,8 +13,6 @@ import androidx.appcompat.widget.AppCompatEditText
  */
 class NoPersonalizedLearningEditText(context: Context, attrs: AttributeSet?) : AppCompatEditText(context, attrs) {
     init {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            imeOptions = imeOptions or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
-        }
+        imeOptions = imeOptions or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
     }
 }

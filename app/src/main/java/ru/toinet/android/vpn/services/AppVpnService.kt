@@ -27,6 +27,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.isAnyStandaloneServiceRunning
+import ru.toinet.android.util.isServiceRunningInPackage
 import ru.toinet.android.util.refreshStandalonePrimaryNotifications
 import ru.toinet.android.util.sendIntentToService
 class AppVpnService : LifecycleVpnService() {
@@ -37,16 +38,19 @@ class AppVpnService : LifecycleVpnService() {
     private var svpnServer: ru.toinet.android.svpn.SvpnServer? = null
     private var appRoutingServer: ru.toinet.android.vpn.rules.AppRoutingServer? = null
     private val mutex = Mutex()
+    private val providerReconcileMutex = Mutex()
     @Volatile
     private var stopping: Boolean = false
+    @Volatile
+    private var isForegroundService: Boolean = false
     private var watchdogJob: Job? = null
 
     companion object {
         private val TAG: String = AppVpnService::class.java.simpleName
-        private const val FOREGROUND_SERVICE_ID: Int = 1
         private const val NOTIFICATION_CHANNEL_ID: String = "ToInetVpn"
         const val ACTION_SWITCH_SERVER: String = "ru.toinet.android.vpn.SWITCH_SERVER"
         const val ACTION_SWITCH_TOR_NODE: String = "ru.toinet.android.vpn.SWITCH_TOR_NODE"
+        const val ACTION_RELOAD_PROFILE: String = "ru.toinet.android.vpn.RELOAD_PROFILE"
 
         @Volatile
         private var status: ServiceStatus = ServiceStatus.Disconnected
@@ -77,10 +81,7 @@ class AppVpnService : LifecycleVpnService() {
             }
             lastLogNotificationTime = now
             if (status == ServiceStatus.Connected && ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
-                try {
-                    val nm = service.getSystemService(android.app.NotificationManager::class.java)
-                    nm?.notify(FOREGROUND_SERVICE_ID, service.createNotification())
-                } catch (_: Exception) {}
+                updateSharedForegroundNotification(service, "vpn") { service.createNotification() }
             }
         }
     }
@@ -125,6 +126,9 @@ class AppVpnService : LifecycleVpnService() {
         if (activeService == this) {
             activeService = null
         }
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "vpn", wasForeground = wasFg)
         currentLogMessage = null
         super.onDestroy()
     }
@@ -143,6 +147,7 @@ class AppVpnService : LifecycleVpnService() {
 
         return when (action) {
             START_ACTION -> {
+                ru.toinet.android.util.Prefs.isVpnOrProxySessionActive = true
                 currentLogMessage = null
                 ru.toinet.android.util.NotificationLogger.lastActiveVpnLog = null
                 sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
@@ -165,7 +170,18 @@ class AppVpnService : LifecycleVpnService() {
                             start()
                         }
                     }
-                    ensureNeededProvidersRunning()
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        reconcileNeededProviders()
+                    }
+                }
+                START_STICKY
+            }
+
+            ACTION_RELOAD_PROFILE -> {
+                if (status == ServiceStatus.Connected) {
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        reconcileNeededProviders()
+                    }
                 }
                 START_STICKY
             }
@@ -174,8 +190,7 @@ class AppVpnService : LifecycleVpnService() {
                 lifecycleScope.launch {
                     easyVpnServer?.switchToNextServer()
                     if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
-                        val nm = getSystemService(android.app.NotificationManager::class.java)
-                        nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                        updateSharedForegroundNotification(this@AppVpnService, "vpn") { createNotification() }
                     }
                 }
                 START_STICKY
@@ -235,25 +250,8 @@ class AppVpnService : LifecycleVpnService() {
     }
 
     private fun startForeground() {
-        val notification: Notification = createNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            try {
-                startForeground(
-                    FOREGROUND_SERVICE_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-                )
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed specialUse startForeground, fallback to standard", e)
-                try {
-                    startForeground(FOREGROUND_SERVICE_ID, notification)
-                } catch (e2: Exception) {
-                    Log.e(TAG, "Failed fallback startForeground", e2)
-                }
-            }
-        } else {
-            startForeground(FOREGROUND_SERVICE_ID, notification)
-        }
+        startSharedForeground(this, "vpn") { createNotification() }
+        isForegroundService = true
     }
 
     private suspend fun stop() {
@@ -274,9 +272,12 @@ class AppVpnService : LifecycleVpnService() {
         }
 
         updateStatus(ServiceStatus.Disconnected)
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        val nm = getSystemService(android.app.NotificationManager::class.java)
-        nm?.cancel(FOREGROUND_SERVICE_ID)
+        if (ru.toinet.android.util.Prefs.isGlobalVpnEnabled && !isAnyStandaloneServiceRunning()) {
+            ru.toinet.android.util.Prefs.isVpnOrProxySessionActive = false
+        }
+        val wasFg = isForegroundService
+        isForegroundService = false
+        stopSharedForeground(this, "vpn", wasForeground = wasFg)
         stopSelf()
     }
 
@@ -305,25 +306,6 @@ class AppVpnService : LifecycleVpnService() {
         val sharedPreferences = getPreferences()
         // Always use Proxifier rules routing mode
         val isAppRouting = true
-        /*
-        // Code for tunneling into 1 single provider (preserved but commented out):
-        val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
-        val provider = ru.toinet.android.util.Prefs.vpnProvider
-        var actualHost = "127.0.0.1"
-        var actualPort = 1780
-        when (provider) {
-            "byedpi" -> actualPort = getByeDpiPreferences().port
-            "tor" -> actualPort = 9853
-            "operaproxy" -> {
-                actualHost = "127.0.0.1"
-                actualPort = ru.toinet.android.util.Prefs.operaProxyBindAddress.split(":").last().toIntOrNull() ?: 1785
-            }
-            "easyvpn" -> actualPort = if (ru.toinet.android.util.Prefs.easyVpnProxyPort in 1..65535) ru.toinet.android.util.Prefs.easyVpnProxyPort else 1790
-            "svpn", "ssh" -> actualPort = ru.toinet.android.util.Prefs.svpnLocalPort
-            else -> actualPort = getByeDpiPreferences().port
-        }
-        var socksAddr = "$actualHost:$actualPort"
-        */
         val neededProviders = ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders()
 
         if (isAppRouting) {
@@ -346,8 +328,7 @@ class AppVpnService : LifecycleVpnService() {
             easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
                 onServerChanged = {
                     if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
-                        val nm = getSystemService(android.app.NotificationManager::class.java)
-                        nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                        updateSharedForegroundNotification(this@AppVpnService, "vpn") { createNotification() }
                     }
                 }
             }
@@ -596,59 +577,128 @@ class AppVpnService : LifecycleVpnService() {
         Log.i(TAG, "Tun2socks stopped")
     }
 
-    private fun ensureNeededProvidersRunning() {
-        val neededProviders = ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders()
-        if (neededProviders.contains("byedpi")) {
-            val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
-                action = ru.toinet.android.vpn.data.START_ACTION
-                putExtra("is_foreground", true)
-            }
-            sendIntentToService(byedpiIntent, isForeground = true)
-        }
-        if (neededProviders.contains("easyvpn") && easyVpnServer == null) {
-            if (ru.toinet.android.easyvpn.EasyVpnService.isRunning || ru.toinet.android.easyvpn.EasyVpnService.activeService != null) {
-                ru.toinet.android.easyvpn.EasyVpnService.stopAndWait(this)
-            }
-            easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
-                onServerChanged = {
-                    if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
-                        val nm = getSystemService(android.app.NotificationManager::class.java)
-                        nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+    private suspend fun reconcileNeededProviders() {
+        providerReconcileMutex.withLock {
+            if (status != ServiceStatus.Connected || stopping) return@withLock
+            val neededProviders = ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders()
+
+            if (neededProviders.contains("byedpi")) {
+                if (ru.toinet.android.byedpi.services.ByeDpiProxyService.status != ServiceStatus.Connected) {
+                    val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
+                        action = ru.toinet.android.vpn.data.START_ACTION
+                        putExtra("is_foreground", true)
                     }
+                    sendIntentToService(byedpiIntent, isForeground = true)
+                }
+            } else if (!ru.toinet.android.util.Prefs.isProviderNeededStandalone("byedpi")) {
+                if (ru.toinet.android.byedpi.services.ByeDpiProxyService.status != ServiceStatus.Disconnected ||
+                    isServiceRunningInPackage(ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java)
+                ) {
+                    val byedpiStopIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
+                        action = ru.toinet.android.vpn.data.STOP_ACTION
+                        putExtra("is_foreground", false)
+                    }
+                    sendIntentToService(byedpiStopIntent, isForeground = false)
                 }
             }
-            easyVpnServer?.start()
-        }
-        if (neededProviders.contains("operaproxy") && operaProxyServer == null && ArchHelper.isOperaSupported) {
-            if (ru.toinet.android.operaproxy.OperaProxyService.isRunning || ru.toinet.android.operaproxy.OperaProxyService.activeService != null) {
-                ru.toinet.android.operaproxy.OperaProxyService.stopAndWait(this)
-            }
-            operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this, lifecycleScope)
-            operaProxyServer?.start()
-        }
-        if ((neededProviders.contains("svpn") || neededProviders.contains("ssh")) && svpnServer == null) {
-            if (ru.toinet.android.svpn.SvpnService.isRunning || ru.toinet.android.svpn.SvpnService.activeService != null) {
-                ru.toinet.android.svpn.SvpnService.stopAndWait(this)
-            }
-            val server = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope)
-            svpnServer = server
-            server.onConnectionStateChanged = { connected, error ->
-                if (!connected && status == ServiceStatus.Connected && !stopping) {
-                    Log.e(TAG, "SVPN failed or disconnected: $error")
-                    updateStatus(ServiceStatus.Failed)
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        stop()
+
+            if (neededProviders.contains("tor")) {
+                if (!isServiceRunningInPackage(ru.toinet.android.service.ToInetService::class.java) ||
+                    ru.toinet.android.util.Prefs.torRuntimeStatus == org.torproject.jni.TorService.STATUS_OFF
+                ) {
+                    val torIntent = Intent(this, ru.toinet.android.service.ToInetService::class.java).apply {
+                        action = org.torproject.jni.TorService.ACTION_START
+                        putExtra("is_foreground", true)
                     }
+                    sendIntentToService(torIntent, isForeground = true)
+                }
+            } else if (!ru.toinet.android.util.Prefs.isProviderNeededStandalone("tor") &&
+                isServiceRunningInPackage(ru.toinet.android.service.ToInetService::class.java)
+            ) {
+                val torStopIntent = Intent(this, ru.toinet.android.service.ToInetService::class.java).apply {
+                    action = org.torproject.jni.TorService.ACTION_STOP
+                    putExtra("is_foreground", false)
+                }
+                sendIntentToService(torStopIntent, isForeground = false)
+            }
+
+            if (neededProviders.contains("easyvpn")) {
+                if (easyVpnServer == null || easyVpnServer?.isServerRunning != true) {
+                    easyVpnServer?.stop()
+                    easyVpnServer = null
+                    if (ru.toinet.android.easyvpn.EasyVpnService.isRunning || ru.toinet.android.easyvpn.EasyVpnService.activeService != null) {
+                        ru.toinet.android.easyvpn.EasyVpnService.stopAndWait(this)
+                    }
+                    easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
+                        onServerChanged = {
+                            if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
+                                updateSharedForegroundNotification(this@AppVpnService, "vpn") { createNotification() }
+                            }
+                        }
+                    }
+                    easyVpnServer?.start()
+                }
+            } else if (easyVpnServer != null) {
+                easyVpnServer?.stop()
+                easyVpnServer = null
+                if (ru.toinet.android.util.Prefs.isProviderNeededStandalone("easyvpn") && !ru.toinet.android.easyvpn.EasyVpnService.isRunning) {
+                    ru.toinet.android.easyvpn.EasyVpnService.start(this)
                 }
             }
-            server.start()
-        }
-        if (neededProviders.contains("tor")) {
-            val torIntent = Intent(this, ru.toinet.android.service.ToInetService::class.java).apply {
-                action = org.torproject.jni.TorService.ACTION_START
-                putExtra("is_foreground", true)
+
+            if (neededProviders.contains("operaproxy") && ArchHelper.isOperaSupported) {
+                if (operaProxyServer == null || operaProxyServer?.isServerRunning != true) {
+                    operaProxyServer?.stop()
+                    operaProxyServer = null
+                    if (ru.toinet.android.operaproxy.OperaProxyService.isRunning || ru.toinet.android.operaproxy.OperaProxyService.activeService != null) {
+                        ru.toinet.android.operaproxy.OperaProxyService.stopAndWait(this)
+                    }
+                    operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this, lifecycleScope)
+                    operaProxyServer?.start()
+                }
+            } else if (operaProxyServer != null) {
+                operaProxyServer?.stop()
+                operaProxyServer = null
+                if (ru.toinet.android.util.Prefs.isProviderNeededStandalone("operaproxy") &&
+                    ArchHelper.isOperaSupported &&
+                    !ru.toinet.android.operaproxy.OperaProxyService.isRunning
+                ) {
+                    ru.toinet.android.operaproxy.OperaProxyService.start(this)
+                }
             }
-            sendIntentToService(torIntent, isForeground = true)
+
+            if (neededProviders.contains("svpn") || neededProviders.contains("ssh")) {
+                if (svpnServer == null || svpnServer?.isServerRunning != true) {
+                    svpnServer?.stop()
+                    svpnServer = null
+                    if (ru.toinet.android.svpn.SvpnService.isRunning || ru.toinet.android.svpn.SvpnService.activeService != null) {
+                        ru.toinet.android.svpn.SvpnService.stopAndWait(this)
+                    }
+                    val server = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope)
+                    svpnServer = server
+                    server.onConnectionStateChanged = { connected, error ->
+                        if (!connected && status == ServiceStatus.Connected && !stopping) {
+                            Log.e(TAG, "SVPN failed or disconnected: $error")
+                            updateStatus(ServiceStatus.Failed)
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                stop()
+                            }
+                        }
+                    }
+                    server.start()
+                }
+            } else if (svpnServer != null) {
+                svpnServer?.stop()
+                svpnServer = null
+                if (ru.toinet.android.util.Prefs.isProviderNeededStandalone("svpn") && !ru.toinet.android.svpn.SvpnService.isRunning) {
+                    ru.toinet.android.svpn.SvpnService.start(this)
+                }
+            }
+
+            if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
+                updateSharedForegroundNotification(this, "vpn") { createNotification() }
+            }
+            refreshActiveForegroundNotification(this)
         }
     }
 
@@ -671,7 +721,7 @@ class AppVpnService : LifecycleVpnService() {
                 val needed = ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders()
                 if (needed.contains("byedpi") && ru.toinet.android.byedpi.services.ByeDpiProxyService.status != ServiceStatus.Connected) {
                     Log.w(TAG, "Watchdog: ByeDpiProxyService is disconnected while needed in VPN routing, reviving...")
-                    ensureNeededProvidersRunning()
+                    reconcileNeededProviders()
                 }
                 if (needed.contains("easyvpn") && easyVpnServer?.isServerRunning != true) {
                     Log.w(TAG, "Watchdog: EasyVpnServer stopped while needed in VPN routing, reviving...")
@@ -920,11 +970,9 @@ class AppVpnService : LifecycleVpnService() {
         if (dns.isNotBlank()) {
             builder.addDnsServer(dns)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            builder.setMetered(false)
-        }
+        builder.setMetered(false)
 
-        val isAppRouting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ru.toinet.android.util.Prefs.appRoutingEnabled
+        val isAppRouting = ru.toinet.android.util.Prefs.appRoutingEnabled
         if (!isAppRouting) {
             try {
                 val pm = packageManager
@@ -1008,8 +1056,7 @@ class AppVpnService : LifecycleVpnService() {
                             easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this@AppVpnService, lifecycleScope).apply {
                                 onServerChanged = {
                                     if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
-                                        val nm = getSystemService(android.app.NotificationManager::class.java)
-                                        nm?.notify(FOREGROUND_SERVICE_ID, createNotification())
+                                        updateSharedForegroundNotification(this@AppVpnService, "vpn") { createNotification() }
                                     }
                                 }
                             }

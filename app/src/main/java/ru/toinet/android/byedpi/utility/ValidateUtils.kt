@@ -1,7 +1,6 @@
 package ru.toinet.android.byedpi.utility
 
 import android.net.InetAddresses
-import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.preference.EditTextPreference
@@ -11,20 +10,12 @@ import ru.toinet.android.vpn.utility.*
 private const val TAG = "ValidateUtils"
 
 fun checkIp(ip: String): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        InetAddresses.isNumericAddress(ip)
-    } else {
-        true
-    }
+    return InetAddresses.isNumericAddress(ip)
 }
 
 fun checkNotLocalIp(ip: String): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        InetAddresses.isNumericAddress(ip) && InetAddresses.parseNumericAddress(ip).let {
-            !it.isAnyLocalAddress && !it.isLoopbackAddress
-        }
-    } else {
-        true
+    return InetAddresses.isNumericAddress(ip) && InetAddresses.parseNumericAddress(ip).let {
+        !it.isAnyLocalAddress && !it.isLoopbackAddress
     }
 }
 

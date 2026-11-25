@@ -15,30 +15,36 @@ object ProxifierRulesManager {
         val packageToRuleMap: Map<String, ProxifierRule>,
         val neededProviders: Set<String>,
         val version: Long,
-        val defaultAction: String
+        val defaultAction: String,
+        val profileKey: String
     )
 
     @Volatile
     private var cacheHolder: CacheHolder? = null
 
     private fun getOrLoadCache(): CacheHolder {
+        val currentProfile = Prefs.getActiveVpnProfileKey()
         val currentVersion = Prefs.appRoutingRulesVersion
-        val currentDefault = Prefs.appRoutingDefaultAction
+        val currentDefault = Prefs.getAppRoutingDefaultActionForProfile(currentProfile)
         cacheHolder?.let {
-            if (it.version == currentVersion && it.defaultAction == currentDefault) {
+            if (it.profileKey == currentProfile &&
+                it.version == currentVersion &&
+                it.defaultAction == currentDefault
+            ) {
                 return it
             }
         }
         return synchronized(lock) {
+            val prof = Prefs.getActiveVpnProfileKey()
             val ver = Prefs.appRoutingRulesVersion
-            val def = Prefs.appRoutingDefaultAction
+            val def = Prefs.getAppRoutingDefaultActionForProfile(prof)
             cacheHolder?.let {
-                if (it.version == ver && it.defaultAction == def) {
+                if (it.profileKey == prof && it.version == ver && it.defaultAction == def) {
                     return it
                 }
             }
-            val loaded = loadRulesFromPrefs()
-            val newCache = buildCacheHolder(loaded, ver, def)
+            val loaded = loadRulesFromPrefs(prof)
+            val newCache = buildCacheHolder(loaded, ver, def, prof)
             cacheHolder = newCache
             newCache
         }
@@ -47,7 +53,8 @@ object ProxifierRulesManager {
     private fun buildCacheHolder(
         rules: List<ProxifierRule>,
         version: Long = Prefs.appRoutingRulesVersion,
-        defaultAction: String = Prefs.appRoutingDefaultAction
+        defaultAction: String = Prefs.appRoutingDefaultAction,
+        profileKey: String = Prefs.getActiveVpnProfileKey()
     ): CacheHolder {
         val map = mutableMapOf<String, ProxifierRule>()
         val needed = mutableSetOf<String>()
@@ -69,7 +76,7 @@ object ProxifierRulesManager {
             needed.add(defaultAction)
         }
 
-        return CacheHolder(rules, map, needed, version, defaultAction)
+        return CacheHolder(rules, map, needed, version, defaultAction, profileKey)
     }
 
     fun getRules(): MutableList<ProxifierRule> {
@@ -77,11 +84,20 @@ object ProxifierRulesManager {
         return holder.rules.map { it.copy(targetPackages = it.targetPackages.toMutableList()) }.toMutableList()
     }
 
-    private fun loadRulesFromPrefs(): List<ProxifierRule> {
-        val raw = Prefs.appRoutingRulesJson
+    fun getRulesForProfile(profile: String): List<ProxifierRule> {
+        if (profile == Prefs.getActiveVpnProfileKey()) {
+            return getRules()
+        }
+        return synchronized(lock) {
+            loadRulesFromPrefs(profile).map { it.copy(targetPackages = it.targetPackages.toMutableList()) }
+        }
+    }
+
+    private fun loadRulesFromPrefs(profile: String): List<ProxifierRule> {
+        val raw = Prefs.getAppRoutingRulesJsonForProfile(profile)
         if (raw.isBlank()) {
             val defaults = createDefaultRules()
-            saveRulesInternal(defaults)
+            saveRulesInternal(profile, defaults)
             return defaults
         }
         return try {
@@ -92,27 +108,38 @@ object ProxifierRulesManager {
             }
             list
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse rules json", e)
+            Log.e(TAG, "Failed to parse rules json for profile=$profile", e)
             val defaults = createDefaultRules()
-            saveRulesInternal(defaults)
+            saveRulesInternal(profile, defaults)
             defaults
         }
     }
 
     fun saveRules(rules: List<ProxifierRule>) {
+        saveRulesForProfile(Prefs.getActiveVpnProfileKey(), rules)
+    }
+
+    fun saveRulesForProfile(profile: String, rules: List<ProxifierRule>) {
         synchronized(lock) {
-            saveRulesInternal(rules)
-            val newVersion = maxOf(System.currentTimeMillis(), Prefs.appRoutingRulesVersion + 1L)
-            Prefs.appRoutingRulesVersion = newVersion
-            val defensiveCopy = rules.map { it.copy(targetPackages = it.targetPackages.toMutableList()) }
-            cacheHolder = buildCacheHolder(defensiveCopy, newVersion, Prefs.appRoutingDefaultAction)
+            saveRulesInternal(profile, rules)
+            if (profile == Prefs.getActiveVpnProfileKey()) {
+                val newVersion = maxOf(System.currentTimeMillis(), Prefs.appRoutingRulesVersion + 1L)
+                Prefs.appRoutingRulesVersion = newVersion
+                val defensiveCopy = rules.map { it.copy(targetPackages = it.targetPackages.toMutableList()) }
+                cacheHolder = buildCacheHolder(
+                    defensiveCopy,
+                    newVersion,
+                    Prefs.getAppRoutingDefaultActionForProfile(profile),
+                    profile
+                )
+            }
         }
     }
 
-    private fun saveRulesInternal(rules: List<ProxifierRule>) {
+    private fun saveRulesInternal(profile: String, rules: List<ProxifierRule>) {
         val arr = JSONArray()
         rules.forEach { arr.put(it.toJson()) }
-        Prefs.appRoutingRulesJson = arr.toString()
+        Prefs.setAppRoutingRulesJsonForProfile(profile, arr.toString())
     }
 
     fun invalidateCache() {
@@ -199,6 +226,7 @@ object ProxifierRulesManager {
         return null
     }
 
+/* Domain filtering disabled: per-app routing only
     fun findRuleForDomain(domain: String): ProxifierRule? {
         val lower = domain.lowercase().trim()
         if (lower.isBlank()) return null
@@ -277,6 +305,7 @@ object ProxifierRulesManager {
                domain == "facebook.com" || domain.endsWith(".facebook.com") ||
                domain == "fbcdn.net" || domain.endsWith(".fbcdn.net")
     }
+*/
 
     fun findActionForPackage(packageName: String): String {
         return findRuleForPackage(packageName)?.action ?: Prefs.appRoutingDefaultAction

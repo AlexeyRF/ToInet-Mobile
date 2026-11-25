@@ -39,7 +39,7 @@ configure<ApplicationExtension> {
         applicationId = namespace
         versionCode = ToInetBaseVersionCode
         versionName = "PMR"
-        minSdk = 24
+        minSdk = 29
         targetSdk = 36
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

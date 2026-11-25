@@ -23,15 +23,27 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.NavController
 import androidx.navigation.findNavController
 import com.scottyab.rootbeer.RootBeer
+import ru.toinet.android.byedpi.services.ByeDpiProxyService
+import ru.toinet.android.easyvpn.EasyVpnService
+import ru.toinet.android.operaproxy.OperaProxyService
 import ru.toinet.android.service.ToInetConstants
+import ru.toinet.android.service.ToInetService
+import ru.toinet.android.svpn.SvpnService
+import ru.toinet.android.tgws.TgwsService
+import ru.toinet.android.ui.connect.ConnectUiState
 import ru.toinet.android.ui.connect.ConnectViewModel
 import ru.toinet.android.ui.connect.RequestPostNotificationPermission
 import ru.toinet.android.ui.core.BaseActivity
 import ru.toinet.android.ui.core.DeviceAuthenticationPrompt
 import ru.toinet.android.ui.more.LogBottomSheet
+import ru.toinet.android.util.ACTION_VPN_PROFILE_CHANGED
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.isAnyStandaloneServiceRunning
+import ru.toinet.android.util.isServiceRunningInPackage
 import ru.toinet.android.util.sendIntentToService
 import ru.toinet.android.util.showToast
+import ru.toinet.android.vpn.data.ServiceStatus
+import ru.toinet.android.vpn.services.AppVpnService
 import org.torproject.jni.TorService
 
 class ToInetActivity : BaseActivity() {
@@ -95,24 +107,13 @@ class ToInetActivity : BaseActivity() {
             addAction(ToInetConstants.LOCAL_ACTION_STATUS)
             addAction(ToInetConstants.LOCAL_ACTION_LOG)
             addAction(ToInetConstants.LOCAL_ACTION_PORTS)
+            addAction(ACTION_VPN_PROFILE_CHANGED)
         }
 
         ContextCompat.registerReceiver(this, toinetServiceBroadcastReceiver, filter,
             ContextCompat.RECEIVER_NOT_EXPORTED)
 
         requestNotificationPermission()
-
-        if (Prefs.tgwsEnabled) {
-            ru.toinet.android.tgws.TgwsService.start(
-                this,
-                Prefs.tgwsHost,
-                Prefs.tgwsPort,
-                Prefs.tgwsDcMappings,
-                Prefs.tgwsSecret,
-                Prefs.tgwsFakeTls,
-                false
-            )
-        }
 
         if (!rootDetectionShown && Prefs.detectRoot() && RootBeer(this).isRooted) {
             //we found indication of root
@@ -200,15 +201,20 @@ class ToInetActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (ru.toinet.android.vpn.services.AppVpnService.isConnected) {
-            connectViewModel.updateState(this, TorService.STATUS_ON)
-            previousReceivedTorStatus = TorService.STATUS_ON
-        } else if (!Prefs.isGlobalVpnEnabled && (Prefs.vpnProvider == "svpn" || Prefs.vpnProvider == "ssh" || Prefs.svpnEnabled)) {
-            val status = if (ru.toinet.android.svpn.SvpnService.isRunning) TorService.STATUS_ON else TorService.STATUS_OFF
-            connectViewModel.updateState(this, status)
-            previousReceivedTorStatus = status
+        val isViewModelStarting = connectViewModel.uiState.value is ConnectUiState.Starting
+        val effectiveStatus = resolveEffectiveStatus(this, previousReceivedTorStatus, isViewModelStarting)
+        previousReceivedTorStatus = effectiveStatus
+        if (effectiveStatus != TorService.STATUS_STARTING || !isViewModelStarting) {
+            connectViewModel.updateState(this, effectiveStatus)
         }
-        sendIntentToService(ToInetConstants.CMD_ACTIVE)
+        val hasActiveService = if (Prefs.isGlobalVpnEnabled) {
+            AppVpnService.activeService != null
+        } else {
+            isAnyStandaloneServiceRunning() || hasAnyLiveStandaloneService(this)
+        }
+        if (hasActiveService) {
+            sendIntentToService(ToInetConstants.CMD_ACTIVE)
+        }
         checkStartVpnFromIntent()
     }
 
@@ -269,6 +275,10 @@ class ToInetActivity : BaseActivity() {
                         portHttp = http
                     }
                 }
+
+                ACTION_VPN_PROFILE_CHANGED -> {
+                    connectViewModel.triggerRefreshMenuList()
+                }
             }
         }
     }
@@ -322,6 +332,41 @@ class ToInetActivity : BaseActivity() {
 
         // Make sure this is only shown once per app-start, not on every device rotation.
         private var rootDetectionShown = false
+
+        fun resolveEffectiveStatus(
+            context: Context,
+            currentKnownStatus: String?,
+            isViewModelStarting: Boolean = false
+        ): String {
+            if (Prefs.isGlobalVpnEnabled) {
+                return when {
+                    AppVpnService.isConnected -> TorService.STATUS_ON
+                    isViewModelStarting ||
+                        (AppVpnService.activeService != null && currentKnownStatus == TorService.STATUS_STARTING) ->
+                        TorService.STATUS_STARTING
+                    else -> TorService.STATUS_OFF
+                }
+            }
+
+            if (context.isAnyStandaloneServiceRunning()) {
+                return TorService.STATUS_ON
+            }
+
+            val hasPendingStandalone = isViewModelStarting || (
+                currentKnownStatus == TorService.STATUS_STARTING && hasAnyLiveStandaloneService(context)
+                )
+
+            return if (hasPendingStandalone) TorService.STATUS_STARTING else TorService.STATUS_OFF
+        }
+
+        private fun hasAnyLiveStandaloneService(context: Context): Boolean {
+            return ByeDpiProxyService.status != ServiceStatus.Disconnected ||
+                EasyVpnService.activeService != null ||
+                OperaProxyService.activeService != null ||
+                SvpnService.activeService != null ||
+                TgwsService.activeService != null ||
+                (Prefs.isProviderActive("tor") && context.isServiceRunningInPackage(ToInetService::class.java))
+        }
     }
 
     fun showLog() {

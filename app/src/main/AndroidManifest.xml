@@ -190,12 +190,6 @@
         </service>
 
 
-            
-        <activity
-            android:name=".ui.vpnapps.VpnAppsActivity"
-            android:exported="true"
-            android:label="Приложения для VPN" />
-
         <service
             android:name=".ui.ToInetTileService"
             android:exported="true"

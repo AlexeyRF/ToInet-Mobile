@@ -8,15 +8,17 @@ import android.net.NetworkCapabilities
 import android.util.Log
 import ru.toinet.android.byedpi.services.ByeDpiProxyService
 import ru.toinet.android.vpn.data.ServiceStatus
+import ru.toinet.android.vpn.rules.ProxifierRulesManager
 
 object NetworkSwitchListener {
     private const val TAG = "NetworkSwitchListener"
     private var isRegistered = false
-    private var lastNetworkType = -1 // 0 for Wifi, 1 for Cellular
+    private var lastNetworkType = -1 // 0 for Wifi/Ethernet, 1 for Cellular
 
     fun register(context: Context) {
         if (isRegistered) return
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+        val appContext = context.applicationContext ?: context
+        val connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
 
         try {
             connectivityManager.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
@@ -31,10 +33,14 @@ object NetworkSwitchListener {
                     if (currentType != -1 && currentType != lastNetworkType) {
                         val prevType = lastNetworkType
                         lastNetworkType = currentType
-                        if (prevType != -1) { // Ignore initial registration event
+                        val networkKey = if (currentType == 0) Prefs.VPN_PROFILE_WIFI else Prefs.VPN_PROFILE_MOBILE
+                        if (prevType == -1) {
+                            Prefs.currentVpnNetworkType = networkKey
+                        } else {
                             val typeName = if (currentType == 0) "Wi-Fi" else "Мобильная сеть"
                             Log.i(TAG, "Default network switched to $typeName")
-                            checkAndSwitchZdpiStrategy(context, currentType, typeName)
+                            checkAndSwitchZdpiStrategy(appContext, currentType, typeName)
+                            checkAndSwitchVpnProfile(appContext, networkKey, typeName)
                         }
                     }
                 }
@@ -52,7 +58,7 @@ object NetworkSwitchListener {
 
     private fun checkAndSwitchZdpiStrategy(context: Context, networkType: Int, typeName: String) {
         val neededByVpn = Prefs.isGlobalVpnEnabled && try {
-            ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders().contains("byedpi")
+            ProxifierRulesManager.getAllNeededVpnProviders().contains("byedpi")
         } catch (_: Throwable) {
             false
         }
@@ -84,5 +90,25 @@ object NetworkSwitchListener {
             putExtra("is_foreground", true)
         }
         context.sendIntentToService(intent, isForeground = true)
+    }
+
+    private fun checkAndSwitchVpnProfile(context: Context, newNetworkKey: String, typeName: String) {
+        if (!Prefs.vpnSeparateNetworkProfiles) {
+            Prefs.currentVpnNetworkType = newNetworkKey
+            return
+        }
+        val previousVpnEnabled = Prefs.isGlobalVpnEnabled
+        Prefs.currentVpnNetworkType = newNetworkKey
+        ProxifierRulesManager.invalidateCache()
+
+        Log.i(
+            TAG,
+            "Applying VPN profile for $typeName (prevVpnEnabled=$previousVpnEnabled, newVpnEnabled=${Prefs.isGlobalVpnEnabled})"
+        )
+        NotificationLogger.log(context, "proxifier", "Смена сети на $typeName: применен VPN-профиль ($typeName)")
+        context.applyActiveNetworkVpnProfile(previousVpnEnabled)
+        context.sendBroadcast(
+            Intent(ACTION_VPN_PROFILE_CHANGED).setPackage(context.packageName)
+        )
     }
 }
