@@ -48,6 +48,10 @@ class ByeDpiProxyService : LifecycleService() {
         @Volatile
         var status: ServiceStatus = ServiceStatus.Disconnected
             private set
+
+        @Volatile
+        var isStarting: Boolean = false
+            private set
     }
 
     override fun onCreate() {
@@ -90,16 +94,25 @@ class ByeDpiProxyService : LifecycleService() {
 
         return when (action) {
             START_ACTION -> {
+                if (status == ServiceStatus.Failed) {
+                    status = ServiceStatus.Disconnected
+                }
+                isStarting = true
                 lifecycleScope.launch { start() }
                 START_STICKY
             }
 
             STOP_ACTION -> {
+                isStarting = false
                 lifecycleScope.launch { stop() }
                 START_NOT_STICKY
             }
 
             ACTION_RESTART -> {
+                if (status == ServiceStatus.Failed) {
+                    status = ServiceStatus.Disconnected
+                }
+                isStarting = true
                 lifecycleScope.launch { restart() }
                 START_STICKY
             }
@@ -121,6 +134,7 @@ class ByeDpiProxyService : LifecycleService() {
     private suspend fun restart() {
         mutex.withLock {
             try {
+                isStarting = true
                 withContext(Dispatchers.IO) {
                     stopProxyLocked()
                 }
@@ -132,6 +146,8 @@ class ByeDpiProxyService : LifecycleService() {
                 updateStatus(ServiceStatus.Failed)
                 NotificationLogger.log(this, "byedpi", "Ошибка перезапуска ByeDPI: ${e.message}")
                 stopAfterFailure()
+            } finally {
+                isStarting = false
             }
         }
     }
@@ -140,6 +156,7 @@ class ByeDpiProxyService : LifecycleService() {
         Log.i(TAG, "Starting")
         mutex.withLock {
             if (status == ServiceStatus.Connected) {
+                isStarting = false
                 Log.w(TAG, "Proxy already connected")
                 if (isForegroundService) {
                     startForeground()
@@ -147,12 +164,15 @@ class ByeDpiProxyService : LifecycleService() {
                 return
             }
             try {
+                isStarting = true
                 performStartLocked()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start proxy", e)
                 updateStatus(ServiceStatus.Failed)
                 NotificationLogger.log(this, "byedpi", "Ошибка запуска ByeDPI: ${e.message}")
                 stopAfterFailure()
+            } finally {
+                isStarting = false
             }
         }
     }

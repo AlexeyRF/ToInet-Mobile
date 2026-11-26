@@ -301,19 +301,16 @@ object Prefs {
     @Synchronized
     fun ensureVpnNetworkProfilesInitialized() {
         if (vpnNetworkProfilesInitialized) return
-        val unifiedEnabled = cr?.getPrefBoolean("pref_global_vpn_enabled", false) ?: false
         val unifiedRules = cr?.getPrefString("pref_app_routing_rules_json") ?: ""
         val unifiedDefault = cr?.getPrefString("pref_app_routing_default_action") ?: "direct"
 
         if (cr?.getPrefString("pref_app_routing_rules_json_wifi") == null) {
             cr?.putPref("pref_app_routing_rules_json_wifi", unifiedRules)
             cr?.putPref("pref_app_routing_default_action_wifi", unifiedDefault)
-            cr?.putPref("pref_global_vpn_enabled_wifi", unifiedEnabled)
         }
         if (cr?.getPrefString("pref_app_routing_rules_json_mobile") == null) {
             cr?.putPref("pref_app_routing_rules_json_mobile", unifiedRules)
             cr?.putPref("pref_app_routing_default_action_mobile", unifiedDefault)
-            cr?.putPref("pref_global_vpn_enabled_mobile", unifiedEnabled)
         }
         vpnNetworkProfilesInitialized = true
     }
@@ -321,36 +318,6 @@ object Prefs {
     @JvmStatic
     fun getActiveVpnProfileKey(): String {
         return if (!vpnSeparateNetworkProfiles) VPN_PROFILE_UNIFIED else currentVpnNetworkType
-    }
-
-    @JvmStatic
-    fun isGlobalVpnEnabledForProfile(profile: String): Boolean {
-        return when (profile) {
-            VPN_PROFILE_WIFI -> {
-                ensureVpnNetworkProfilesInitialized()
-                cr?.getPrefBoolean("pref_global_vpn_enabled_wifi", false) ?: false
-            }
-            VPN_PROFILE_MOBILE -> {
-                ensureVpnNetworkProfilesInitialized()
-                cr?.getPrefBoolean("pref_global_vpn_enabled_mobile", false) ?: false
-            }
-            else -> cr?.getPrefBoolean("pref_global_vpn_enabled", false) ?: false
-        }
-    }
-
-    @JvmStatic
-    fun setGlobalVpnEnabledForProfile(profile: String, enabled: Boolean) {
-        when (profile) {
-            VPN_PROFILE_WIFI -> {
-                ensureVpnNetworkProfilesInitialized()
-                cr?.putPref("pref_global_vpn_enabled_wifi", enabled)
-            }
-            VPN_PROFILE_MOBILE -> {
-                ensureVpnNetworkProfilesInitialized()
-                cr?.putPref("pref_global_vpn_enabled_mobile", enabled)
-            }
-            else -> cr?.putPref("pref_global_vpn_enabled", enabled)
-        }
     }
 
     @JvmStatic
@@ -415,8 +382,8 @@ object Prefs {
 
     @JvmStatic
     var isGlobalVpnEnabled: Boolean
-        get() = isGlobalVpnEnabledForProfile(getActiveVpnProfileKey())
-        set(value) = setGlobalVpnEnabledForProfile(getActiveVpnProfileKey(), value)
+        get() = cr?.getPrefBoolean("pref_global_vpn_enabled", false) ?: false
+        set(value) = cr?.putPref("pref_global_vpn_enabled", value) ?: Unit
 
     var vpnAppsInitialized: Boolean
         get() = cr?.getPrefBoolean("pref_vpn_apps_initialized", false) ?: false
@@ -845,7 +812,7 @@ object Prefs {
         val inVpn = when (provider) {
             "operaproxy" -> ArchHelper.isOperaSupported && vpnNeeded.contains("operaproxy")
             "svpn", "ssh" -> vpnNeeded.contains("svpn") || vpnNeeded.contains("ssh")
-            "tgws" -> false
+            "tgws" -> vpnNeeded.contains("tgws")
             else -> vpnNeeded.contains(provider)
         }
         return inVpn || isProviderNeededStandalone(provider)

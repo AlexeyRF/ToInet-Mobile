@@ -36,7 +36,7 @@ import ru.toinet.android.util.ACTION_VPN_PROFILE_CHANGED
 import ru.toinet.android.util.NetworkUtils
 import ru.toinet.android.util.Prefs
 import ru.toinet.android.util.sendIntentToService
-import ru.toinet.android.util.setGlobalVpnEnabledForProfile
+import ru.toinet.android.util.setGlobalVpnEnabled
 import ru.toinet.android.util.setSeparateVpnProfilesEnabled
 import ru.toinet.android.vpn.rules.ProxifierRule
 import ru.toinet.android.vpn.rules.ProxifierRulesManager
@@ -51,7 +51,6 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     private lateinit var itemTouchHelper: ItemTouchHelper
     private var defaultAction = ProxifierRule.ACTION_DIRECT
     private var selectedProfileKey = Prefs.VPN_PROFILE_UNIFIED
-    private var pendingVpnProfileKey: String? = null
     private var isUpdatingVpnSwitch = false
     private var isUpdatingProfileUi = false
     private var swVpnEnabledView: MaterialSwitch? = null
@@ -70,18 +69,14 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         val ctx = context ?: return@registerForActivityResult
-        val targetProfile = pendingVpnProfileKey ?: selectedProfileKey
-        pendingVpnProfileKey = null
         if (result.resultCode == AppCompatActivity.RESULT_OK) {
-            ctx.setGlobalVpnEnabledForProfile(targetProfile, true)
+            ctx.setGlobalVpnEnabled(true)
             viewModel.triggerRefreshMenuList()
         } else {
-            if (selectedProfileKey == targetProfile) {
-                isUpdatingVpnSwitch = true
-                swVpnEnabledView?.isChecked = false
-                isUpdatingVpnSwitch = false
-            }
-            ctx.setGlobalVpnEnabledForProfile(targetProfile, false)
+            isUpdatingVpnSwitch = true
+            swVpnEnabledView?.isChecked = false
+            isUpdatingVpnSwitch = false
+            ctx.setGlobalVpnEnabled(false)
             viewModel.triggerRefreshMenuList()
         }
     }
@@ -91,7 +86,6 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString(KEY_SELECTED_PROFILE, selectedProfileKey)
-        outState.putString(KEY_PENDING_VPN_PROFILE, pendingVpnProfileKey)
     }
 
     override fun onCreateView(
@@ -113,8 +107,6 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
         tvCurrentNetworkView = tvCurrentNetwork
         swVpnEnabledView = swVpnEnabled
         btnDefaultActionView = btnDefaultAction
-
-        pendingVpnProfileKey = savedInstanceState?.getString(KEY_PENDING_VPN_PROFILE)
 
         rvRules.layoutManager = LinearLayoutManager(requireContext())
         adapter = RulesAdapter()
@@ -144,6 +136,10 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
         isUpdatingProfileUi = false
 
         loadProfileIntoUi(selectedProfileKey)
+
+        isUpdatingVpnSwitch = true
+        swVpnEnabled.isChecked = Prefs.isGlobalVpnEnabled
+        isUpdatingVpnSwitch = false
 
         swSeparateVpnProfiles.setOnCheckedChangeListener { _, isChecked ->
             if (isUpdatingProfileUi) return@setOnCheckedChangeListener
@@ -182,18 +178,16 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
 
         swVpnEnabled.setOnCheckedChangeListener { _, isChecked ->
             if (isUpdatingVpnSwitch) return@setOnCheckedChangeListener
-            val targetProfile = selectedProfileKey
             if (isChecked) {
                 val prepareIntent = VpnService.prepare(requireContext())
                 if (prepareIntent != null) {
-                    pendingVpnProfileKey = targetProfile
                     vpnPrepareLauncher.launch(prepareIntent)
                 } else {
-                    requireContext().setGlobalVpnEnabledForProfile(targetProfile, true)
+                    requireContext().setGlobalVpnEnabled(true)
                     viewModel.triggerRefreshMenuList()
                 }
             } else {
-                requireContext().setGlobalVpnEnabledForProfile(targetProfile, false)
+                requireContext().setGlobalVpnEnabled(false)
                 viewModel.triggerRefreshMenuList()
             }
         }
@@ -288,10 +282,6 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
 
     private fun loadProfileIntoUi(profileKey: String) {
         selectedProfileKey = profileKey
-
-        isUpdatingVpnSwitch = true
-        swVpnEnabledView?.isChecked = Prefs.isGlobalVpnEnabledForProfile(profileKey)
-        isUpdatingVpnSwitch = false
 
         defaultAction = Prefs.getAppRoutingDefaultActionForProfile(profileKey)
         btnDefaultActionView?.text = ProxifierRule.getActionTitle(defaultAction)
@@ -606,6 +596,5 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     companion object {
         const val TAG = "ProxifierRulesBottomSheet"
         private const val KEY_SELECTED_PROFILE = "key_selected_profile"
-        private const val KEY_PENDING_VPN_PROFILE = "key_pending_vpn_profile"
     }
 }

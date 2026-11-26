@@ -252,8 +252,23 @@ class ToInetActivity : BaseActivity() {
             when (intent?.action) {
                 ToInetConstants.LOCAL_ACTION_STATUS -> {
                     if (status != null) {
-                        connectViewModel.updateState(this@ToInetActivity, status)
-                        previousReceivedTorStatus = status
+                        val isViewModelStarting = connectViewModel.uiState.value is ConnectUiState.Starting
+                        val effectiveStatus = if (Prefs.isGlobalVpnEnabled) {
+                            when {
+                                AppVpnService.isConnected -> TorService.STATUS_ON
+                                status == TorService.STATUS_STARTING ||
+                                    (status == TorService.STATUS_ON &&
+                                        (AppVpnService.activeService != null || isViewModelStarting)) ->
+                                    TorService.STATUS_STARTING
+                                else -> TorService.STATUS_OFF
+                            }
+                        } else {
+                            status
+                        }
+                        previousReceivedTorStatus = effectiveStatus
+                        if (effectiveStatus != TorService.STATUS_STARTING || !isViewModelStarting) {
+                            connectViewModel.updateState(this@ToInetActivity, effectiveStatus)
+                        }
                     }
                 }
 

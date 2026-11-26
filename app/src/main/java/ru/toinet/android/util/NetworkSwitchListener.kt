@@ -97,16 +97,12 @@ object NetworkSwitchListener {
             Prefs.currentVpnNetworkType = newNetworkKey
             return
         }
-        val previousVpnEnabled = Prefs.isGlobalVpnEnabled
         Prefs.currentVpnNetworkType = newNetworkKey
         ProxifierRulesManager.invalidateCache()
 
-        Log.i(
-            TAG,
-            "Applying VPN profile for $typeName (prevVpnEnabled=$previousVpnEnabled, newVpnEnabled=${Prefs.isGlobalVpnEnabled})"
-        )
+        Log.i(TAG, "Applying VPN rules profile for $typeName")
         NotificationLogger.log(context, "proxifier", "Смена сети на $typeName: применен VPN-профиль ($typeName)")
-        context.applyActiveNetworkVpnProfile(previousVpnEnabled)
+        context.applyActiveNetworkVpnProfile()
         context.sendBroadcast(
             Intent(ACTION_VPN_PROFILE_CHANGED).setPackage(context.packageName)
         )

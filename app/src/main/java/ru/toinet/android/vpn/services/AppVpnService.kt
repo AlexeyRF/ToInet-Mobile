@@ -17,8 +17,13 @@ import ru.toinet.android.byedpi.core.ByeDpiProxyPreferences
 
 import ru.toinet.android.vpn.data.*
 import ru.toinet.android.vpn.utility.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -30,6 +35,7 @@ import ru.toinet.android.util.isAnyStandaloneServiceRunning
 import ru.toinet.android.util.isServiceRunningInPackage
 import ru.toinet.android.util.refreshStandalonePrimaryNotifications
 import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.util.startRemainingNonVpnProviders
 class AppVpnService : LifecycleVpnService() {
     private var tunFd: ParcelFileDescriptor? = null
     private var dnsProxyServer: ru.toinet.android.dns.DnsProxyServer? = null
@@ -43,6 +49,7 @@ class AppVpnService : LifecycleVpnService() {
     private var stopping: Boolean = false
     @Volatile
     private var isForegroundService: Boolean = false
+    private var startJob: Job? = null
     private var watchdogJob: Job? = null
 
     companion object {
@@ -147,16 +154,20 @@ class AppVpnService : LifecycleVpnService() {
 
         return when (action) {
             START_ACTION -> {
+                stopping = false
                 ru.toinet.android.util.Prefs.isVpnOrProxySessionActive = true
                 currentLogMessage = null
                 ru.toinet.android.util.NotificationLogger.lastActiveVpnLog = null
                 sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
                 ru.toinet.android.util.NotificationLogger.log(this, ru.toinet.android.util.Prefs.vpnProvider, "Подключение к VPN (${ru.toinet.android.util.Prefs.vpnProvider})...")
-                lifecycleScope.launch { start() }
+                startJob?.cancel()
+                startJob = lifecycleScope.launch { start() }
                 START_STICKY
             }
 
             STOP_ACTION -> {
+                stopping = true
+                startJob?.cancel()
                 lifecycleScope.launch { stop() }
                 START_NOT_STICKY
             }
@@ -173,6 +184,9 @@ class AppVpnService : LifecycleVpnService() {
                     lifecycleScope.launch(Dispatchers.IO) {
                         reconcileNeededProviders()
                     }
+                } else if (!stopping) {
+                    startForeground()
+                    sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
                 }
                 START_STICKY
             }
@@ -221,6 +235,8 @@ class AppVpnService : LifecycleVpnService() {
 
     override fun onRevoke() {
         Log.i(TAG, "VPN revoked")
+        stopping = true
+        startJob?.cancel()
         lifecycleScope.launch { stop() }
     }
 
@@ -241,7 +257,18 @@ class AppVpnService : LifecycleVpnService() {
                     startTun2Socks()
                 }
             }
+            if (stopping) {
+                throw CancellationException("VPN stopped during startup")
+            }
             updateStatus(ServiceStatus.Connected)
+            lifecycleScope.launch(Dispatchers.IO) {
+                if (status == ServiceStatus.Connected && !stopping) {
+                    startRemainingNonVpnProviders()
+                }
+            }
+        } catch (e: CancellationException) {
+            Log.i(TAG, "VPN startup cancelled")
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start VPN", e)
             updateStatus(ServiceStatus.Failed)
@@ -283,7 +310,7 @@ class AppVpnService : LifecycleVpnService() {
 
 
 
-    private fun startTun2Socks() {
+    private suspend fun startTun2Socks() {
         Log.i(TAG, "Starting tun2socks")
 
         if (tunFd != null) {
@@ -304,102 +331,14 @@ class AppVpnService : LifecycleVpnService() {
         ru.toinet.android.vpn.utility.VpnUtility.killPidFile("$dir/pdnsd.pid")
 
         val sharedPreferences = getPreferences()
-        // Always use Proxifier rules routing mode
         val isAppRouting = true
         val neededProviders = ru.toinet.android.vpn.rules.ProxifierRulesManager.getAllNeededVpnProviders()
 
-        if (isAppRouting) {
-            appRoutingServer = ru.toinet.android.vpn.rules.AppRoutingServer(this, lifecycleScope).apply {
-                start()
-            }
-        }
-
-        if (neededProviders.contains("byedpi")) {
-            val byedpiIntent = Intent(this, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
-                action = ru.toinet.android.vpn.data.START_ACTION
-                putExtra("is_foreground", true)
-            }
-            sendIntentToService(byedpiIntent, isForeground = true)
-        }
-        if (neededProviders.contains("easyvpn")) {
-            if (ru.toinet.android.easyvpn.EasyVpnService.isRunning || ru.toinet.android.easyvpn.EasyVpnService.activeService != null) {
-                ru.toinet.android.easyvpn.EasyVpnService.stopAndWait(this)
-            }
-            easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this, lifecycleScope).apply {
-                onServerChanged = {
-                    if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
-                        updateSharedForegroundNotification(this@AppVpnService, "vpn") { createNotification() }
-                    }
-                }
-            }
-            easyVpnServer?.start()
-        }
-        if (neededProviders.contains("operaproxy") && ArchHelper.isOperaSupported) {
-            if (ru.toinet.android.operaproxy.OperaProxyService.isRunning || ru.toinet.android.operaproxy.OperaProxyService.activeService != null) {
-                ru.toinet.android.operaproxy.OperaProxyService.stopAndWait(this)
-            }
-            operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this, lifecycleScope)
-            operaProxyServer?.start()
-        }
-        if (neededProviders.contains("svpn") || neededProviders.contains("ssh")) {
-            if (ru.toinet.android.svpn.SvpnService.isRunning || ru.toinet.android.svpn.SvpnService.activeService != null) {
-                ru.toinet.android.svpn.SvpnService.stopAndWait(this)
-            }
-            val server = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope)
-            svpnServer = server
-            server.onConnectionStateChanged = { connected, error ->
-                if (!connected && status == ServiceStatus.Connected && !stopping) {
-                    Log.e(TAG, "SVPN failed or disconnected: $error")
-                    updateStatus(ServiceStatus.Failed)
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        stop()
-                    }
-                }
-            }
-            val connected = server.startAndWait(8000L)
-            if (!connected) {
-                val err = server.lastErrorMessage ?: "SSH connection failed"
-                Log.e(TAG, "SVPN failed to connect: $err")
-                throw IllegalStateException("SVPN: $err")
-            }
-        }
-
-        if (neededProviders.contains("tor")) {
-            val torIntent = Intent(this, ru.toinet.android.service.ToInetService::class.java).apply {
-                action = org.torproject.jni.TorService.ACTION_START
-                putExtra("is_foreground", true)
-            }
-            sendIntentToService(torIntent, isForeground = true)
-        }
-
-        // Wait for proxy port to be open before routing traffic to it
-        val isReady = waitForPort("127.0.0.1", 10850, 4000L)
-        if (neededProviders.contains("byedpi")) {
-            val byedpiPort = try {
-                ru.toinet.android.byedpi.core.ByeDpiProxyPreferences.fromSharedPreferences(
-                    androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
-                ).port
-            } catch (_: Exception) { 1780 }
-            waitForPort("127.0.0.1", byedpiPort, 3000L)
-        }
-        /*
-        // Single provider wait logic (commented out):
-        val isReady = if (isAppRouting) {
-            waitForPort("127.0.0.1", 10850, 4000L)
-        } else {
-            val waitTimeout = when (provider) {
-                "operaproxy" -> 6000L
-                "easyvpn" -> 10000L
-                "byedpi" -> 4000L
-                "tor" -> 4000L
-                else -> 3000L
-            }
-            waitForPort(actualHost, actualPort, waitTimeout)
-        }
-        */
-        if (!isReady) {
-            Log.e(TAG, "AppRoutingServer router port 127.0.0.1:10850 failed to start within timeout")
-            ru.toinet.android.util.NotificationLogger.log(this, "proxifier", "Предупреждение: порт маршрутизатора 10850 не ответил вовремя")
+        try {
+            startAndAwaitNeededProviders(isAppRouting, neededProviders)
+        } catch (e: Exception) {
+            stopTun2Socks()
+            throw e
         }
 
         var dns = sharedPreferences.getStringNotNull("dns_ip", "77.88.8.8")
@@ -574,7 +513,291 @@ class AppVpnService : LifecycleVpnService() {
                 ru.toinet.android.svpn.SvpnService.stop(this)
             }
         }
+        if (stoppedProviders.contains("tgws") &&
+            (!keepStandaloneComponents || !ru.toinet.android.util.Prefs.isProviderNeededStandalone("tgws")) &&
+            (ru.toinet.android.tgws.TgwsService.isRunning || ru.toinet.android.tgws.TgwsService.activeService != null)
+        ) {
+            ru.toinet.android.tgws.TgwsService.stop(this)
+        }
         Log.i(TAG, "Tun2socks stopped")
+    }
+
+    private fun isTcpPortOpen(host: String, port: Int): Boolean {
+        if (port !in 1..65535) return false
+        return try {
+            java.net.Socket().use { socket ->
+                socket.connect(java.net.InetSocketAddress(host, port), 200)
+                true
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private suspend fun waitForPortSuspend(host: String, port: Int, timeoutMs: Long): Boolean {
+        if (port !in 1..65535) return false
+        val start = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < timeoutMs && !stopping) {
+            if (isTcpPortOpen(host, port)) return true
+            delay(100)
+        }
+        return false
+    }
+
+    private fun resolveTorSocksPort(): Int {
+        val resolved = ru.toinet.android.util.Prefs.torSocksPortResolved
+        val prefPort = ru.toinet.android.util.Prefs.proxySocksPort?.toIntOrNull()
+        return when {
+            prefPort != null && prefPort in 1..65535 -> prefPort
+            resolved in 1..65535 -> resolved
+            else -> 9853
+        }
+    }
+
+    private suspend fun startAndAwaitNeededProviders(isAppRouting: Boolean, neededProviders: Set<String>) = coroutineScope {
+        val jobs = mutableListOf<kotlinx.coroutines.Deferred<Unit>>()
+
+        if (isAppRouting) {
+            appRoutingServer = ru.toinet.android.vpn.rules.AppRoutingServer(this@AppVpnService, lifecycleScope).apply {
+                start()
+            }
+            jobs += async(Dispatchers.IO) {
+                if (!waitForPortSuspend("127.0.0.1", 10850, 5000L)) {
+                    throw IllegalStateException("AppRoutingServer port 10850 failed to start within timeout")
+                }
+            }
+        }
+
+        if (neededProviders.contains("byedpi")) {
+            jobs += async(Dispatchers.IO) {
+                val byedpiPort = try {
+                    ru.toinet.android.byedpi.core.ByeDpiProxyPreferences.fromSharedPreferences(
+                        androidx.preference.PreferenceManager.getDefaultSharedPreferences(this@AppVpnService)
+                    ).port
+                } catch (_: Exception) { 1780 }
+
+                if (ru.toinet.android.byedpi.services.ByeDpiProxyService.status != ServiceStatus.Connected ||
+                    !isTcpPortOpen("127.0.0.1", byedpiPort)
+                ) {
+                    val byedpiIntent = Intent(this@AppVpnService, ru.toinet.android.byedpi.services.ByeDpiProxyService::class.java).apply {
+                        action = ru.toinet.android.vpn.data.START_ACTION
+                        putExtra("is_foreground", true)
+                    }
+                    if (!sendIntentToService(byedpiIntent, isForeground = true)) {
+                        throw IllegalStateException("Failed to dispatch ByeDpiProxyService start intent")
+                    }
+                    val startMs = System.currentTimeMillis()
+                    while (System.currentTimeMillis() - startMs < 10_000L && !stopping && isActive) {
+                        val st = ru.toinet.android.byedpi.services.ByeDpiProxyService.status
+                        if (st == ServiceStatus.Connected && isTcpPortOpen("127.0.0.1", byedpiPort)) {
+                            return@async
+                        }
+                        if (!ru.toinet.android.byedpi.services.ByeDpiProxyService.isStarting && st == ServiceStatus.Failed) {
+                            throw IllegalStateException("ByeDpiProxyService failed to start")
+                        }
+                        delay(150)
+                    }
+                    if (stopping || !isActive) throw CancellationException("Cancelled waiting for ByeDPI")
+                    if (ru.toinet.android.byedpi.services.ByeDpiProxyService.status != ServiceStatus.Connected ||
+                        !isTcpPortOpen("127.0.0.1", byedpiPort)
+                    ) {
+                        throw IllegalStateException("ByeDpiProxyService port $byedpiPort not ready within 10s")
+                    }
+                }
+            }
+        }
+
+        if (neededProviders.contains("easyvpn")) {
+            jobs += async(Dispatchers.IO) {
+                if (ru.toinet.android.easyvpn.EasyVpnService.isRunning || ru.toinet.android.easyvpn.EasyVpnService.activeService != null) {
+                    ru.toinet.android.easyvpn.EasyVpnService.stopAndWait(this@AppVpnService)
+                }
+                val server = ru.toinet.android.easyvpn.EasyVpnServer(this@AppVpnService, lifecycleScope).apply {
+                    onServerChanged = {
+                        if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
+                            updateSharedForegroundNotification(this@AppVpnService, "vpn") { createNotification() }
+                        }
+                    }
+                }
+                easyVpnServer = server
+                if (!server.start()) {
+                    throw IllegalStateException("EasyVPN failed to start")
+                }
+                val easyPort = if (ru.toinet.android.util.Prefs.easyVpnProxyPort in 1..65535) {
+                    ru.toinet.android.util.Prefs.easyVpnProxyPort
+                } else {
+                    1790
+                }
+                val startMs = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startMs < 15_000L && !stopping && isActive) {
+                    if (ru.toinet.android.easyvpn.EasyVpnServer.isRunning &&
+                        server.isServerRunning &&
+                        isTcpPortOpen("127.0.0.1", easyPort)
+                    ) {
+                        return@async
+                    }
+                    if (!server.isServerRunning) {
+                        throw IllegalStateException("EasyVPN stopped during startup")
+                    }
+                    delay(150)
+                }
+                if (stopping || !isActive) throw CancellationException("Cancelled waiting for EasyVPN")
+                throw IllegalStateException("EasyVPN port $easyPort not ready within 15s")
+            }
+        }
+
+        if (neededProviders.contains("operaproxy") && ArchHelper.isOperaSupported) {
+            jobs += async(Dispatchers.IO) {
+                if (ru.toinet.android.operaproxy.OperaProxyService.isRunning || ru.toinet.android.operaproxy.OperaProxyService.activeService != null) {
+                    ru.toinet.android.operaproxy.OperaProxyService.stopAndWait(this@AppVpnService)
+                }
+                val server = ru.toinet.android.operaproxy.OperaProxyServer(this@AppVpnService, lifecycleScope)
+                operaProxyServer = server
+                if (!server.start()) {
+                    throw IllegalStateException("OperaProxy failed to start")
+                }
+                val operaPort = ru.toinet.android.util.Prefs.operaProxyBindAddress
+                    .split(":")
+                    .lastOrNull()
+                    ?.toIntOrNull()
+                    ?: 1785
+                val startMs = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startMs < 15_000L && !stopping && isActive) {
+                    if (ru.toinet.android.operaproxy.OperaProxyServer.isRunning &&
+                        server.isServerRunning &&
+                        isTcpPortOpen("127.0.0.1", operaPort)
+                    ) {
+                        return@async
+                    }
+                    if (!server.isServerRunning) {
+                        throw IllegalStateException("OperaProxy stopped during startup")
+                    }
+                    delay(150)
+                }
+                if (stopping || !isActive) throw CancellationException("Cancelled waiting for OperaProxy")
+                throw IllegalStateException("OperaProxy port $operaPort not ready within 15s")
+            }
+        }
+
+        if (neededProviders.contains("svpn") || neededProviders.contains("ssh")) {
+            jobs += async(Dispatchers.IO) {
+                if (ru.toinet.android.svpn.SvpnService.isRunning || ru.toinet.android.svpn.SvpnService.activeService != null) {
+                    ru.toinet.android.svpn.SvpnService.stopAndWait(this@AppVpnService)
+                }
+                val server = ru.toinet.android.svpn.SvpnServer(this@AppVpnService, lifecycleScope)
+                svpnServer = server
+                server.onConnectionStateChanged = { connected, error ->
+                    if (!connected && status == ServiceStatus.Connected && !stopping) {
+                        Log.e(TAG, "SVPN failed or disconnected: $error")
+                        updateStatus(ServiceStatus.Failed)
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            stop()
+                        }
+                    }
+                }
+                if (!server.startAndWait(12_000L)) {
+                    val err = server.lastErrorMessage ?: "SSH connection failed"
+                    throw IllegalStateException("SVPN: $err")
+                }
+                val svpnPort = if (ru.toinet.android.util.Prefs.svpnLocalPort in 1..65535) {
+                    ru.toinet.android.util.Prefs.svpnLocalPort
+                } else {
+                    1770
+                }
+                if (!waitForPortSuspend("127.0.0.1", svpnPort, 3000L)) {
+                    throw IllegalStateException("SVPN port $svpnPort not ready")
+                }
+            }
+        }
+
+        if (neededProviders.contains("tor")) {
+            jobs += async(Dispatchers.IO) {
+                val alreadyUp = ru.toinet.android.util.Prefs.torRuntimeStatus == org.torproject.jni.TorService.STATUS_ON &&
+                    isServiceRunningInPackage(ru.toinet.android.service.ToInetService::class.java) &&
+                    isTcpPortOpen("127.0.0.1", resolveTorSocksPort())
+                if (!alreadyUp) {
+                    val torIntent = Intent(this@AppVpnService, ru.toinet.android.service.ToInetService::class.java).apply {
+                        action = org.torproject.jni.TorService.ACTION_START
+                        putExtra("is_foreground", true)
+                    }
+                    if (!sendIntentToService(torIntent, isForeground = true)) {
+                        throw IllegalStateException("Failed to dispatch ToInetService start intent")
+                    }
+                    var sawActive = false
+                    val startMs = System.currentTimeMillis()
+                    while (System.currentTimeMillis() - startMs < 90_000L && !stopping && isActive) {
+                        val runtimeStatus = ru.toinet.android.util.Prefs.torRuntimeStatus
+                        val processAlive = isServiceRunningInPackage(ru.toinet.android.service.ToInetService::class.java)
+                        if (runtimeStatus == org.torproject.jni.TorService.STATUS_STARTING ||
+                            runtimeStatus == org.torproject.jni.TorService.STATUS_ON ||
+                            processAlive
+                        ) {
+                            sawActive = true
+                        }
+                        if (runtimeStatus == org.torproject.jni.TorService.STATUS_ON &&
+                            processAlive &&
+                            isTcpPortOpen("127.0.0.1", resolveTorSocksPort())
+                        ) {
+                            return@async
+                        }
+                        val elapsed = System.currentTimeMillis() - startMs
+                        if (sawActive &&
+                            elapsed > 3000L &&
+                            runtimeStatus == org.torproject.jni.TorService.STATUS_OFF &&
+                            !processAlive
+                        ) {
+                            throw IllegalStateException("Tor service failed during startup")
+                        }
+                        delay(250)
+                    }
+                    if (stopping || !isActive) throw CancellationException("Cancelled waiting for Tor")
+                    throw IllegalStateException("Tor bootstrap timed out after 90s")
+                }
+            }
+        }
+
+        if (neededProviders.contains("tgws")) {
+            jobs += async(Dispatchers.IO) {
+                val tgwsPort = ru.toinet.android.util.Prefs.tgwsPort
+                if (!ru.toinet.android.tgws.TgwsService.isRunning || !isTcpPortOpen("127.0.0.1", tgwsPort)) {
+                    ru.toinet.android.tgws.TgwsService.start(
+                        this@AppVpnService,
+                        ru.toinet.android.util.Prefs.tgwsHost,
+                        tgwsPort,
+                        ru.toinet.android.util.Prefs.tgwsDcMappings,
+                        ru.toinet.android.util.Prefs.tgwsSecret,
+                        ru.toinet.android.util.Prefs.tgwsFakeTls,
+                        false,
+                        ru.toinet.android.util.Prefs.tgwsCfWorkerDomains,
+                        ru.toinet.android.util.Prefs.tgwsCfProxyDomains,
+                        fallbackCfProxy = ru.toinet.android.util.Prefs.tgwsFallbackCfProxy,
+                        cfProxyH2Media = ru.toinet.android.util.Prefs.tgwsCfProxyH2Media,
+                        frontingSni = ru.toinet.android.util.Prefs.tgwsFrontingSni,
+                        disableSecure = ru.toinet.android.util.Prefs.tgwsDisableSecure,
+                        forceTestDc = ru.toinet.android.util.Prefs.tgwsForceTestDc,
+                        poolSize = ru.toinet.android.util.Prefs.tgwsPoolSize
+                    )
+                    var sawActive = false
+                    val startMs = System.currentTimeMillis()
+                    while (System.currentTimeMillis() - startMs < 10_000L && !stopping && isActive) {
+                        if (ru.toinet.android.tgws.TgwsService.activeService != null) {
+                            sawActive = true
+                        }
+                        if (ru.toinet.android.tgws.TgwsService.isRunning && isTcpPortOpen("127.0.0.1", tgwsPort)) {
+                            return@async
+                        }
+                        if (sawActive && ru.toinet.android.tgws.TgwsService.activeService == null && !ru.toinet.android.tgws.TgwsService.isRunning) {
+                            throw IllegalStateException("TgwsService failed during startup")
+                        }
+                        delay(150)
+                    }
+                    if (stopping || !isActive) throw CancellationException("Cancelled waiting for TGWS")
+                    throw IllegalStateException("TgwsService port $tgwsPort not ready within 10s")
+                }
+            }
+        }
+
+        jobs.awaitAll()
     }
 
     private suspend fun reconcileNeededProviders() {
@@ -693,6 +916,16 @@ class AppVpnService : LifecycleVpnService() {
                 if (ru.toinet.android.util.Prefs.isProviderNeededStandalone("svpn") && !ru.toinet.android.svpn.SvpnService.isRunning) {
                     ru.toinet.android.svpn.SvpnService.start(this)
                 }
+            }
+
+            if (neededProviders.contains("tgws")) {
+                if (!ru.toinet.android.tgws.TgwsService.isRunning) {
+                    ru.toinet.android.tgws.TgwsService.start(this)
+                }
+            } else if (!ru.toinet.android.util.Prefs.isProviderNeededStandalone("tgws") &&
+                (ru.toinet.android.tgws.TgwsService.isRunning || ru.toinet.android.tgws.TgwsService.activeService != null)
+            ) {
+                ru.toinet.android.tgws.TgwsService.stop(this)
             }
 
             if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
