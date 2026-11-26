@@ -333,6 +333,7 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
 
             if (!nativeXray.exists()) {
                 Log.e(TAG, "libxray.so not found in $libDir")
+                ru.toinet.android.util.NotificationLogger.log(context, "easyvpn", "Ошибка EasyVPN: libxray.so не найден")
                 return false
             }
             try {

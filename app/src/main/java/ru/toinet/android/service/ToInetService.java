@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -47,6 +48,9 @@ public class ToInetService extends Service {
     protected final ExecutorService mExecutor = Executors.newCachedThreadPool();
     private final ExecutorService mCommandExecutor = Executors.newSingleThreadExecutor();
     private final Object mTorLifecycleLock = new Object();
+    private final AtomicLong mIntentSeq = new AtomicLong(0L);
+    private volatile long mLastStartSeq = 0L;
+    private volatile long mLastStopSeq = 0L;
     ToInetRawEventListener mToInetRawEventListener;
     Handler mHandler = new Handler(android.os.Looper.getMainLooper());
     ActionBroadcastReceiver mActionBroadcastReceiver;
@@ -285,9 +289,15 @@ public class ToInetService extends Service {
             String action = intent.getAction();
             boolean isStartOrRestart = ACTION_START.equals(action) || ACTION_RESTART_TOR.equals(action);
             if (ACTION_START.equals(action) || (ACTION_RESTART_TOR.equals(action) && isTorDesired())) {
+                long seq = mIntentSeq.incrementAndGet();
+                mLastStartSeq = seq;
                 mTorExplicitlyStarted = true;
+                intent.putExtra("toinet_cmd_seq", seq);
             } else if (ACTION_STOP.equals(action)) {
+                long seq = mIntentSeq.incrementAndGet();
+                mLastStopSeq = seq;
                 mTorExplicitlyStarted = false;
+                intent.putExtra("toinet_cmd_seq", seq);
             }
             boolean fgRequested = intent.getBooleanExtra("is_foreground", false);
             boolean isActuallyRunning = !mCurrentStatus.equals(STATUS_OFF);
@@ -345,14 +355,26 @@ public class ToInetService extends Service {
     }
 
     private void stopTorAsync(boolean showNotification) {
+        stopTorAsync(showNotification, mLastStopSeq);
+    }
+
+    private void stopTorAsync(boolean showNotification, long stopSeq) {
         Log.d(TAG, "stopTorAsync");
-        mTorExplicitlyStarted = false;
-        if (showNotification) sendCallbackLogMessage(getString(R.string.status_shutting_down));
+        boolean superseded = (mLastStartSeq > stopSeq) || mTorExplicitlyStarted;
+        if (!superseded) {
+            mTorExplicitlyStarted = false;
+        }
+        if (showNotification && !superseded) sendCallbackLogMessage(getString(R.string.status_shutting_down));
         synchronized (mTorLifecycleLock) {
             mCurrentStatus = STATUS_OFF;
             Prefs.setTorRuntimeStatus(STATUS_OFF);
             Prefs.getTransport().stop();
             stopTor();
+        }
+
+        if (mLastStartSeq > stopSeq || mTorExplicitlyStarted) {
+            Log.d(TAG, "stopTorAsync: superseded by newer ACTION_START, skipping stopSelf()");
+            return;
         }
 
         //stop the foreground priority and remove/detach the persistent notification
@@ -372,7 +394,8 @@ public class ToInetService extends Service {
     }
 
     private void stopTorOnError(String message) {
-        stopTorAsync(false);
+        mTorExplicitlyStarted = false;
+        stopTorAsync(false, mIntentSeq.get());
         showToolbarNotification(getString(R.string.unable_to_start_tor) + ": " + message, ERROR_NOTIFY_ID, R.drawable.ic_stat_notifyerr);
         scheduleAutoReconnectIfEnabled();
     }
@@ -939,9 +962,10 @@ public class ToInetService extends Service {
             var action = mIntent.getAction();
             if (TextUtils.isEmpty(action)) return;
             boolean fgRequested = mIntent.getBooleanExtra("is_foreground", false);
+            long cmdSeq = mIntent.getLongExtra("toinet_cmd_seq", 0L);
             switch (action) {
                 case ACTION_START -> {
-                    if (!mTorExplicitlyStarted) {
+                    if (!mTorExplicitlyStarted || (cmdSeq > 0 && cmdSeq <= mLastStopSeq)) {
                         Log.d(TAG, "Ignoring cancelled ACTION_START in IncomingIntentRouter");
                         return;
                     }
@@ -952,7 +976,7 @@ public class ToInetService extends Service {
                     } catch (Exception e) {
                         Log.e(TAG, "Failed starting transport", e);
                     }
-                    if (!mTorExplicitlyStarted) {
+                    if (!mTorExplicitlyStarted || (cmdSeq > 0 && cmdSeq <= mLastStopSeq)) {
                         Log.d(TAG, "ACTION_START aborted after transport start");
                         try { Prefs.getTransport().stop(); } catch (Exception ignored) {}
                         return;
@@ -970,29 +994,35 @@ public class ToInetService extends Service {
                     mPortHTTP = -1;
                     mPortTrans = -1;
                     Prefs.setTorSocksPortResolved(-1);
-                    if (mTorExplicitlyStarted && isTorDesired()) {
+                    if (mTorExplicitlyStarted && (cmdSeq == 0 || cmdSeq > mLastStopSeq) && isTorDesired()) {
                         try {
                             var transport = Prefs.getTransport();
                             transport.start(ToInetService.this);
                         } catch (Exception e) {
                             Log.e(TAG, "Failed starting transport on restart", e);
                         }
-                        if (!mTorExplicitlyStarted) {
+                        if (!mTorExplicitlyStarted || (cmdSeq > 0 && cmdSeq <= mLastStopSeq)) {
                             try { Prefs.getTransport().stop(); } catch (Exception ignored) {}
                             return;
                         }
                         startTor();
                         replyWithStatus(mIntent);
                     } else {
-                        mTorExplicitlyStarted = false;
-                        stopTorAsync(false);
+                        long stopSeq = cmdSeq > 0 ? cmdSeq : mIntentSeq.get();
+                        if (mLastStartSeq <= stopSeq) {
+                            mTorExplicitlyStarted = false;
+                        }
+                        stopTorAsync(false, stopSeq);
                     }
                 }
                 case ACTION_STOP -> {
-                    mTorExplicitlyStarted = false;
+                    long stopSeq = cmdSeq > 0 ? cmdSeq : mLastStopSeq;
+                    if (mLastStartSeq <= stopSeq) {
+                        mTorExplicitlyStarted = false;
+                    }
                     if (mHandler != null) mHandler.removeCallbacks(autoReconnectRunnable);
                     var userIsQuittingToInet = mIntent.getBooleanExtra(ACTION_STOP_FOREGROUND_TASK, false);
-                    stopTorAsync(!userIsQuittingToInet);
+                    stopTorAsync(!userIsQuittingToInet, stopSeq);
                 }
                 case ACTION_STOP_FOREGROUND_TASK -> stopTorForegroundSafely();
                 case ACTION_STATUS -> {

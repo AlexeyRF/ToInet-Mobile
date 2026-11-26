@@ -75,7 +75,7 @@ class TgwsService : Service() {
             disableSecure: Boolean = Prefs.tgwsDisableSecure,
             forceTestDc: Boolean = Prefs.tgwsForceTestDc,
             poolSize: Int = Prefs.tgwsPoolSize
-        ) {
+        ): Boolean {
             val intent = Intent(context, TgwsService::class.java).apply {
                 action = ACTION_START
                 putExtra("is_foreground", true)
@@ -95,7 +95,7 @@ class TgwsService : Service() {
                 putExtra("forceTestDc", forceTestDc)
                 putExtra("poolSize", poolSize)
             }
-            context.sendIntentToService(intent, isForeground = true)
+            return context.sendIntentToService(intent, isForeground = true)
         }
 
         fun stop(context: Context) {

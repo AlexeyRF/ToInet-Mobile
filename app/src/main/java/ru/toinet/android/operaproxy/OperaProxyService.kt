@@ -51,13 +51,13 @@ class OperaProxyService : Service() {
         val isRunning: Boolean
             get() = activeService?.server?.isServerRunning == true
 
-        fun start(context: Context) {
-            if (!ArchHelper.isOperaSupported) return
+        fun start(context: Context): Boolean {
+            if (!ArchHelper.isOperaSupported) return false
             val intent = Intent(context, OperaProxyService::class.java).apply {
                 action = ACTION_START
                 putExtra("is_foreground", true)
             }
-            context.sendIntentToService(intent, isForeground = true)
+            return context.sendIntentToService(intent, isForeground = true)
         }
 
         fun stop(context: Context) {

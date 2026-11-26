@@ -47,12 +47,12 @@ class EasyVpnService : Service() {
         val isRunning: Boolean
             get() = activeService?.server?.isServerRunning == true
 
-        fun start(context: Context) {
+        fun start(context: Context): Boolean {
             val intent = Intent(context, EasyVpnService::class.java).apply {
                 action = ACTION_START
                 putExtra("is_foreground", true)
             }
-            context.sendIntentToService(intent, isForeground = true)
+            return context.sendIntentToService(intent, isForeground = true)
         }
 
         fun stop(context: Context) {
@@ -165,6 +165,7 @@ class EasyVpnService : Service() {
                 ru.toinet.android.util.broadcastStandaloneStatus(this)
             } else {
                 Log.e(TAG, "EasyVPN server failed to start")
+                ru.toinet.android.util.NotificationLogger.log(this, "easyvpn", "Ошибка запуска EasyVPN")
                 ru.toinet.android.util.broadcastStandaloneStatus(this)
                 stopImmediate()
             }

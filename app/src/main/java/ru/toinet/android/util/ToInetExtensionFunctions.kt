@@ -369,24 +369,26 @@ fun Context.sendIntentToService(action: String) {
 
     // 4. TGWS (never managed by VPN)
     if (isTgwsActive && isStart) {
-        TgwsService.start(
-            this,
-            Prefs.tgwsHost,
-            Prefs.tgwsPort,
-            Prefs.tgwsDcMappings,
-            Prefs.tgwsSecret,
-            Prefs.tgwsFakeTls,
-            false,
-            Prefs.tgwsCfWorkerDomains,
-            Prefs.tgwsCfProxyDomains,
-            fallbackCfProxy = Prefs.tgwsFallbackCfProxy,
-            cfProxyH2Media = Prefs.tgwsCfProxyH2Media,
-            frontingSni = Prefs.tgwsFrontingSni,
-            disableSecure = Prefs.tgwsDisableSecure,
-            forceTestDc = Prefs.tgwsForceTestDc,
-            poolSize = Prefs.tgwsPoolSize
-        )
-        anyStartedOrStarting = true
+        if (TgwsService.start(
+                this,
+                Prefs.tgwsHost,
+                Prefs.tgwsPort,
+                Prefs.tgwsDcMappings,
+                Prefs.tgwsSecret,
+                Prefs.tgwsFakeTls,
+                false,
+                Prefs.tgwsCfWorkerDomains,
+                Prefs.tgwsCfProxyDomains,
+                fallbackCfProxy = Prefs.tgwsFallbackCfProxy,
+                cfProxyH2Media = Prefs.tgwsCfProxyH2Media,
+                frontingSni = Prefs.tgwsFrontingSni,
+                disableSecure = Prefs.tgwsDisableSecure,
+                forceTestDc = Prefs.tgwsForceTestDc,
+                poolSize = Prefs.tgwsPoolSize
+            )
+        ) {
+            anyStartedOrStarting = true
+        }
     } else if (isStop) {
         if (TgwsService.isRunning || TgwsService.activeService != null) {
             TgwsService.stop(this)
@@ -403,8 +405,9 @@ fun Context.sendIntentToService(action: String) {
 
     // 5. Opera Proxy (standalone when enabled outside VPN in-process management)
     if (isOperaStandalone && isStart) {
-        OperaProxyService.start(this)
-        anyStartedOrStarting = true
+        if (OperaProxyService.start(this)) {
+            anyStartedOrStarting = true
+        }
     } else if (isStop) {
         if (OperaProxyService.isRunning || OperaProxyService.activeService != null) {
             OperaProxyService.stop(this)
@@ -421,8 +424,9 @@ fun Context.sendIntentToService(action: String) {
 
     // 6. EasyVPN (standalone when enabled outside VPN in-process management)
     if (isEasyVpnStandalone && isStart) {
-        EasyVpnService.start(this)
-        anyStartedOrStarting = true
+        if (EasyVpnService.start(this)) {
+            anyStartedOrStarting = true
+        }
     } else if (isStop) {
         if (EasyVpnService.isRunning || EasyVpnService.activeService != null) {
             EasyVpnService.stop(this)
@@ -439,8 +443,9 @@ fun Context.sendIntentToService(action: String) {
 
     // 7. SVPN (standalone when enabled outside VPN in-process management)
     if (isSvpnStandalone && isStart) {
-        SvpnService.start(this)
-        anyStartedOrStarting = true
+        if (SvpnService.start(this)) {
+            anyStartedOrStarting = true
+        }
     } else if (isStop) {
         if (SvpnService.isRunning || SvpnService.activeService != null) {
             SvpnService.stop(this)
@@ -459,6 +464,15 @@ fun Context.sendIntentToService(action: String) {
     if (!isGlobalVpnEnabled) {
         if (isStart) {
             if (!anyStartedOrStarting && !isAnyStandaloneServiceRunning()) {
+                val noActiveProviders = !isByedpiActive &&
+                    !isTorActive &&
+                    !isTgwsActive &&
+                    !isOperaStandalone &&
+                    !isEasyVpnStandalone &&
+                    !isSvpnStandalone
+                if (noActiveProviders) {
+                    NotificationLogger.log(this, "system", "Нет активных компонентов для запуска")
+                }
                 broadcastLocalStatus(TorService.STATUS_OFF)
             } else if (!isTorActive && !isAnyStandaloneServiceRunning()) {
                 broadcastLocalStatus(TorService.STATUS_STARTING)

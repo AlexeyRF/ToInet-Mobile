@@ -37,8 +37,15 @@ object NotificationLogger {
 
         val now = System.currentTimeMillis()
 
-        // Send log broadcast to update logBottomSheet and UI (throttled to avoid main thread freeze)
-        if (now - lastBroadcastTime > 80L) {
+        // Send log broadcast to update logBottomSheet and UI (throttled for noisy streams, never dropping lifecycle/errors)
+        val isImportant = cleanMsg.contains("Ошибка", ignoreCase = true) ||
+            cleanMsg.contains("failed", ignoreCase = true) ||
+            cleanMsg.contains("заблокирован", ignoreCase = true) ||
+            cleanMsg.contains("Не удалось", ignoreCase = true) ||
+            cleanMsg.contains("Нет активн", ignoreCase = true) ||
+            cleanMsg.contains("Подключение", ignoreCase = true) ||
+            cleanMsg.contains("Запуск", ignoreCase = true)
+        if (isImportant || now - lastBroadcastTime > 80L) {
             lastBroadcastTime = now
             try {
                 val logIntent = Intent(ToInetConstants.LOCAL_ACTION_LOG).apply {

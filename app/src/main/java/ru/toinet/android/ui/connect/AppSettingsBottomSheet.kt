@@ -1,6 +1,11 @@
 package ru.toinet.android.ui.connect
 
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,14 +13,28 @@ import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.preference.PreferenceManager
+import org.torproject.jni.TorService
 import ru.toinet.android.R
 import ru.toinet.android.ToInetActivity
+import ru.toinet.android.byedpi.services.ByeDpiProxyService
+import ru.toinet.android.easyvpn.EasyVpnService
+import ru.toinet.android.operaproxy.OperaProxyService
 import ru.toinet.android.service.ToInetConstants
+import ru.toinet.android.service.ToInetService
+import ru.toinet.android.svpn.SvpnService
+import ru.toinet.android.tgws.TgwsService
 import ru.toinet.android.ui.ToInetBottomSheetDialogFragment
 import ru.toinet.android.ui.ToInetMenuAction
 import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.ProxyShareSecurityHelper
+import ru.toinet.android.util.isAnyStandaloneServiceRunning
+import ru.toinet.android.util.isServiceRunningInPackage
 import ru.toinet.android.util.sendIntentToService
+import ru.toinet.android.vpn.data.ServiceStatus
+import ru.toinet.android.vpn.services.AppVpnService
+import kotlin.system.exitProcess
 
 class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
 
@@ -44,9 +63,11 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                 R.drawable.ic_settings_gear,
                 statusString = "Цвета Material You: ${if (Prefs.useDynamicColors) "Вкл" else "Выкл"}"
             ) {
-                Prefs.useDynamicColors = !Prefs.useDynamicColors
-                requireActivity().recreate()
-                dismiss()
+                val enabled = !Prefs.useDynamicColors
+                commitPrefAndRestart(
+                    beforePrefs = { it.putBoolean("use_dynamic_colors", enabled) },
+                    updatePrefs = { Prefs.useDynamicColors = enabled }
+                )
             },
             ToInetMenuAction(
                 0,
@@ -57,28 +78,24 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
                     "Раздавать все прокси на локальную сеть: Выкл\n(только для этого устройства, 127.0.0.1)"
                 }
             ) {
+                val applyProxyShareAndRestart: (Boolean) -> Unit = { enabled ->
+                    commitPrefAndRestart(
+                        beforePrefs = { editor ->
+                            editor.putBoolean("pref_open_proxy_on_all_interfaces", enabled)
+                            if (Prefs.proxyShareWarningDismissed) {
+                                editor.putBoolean("pref_proxy_share_warning_dismissed", true)
+                            }
+                        },
+                        updatePrefs = { Prefs.openProxyOnAllInterfaces = enabled }
+                    )
+                }
                 if (!Prefs.openProxyOnAllInterfaces) {
-                    ru.toinet.android.util.ProxyShareSecurityHelper.checkAndConfirmProxyShare(
+                    ProxyShareSecurityHelper.checkAndConfirmProxyShare(
                         requireContext(),
-                        onConfirmed = {
-                            Prefs.openProxyOnAllInterfaces = true
-                            val ipInfo = " (IP: ${ru.toinet.android.util.NetworkUtils.getLocalIpAddress()})"
-                            Toast.makeText(
-                                requireContext(),
-                                "Раздача прокси: Вкл$ipInfo. Перезапустите прокси для применения.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            setupMenu(view)
-                        }
+                        onConfirmed = { applyProxyShareAndRestart(true) }
                     )
                 } else {
-                    Prefs.openProxyOnAllInterfaces = false
-                    Toast.makeText(
-                        requireContext(),
-                        "Раздача прокси: Выкл. Перезапустите прокси для применения.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                    setupMenu(view)
+                    applyProxyShareAndRestart(false)
                 }
             },
             /*
@@ -190,6 +207,60 @@ class AppSettingsBottomSheet : ToInetBottomSheetDialogFragment() {
             .show()
     }
     */
+
+    /**
+     * Synchronously commits toggled preference values to SharedPreferences before updating Prefs,
+     * stops active/connecting VPN or standalone services, and cold-restarts the app process.
+     */
+    @SuppressLint("ApplySharedPref")
+    private fun commitPrefAndRestart(
+        beforePrefs: (SharedPreferences.Editor) -> Unit,
+        updatePrefs: () -> Unit
+    ) {
+        val hostActivity = activity ?: return
+        val appContext = hostActivity.applicationContext
+
+        PreferenceManager.getDefaultSharedPreferences(appContext)
+            .edit()
+            .apply(beforePrefs)
+            .commit()
+        updatePrefs()
+        restartApp(hostActivity, appContext)
+    }
+
+    private fun restartApp(
+        hostActivity: androidx.fragment.app.FragmentActivity,
+        appContext: android.content.Context
+    ) {
+        val isAnyServiceActive = AppVpnService.isConnected ||
+            AppVpnService.isStartRequested ||
+            AppVpnService.activeService != null ||
+            ByeDpiProxyService.status != ServiceStatus.Disconnected ||
+            ByeDpiProxyService.isStarting ||
+            EasyVpnService.activeService != null ||
+            OperaProxyService.activeService != null ||
+            SvpnService.activeService != null ||
+            TgwsService.activeService != null ||
+            appContext.isServiceRunningInPackage(ToInetService::class.java) ||
+            appContext.isAnyStandaloneServiceRunning()
+
+        if (isAnyServiceActive) {
+            appContext.sendIntentToService(TorService.ACTION_STOP)
+        }
+
+        dismissAllowingStateLoss()
+
+        val restartDelayMs = if (isAnyServiceActive) 350L else 150L
+        Handler(Looper.getMainLooper()).postDelayed({
+            val launchIntent = (appContext.packageManager.getLaunchIntentForPackage(appContext.packageName)
+                ?: Intent(appContext, ToInetActivity::class.java)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            hostActivity.finishAffinity()
+            appContext.startActivity(launchIntent)
+            exitProcess(0)
+        }, restartDelayMs)
+    }
 
     companion object {
         const val TAG = "AppSettingsBottomSheet"

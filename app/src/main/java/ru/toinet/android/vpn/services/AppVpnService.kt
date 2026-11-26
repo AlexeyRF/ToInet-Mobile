@@ -351,6 +351,7 @@ class AppVpnService : LifecycleVpnService() {
         if (status == ServiceStatus.Connected) {
             Log.w(TAG, "VPN already connected")
             startForeground()
+            sendLocalStatus(org.torproject.jni.TorService.STATUS_ON)
             return
         }
 
@@ -380,6 +381,11 @@ class AppVpnService : LifecycleVpnService() {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start VPN", e)
+            ru.toinet.android.util.NotificationLogger.log(
+                this,
+                ru.toinet.android.util.Prefs.vpnProvider,
+                "Ошибка запуска VPN: ${e.message ?: e.javaClass.simpleName}"
+            )
             updateStatus(ServiceStatus.Failed)
             val shouldStop = synchronized(this@AppVpnService) {
                 if (activeStartSeq == jobSeq) {

@@ -46,6 +46,13 @@
             android:layout_marginBottom="4dp" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swVpnEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Включить VPN"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/swSeparateVpnProfiles"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -79,13 +86,6 @@
                 android:maxLines="1"
                 android:text="Мобильная" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
-
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/swVpnEnabled"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Включить VPN"
-            android:layout_marginBottom="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAddRule"

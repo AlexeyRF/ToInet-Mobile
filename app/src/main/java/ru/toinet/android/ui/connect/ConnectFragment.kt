@@ -62,7 +62,6 @@ class ConnectFragment : Fragment(),
                         is ConnectUiState.NoInternet -> doLayoutNoInternet()
                         is ConnectUiState.Off -> doLayoutOff()
                         is ConnectUiState.Starting -> {
-                            lastState = TorService.ACTION_START
                             doLayoutStarting(requireContext())
                             if (state.bootstrapPercent != null) {
                                 binding.progressBar.isIndeterminate = false
@@ -97,9 +96,10 @@ class ConnectFragment : Fragment(),
         binding.btnConnectCard.setOnClickListener {
             val state = viewModel.uiState.value
             val vpnService = AppVpnService.activeService
+            val isVpnFailed = AppVpnService.currentStatus == ru.toinet.android.vpn.data.ServiceStatus.Failed
             val isVpnActiveOrStarting = Prefs.isGlobalVpnEnabled && (
                 AppVpnService.isStartRequested ||
-                    ((AppVpnService.isConnected || vpnService != null) && vpnService?.isStopInProgress() != true)
+                    ((AppVpnService.isConnected || (vpnService != null && !isVpnFailed)) && vpnService?.isStopInProgress() != true)
                 )
             val isStandaloneActive = !Prefs.isGlobalVpnEnabled &&
                 requireContext().isAnyStandaloneServiceRunning()
@@ -108,7 +108,7 @@ class ConnectFragment : Fragment(),
                 state is ConnectUiState.Stopping ||
                 isVpnActiveOrStarting ||
                 isStandaloneActive ||
-                lastState == TorService.ACTION_START
+                (state !is ConnectUiState.Off && state !is ConnectUiState.NoInternet && lastState == TorService.ACTION_START)
 
             if (!shouldStop) {
                 if (Prefs.outboundProxy.second != null) {
@@ -181,6 +181,7 @@ class ConnectFragment : Fragment(),
     }
 
     fun stopTorAndVpn() {
+        lastState = TorService.ACTION_STOP
         (activity as? ToInetActivity)?.previousReceivedTorStatus = TorService.STATUS_OFF
         viewModel.updateState(requireContext(), TorService.STATUS_OFF)
         setState(TorService.ACTION_STOP)
@@ -192,6 +193,11 @@ class ConnectFragment : Fragment(),
             requireContext().getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val isVpnReady = Prefs.isGlobalVpnEnabled && VpnService.prepare(requireContext()) == null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms() && !isVpnReady) {
+            ru.toinet.android.util.NotificationLogger.log(
+                requireContext(),
+                "System",
+                "Запуск остановлен: требуется разрешение на точные будильники (SCHEDULE_EXACT_ALARM)"
+            )
             PowerUserForegroundPermDialog().createTransactionAndShow(requireActivity())
             return // user can try again after granting permission
         }
@@ -226,10 +232,10 @@ class ConnectFragment : Fragment(),
 
     @Synchronized
     fun setState(newState: String) {
-        if (newState == TorService.ACTION_STOP || lastState != newState) {
-            requireContext().sendIntentToService(newState)
-            lastState = newState
-        }
+        // Always dispatch explicit start/stop commands; never suppress ACTION_START
+        // even if ConnectUiState.Starting or a prior attempt already updated lastState.
+        requireContext().sendIntentToService(newState)
+        lastState = newState
     }
 
     fun refreshMenuList(context: Context) {

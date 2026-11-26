@@ -54,12 +54,12 @@ class SvpnService : Service() {
         val isRunning: Boolean
             get() = activeService?.server?.isServerRunning == true
 
-        fun start(context: Context) {
+        fun start(context: Context): Boolean {
             val intent = Intent(context, SvpnService::class.java).apply {
                 action = ACTION_START
                 putExtra("is_foreground", true)
             }
-            context.sendIntentToService(intent, isForeground = true)
+            return context.sendIntentToService(intent, isForeground = true)
         }
 
         fun stop(context: Context) {
