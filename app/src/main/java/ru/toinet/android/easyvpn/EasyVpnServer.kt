@@ -384,9 +384,13 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
             val waitStart = System.currentTimeMillis()
             var bound = false
             var processAlive = true
+            var interrupted = false
             while (System.currentTimeMillis() - waitStart < 2500L) {
                 processAlive = proc.isAlive
-                if (!processAlive || isStopped) break
+                if (!processAlive || isStopped || Thread.currentThread().isInterrupted) {
+                    interrupted = Thread.currentThread().isInterrupted
+                    break
+                }
                 try {
                     java.net.Socket().use { s ->
                         s.connect(java.net.InetSocketAddress("127.0.0.1", listenPort), 100)
@@ -394,13 +398,20 @@ class EasyVpnServer(private val context: Context, private val scope: CoroutineSc
                     }
                 } catch (_: Exception) {}
                 if (bound) break
-                try { Thread.sleep(50) } catch (_: InterruptedException) { break }
+                try { Thread.sleep(50) } catch (_: InterruptedException) {
+                    interrupted = true
+                    break
+                }
             }
 
-            if (!processAlive || isStopped) {
-                isServerRunning = false
-                if (activeInstance == this) {
-                    isRunning = false
+            if (!processAlive || isStopped || interrupted) {
+                if (interrupted && !isStopped) {
+                    stop()
+                } else {
+                    isServerRunning = false
+                    if (activeInstance == this) {
+                        isRunning = false
+                    }
                 }
                 false
             } else {

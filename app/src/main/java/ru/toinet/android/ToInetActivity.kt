@@ -208,7 +208,8 @@ class ToInetActivity : BaseActivity() {
             connectViewModel.updateState(this, effectiveStatus)
         }
         val hasActiveService = if (Prefs.isGlobalVpnEnabled) {
-            AppVpnService.activeService != null
+            val vpnService = AppVpnService.activeService
+            vpnService != null && !vpnService.isStopInProgress()
         } else {
             isAnyStandaloneServiceRunning() || hasAnyLiveStandaloneService(this)
         }
@@ -254,11 +255,15 @@ class ToInetActivity : BaseActivity() {
                     if (status != null) {
                         val isViewModelStarting = connectViewModel.uiState.value is ConnectUiState.Starting
                         val effectiveStatus = if (Prefs.isGlobalVpnEnabled) {
+                            val vpnService = AppVpnService.activeService
                             when {
+                                status == TorService.STATUS_OFF || vpnService?.isStopInProgress() == true ->
+                                    TorService.STATUS_OFF
                                 AppVpnService.isConnected -> TorService.STATUS_ON
-                                status == TorService.STATUS_STARTING ||
+                                AppVpnService.isStartRequested ||
+                                    status == TorService.STATUS_STARTING ||
                                     (status == TorService.STATUS_ON &&
-                                        (AppVpnService.activeService != null || isViewModelStarting)) ->
+                                        (vpnService != null || isViewModelStarting)) ->
                                     TorService.STATUS_STARTING
                                 else -> TorService.STATUS_OFF
                             }
@@ -354,10 +359,12 @@ class ToInetActivity : BaseActivity() {
             isViewModelStarting: Boolean = false
         ): String {
             if (Prefs.isGlobalVpnEnabled) {
+                val vpnService = AppVpnService.activeService
                 return when {
+                    vpnService?.isStopInProgress() == true -> TorService.STATUS_OFF
                     AppVpnService.isConnected -> TorService.STATUS_ON
-                    isViewModelStarting ||
-                        (AppVpnService.activeService != null && currentKnownStatus == TorService.STATUS_STARTING) ->
+                    AppVpnService.isStartRequested || isViewModelStarting ||
+                        (vpnService != null && currentKnownStatus == TorService.STATUS_STARTING) ->
                         TorService.STATUS_STARTING
                     else -> TorService.STATUS_OFF
                 }

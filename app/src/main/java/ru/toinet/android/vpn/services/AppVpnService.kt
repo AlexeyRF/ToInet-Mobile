@@ -23,13 +23,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.atomic.AtomicLong
 import ru.toinet.android.util.ArchHelper
 import ru.toinet.android.util.isAnyStandaloneServiceRunning
 import ru.toinet.android.util.isServiceRunningInPackage
@@ -48,16 +51,35 @@ class AppVpnService : LifecycleVpnService() {
     @Volatile
     private var stopping: Boolean = false
     @Volatile
+    private var stopRequested: Boolean = false
+    @Volatile
+    private var activeStartSeq: Long = 0L
+    @Volatile
     private var isForegroundService: Boolean = false
     private var startJob: Job? = null
+    private var stopJob: Job? = null
+    private var nonVpnProvidersJob: Job? = null
     private var watchdogJob: Job? = null
 
     companion object {
         private val TAG: String = AppVpnService::class.java.simpleName
         private const val NOTIFICATION_CHANNEL_ID: String = "ToInetVpn"
+        private const val EXTRA_START_SEQ: String = "ru.toinet.android.vpn.EXTRA_START_SEQ"
         const val ACTION_SWITCH_SERVER: String = "ru.toinet.android.vpn.SWITCH_SERVER"
         const val ACTION_SWITCH_TOR_NODE: String = "ru.toinet.android.vpn.SWITCH_TOR_NODE"
         const val ACTION_RELOAD_PROFILE: String = "ru.toinet.android.vpn.RELOAD_PROFILE"
+
+        private val startSequence = AtomicLong(0L)
+
+        @Volatile
+        private var latestEnqueuedStartSeq: Long = 0L
+
+        @Volatile
+        private var latestCancelledSeq: Long = 0L
+
+        @Volatile
+        var isStartRequested: Boolean = false
+            private set
 
         @Volatile
         private var status: ServiceStatus = ServiceStatus.Disconnected
@@ -71,6 +93,40 @@ class AppVpnService : LifecycleVpnService() {
 
         val currentStatus: ServiceStatus
             get() = status
+
+        @JvmStatic
+        @Synchronized
+        fun prepareStartIntent(intent: Intent): Long {
+            val seq = startSequence.incrementAndGet()
+            latestEnqueuedStartSeq = seq
+            isStartRequested = true
+            intent.putExtra(EXTRA_START_SEQ, seq)
+            return seq
+        }
+
+        @JvmStatic
+        @Synchronized
+        fun clearPendingStartIfMatches(seq: Long) {
+            if (latestEnqueuedStartSeq == seq && status == ServiceStatus.Disconnected && activeService == null) {
+                isStartRequested = false
+            }
+        }
+
+        @JvmStatic
+        @Synchronized
+        fun requestGlobalStop(): Boolean {
+            val cancelSeq = maxOf(latestEnqueuedStartSeq, startSequence.get())
+            if (cancelSeq > latestCancelledSeq) {
+                latestCancelledSeq = cancelSeq
+            }
+            isStartRequested = false
+            val service = activeService
+            if (service != null) {
+                service.requestStop()
+                return true
+            }
+            return false
+        }
 
         @Volatile
         var currentLogMessage: String? = null
@@ -127,9 +183,13 @@ class AppVpnService : LifecycleVpnService() {
         svpnServer = null
         dnsProxyServer?.stop()
         dnsProxyServer = null
+        nonVpnProvidersJob?.cancel()
+        startJob?.cancel()
+        stopJob?.cancel()
         if (status != ServiceStatus.Disconnected) {
-            status = ServiceStatus.Disconnected
+            updateStatus(ServiceStatus.Disconnected)
         }
+        isStartRequested = false
         if (activeService == this) {
             activeService = null
         }
@@ -137,6 +197,9 @@ class AppVpnService : LifecycleVpnService() {
         isForegroundService = false
         stopSharedForeground(this, "vpn", wasForeground = wasFg)
         currentLogMessage = null
+        if (ru.toinet.android.util.Prefs.isGlobalVpnEnabled && !isAnyStandaloneServiceRunning()) {
+            ru.toinet.android.util.Prefs.isVpnOrProxySessionActive = false
+        }
         super.onDestroy()
     }
 
@@ -144,7 +207,7 @@ class AppVpnService : LifecycleVpnService() {
         super.onStartCommand(intent, flags, startId)
         val action = intent?.action
 
-        if (action == START_ACTION || (action == "ACTIVE" && status == ServiceStatus.Connected)) {
+        if (action == START_ACTION || (action == "ACTIVE" && status == ServiceStatus.Connected && !stopping && !stopRequested)) {
             try {
                 startForeground()
             } catch (e: Exception) {
@@ -154,26 +217,45 @@ class AppVpnService : LifecycleVpnService() {
 
         return when (action) {
             START_ACTION -> {
-                stopping = false
-                ru.toinet.android.util.Prefs.isVpnOrProxySessionActive = true
-                currentLogMessage = null
-                ru.toinet.android.util.NotificationLogger.lastActiveVpnLog = null
-                sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
-                ru.toinet.android.util.NotificationLogger.log(this, ru.toinet.android.util.Prefs.vpnProvider, "Подключение к VPN (${ru.toinet.android.util.Prefs.vpnProvider})...")
-                startJob?.cancel()
-                startJob = lifecycleScope.launch { start() }
-                START_STICKY
+                val seq = intent.getLongExtra(EXTRA_START_SEQ, 0L)
+                if (seq > 0L && seq <= latestCancelledSeq) {
+                    Log.i(TAG, "Ignoring cancelled START_ACTION (seq=$seq <= cancelled=$latestCancelledSeq)")
+                    requestStop()
+                    START_NOT_STICKY
+                } else {
+                    val jobSeq = if (seq > 0L) seq else startSequence.incrementAndGet()
+                    val prevStopJob: Job?
+                    synchronized(this) {
+                        stopRequested = false
+                        stopping = false
+                        isStartRequested = false
+                        activeStartSeq = jobSeq
+                        prevStopJob = stopJob
+                    }
+                    ru.toinet.android.util.Prefs.isVpnOrProxySessionActive = true
+                    currentLogMessage = null
+                    ru.toinet.android.util.NotificationLogger.lastActiveVpnLog = null
+                    sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
+                    ru.toinet.android.util.NotificationLogger.log(this, ru.toinet.android.util.Prefs.vpnProvider, "Подключение к VPN (${ru.toinet.android.util.Prefs.vpnProvider})...")
+                    startJob?.cancel()
+                    nonVpnProvidersJob?.cancel()
+                    startJob = lifecycleScope.launch {
+                        prevStopJob?.join()
+                        start(jobSeq)
+                    }
+                    START_STICKY
+                }
             }
 
             STOP_ACTION -> {
-                stopping = true
-                startJob?.cancel()
-                lifecycleScope.launch { stop() }
+                requestStop()
                 START_NOT_STICKY
             }
 
             "ACTIVE" -> {
-                if (status == ServiceStatus.Connected) {
+                if (stopping || stopRequested) {
+                    Log.d(TAG, "Ignoring ACTIVE while VPN stop is in progress")
+                } else if (status == ServiceStatus.Connected) {
                     startForeground()
                     sendLocalStatus(org.torproject.jni.TorService.STATUS_ON)
                     if (appRoutingServer == null) {
@@ -184,7 +266,7 @@ class AppVpnService : LifecycleVpnService() {
                     lifecycleScope.launch(Dispatchers.IO) {
                         reconcileNeededProviders()
                     }
-                } else if (!stopping) {
+                } else if (activeStartSeq > 0L || isStartRequested) {
                     startForeground()
                     sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
                 }
@@ -235,13 +317,36 @@ class AppVpnService : LifecycleVpnService() {
 
     override fun onRevoke() {
         Log.i(TAG, "VPN revoked")
-        stopping = true
-        startJob?.cancel()
-        lifecycleScope.launch { stop() }
+        requestStop()
     }
 
-    private suspend fun start() {
+    fun isStopInProgress(): Boolean = stopping || stopRequested
+
+    @Synchronized
+    fun requestStop() {
+        stopRequested = true
+        stopping = true
+        isStartRequested = false
+        val currentSeq = maxOf(latestEnqueuedStartSeq, startSequence.get())
+        if (currentSeq > latestCancelledSeq) {
+            latestCancelledSeq = currentSeq
+        }
+        activeStartSeq = -1L
+        startJob?.cancel()
+        nonVpnProvidersJob?.cancel()
+        stopWatchdog()
+        if (stopJob?.isActive != true) {
+            stopJob = lifecycleScope.launch { stop() }
+        }
+    }
+
+    private suspend fun start(jobSeq: Long) {
         Log.i(TAG, "Starting")
+
+        if (stopping || stopRequested || activeStartSeq != jobSeq) {
+            Log.i(TAG, "VPN start aborted before launch (seq=$jobSeq, active=$activeStartSeq, stopRequested=$stopRequested)")
+            return
+        }
 
         if (status == ServiceStatus.Connected) {
             Log.w(TAG, "VPN already connected")
@@ -253,16 +358,20 @@ class AppVpnService : LifecycleVpnService() {
             startForeground()
             sendLocalStatus(org.torproject.jni.TorService.STATUS_STARTING)
             mutex.withLock {
+                if (stopping || stopRequested || activeStartSeq != jobSeq) {
+                    throw CancellationException("VPN stopped before tun2socks start")
+                }
                 withContext(Dispatchers.IO) {
                     startTun2Socks()
                 }
             }
-            if (stopping) {
+            if (stopping || stopRequested || activeStartSeq != jobSeq) {
                 throw CancellationException("VPN stopped during startup")
             }
             updateStatus(ServiceStatus.Connected)
-            lifecycleScope.launch(Dispatchers.IO) {
-                if (status == ServiceStatus.Connected && !stopping) {
+            nonVpnProvidersJob?.cancel()
+            nonVpnProvidersJob = lifecycleScope.launch(Dispatchers.IO) {
+                if (isActive && status == ServiceStatus.Connected && !stopping && !stopRequested && activeStartSeq == jobSeq) {
                     startRemainingNonVpnProviders()
                 }
             }
@@ -272,7 +381,19 @@ class AppVpnService : LifecycleVpnService() {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start VPN", e)
             updateStatus(ServiceStatus.Failed)
-            stop()
+            val shouldStop = synchronized(this@AppVpnService) {
+                if (activeStartSeq == jobSeq) {
+                    stopRequested = true
+                    stopping = true
+                    activeStartSeq = -1L
+                    true
+                } else {
+                    false
+                }
+            }
+            if (shouldStop) {
+                stop()
+            }
         }
     }
 
@@ -283,19 +404,34 @@ class AppVpnService : LifecycleVpnService() {
 
     private suspend fun stop() {
         Log.i(TAG, "Stopping")
+        stopRequested = true
+        stopping = true
+        isStartRequested = false
+        nonVpnProvidersJob?.cancel()
         stopWatchdog()
 
         mutex.withLock {
-            stopping = true
             try {
                 withContext(Dispatchers.IO) {
                     stopTun2Socks()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to stop VPN", e)
-            } finally {
-                stopping = false
             }
+        }
+
+        val finishStop = synchronized(this) {
+            if (activeStartSeq != -1L) {
+                false
+            } else {
+                stopping = false
+                stopRequested = false
+                true
+            }
+        }
+        if (!finishStop) {
+            Log.i(TAG, "Stop superseded by newer start request, skipping teardown")
+            return
         }
 
         updateStatus(ServiceStatus.Disconnected)
@@ -412,15 +548,16 @@ class AppVpnService : LifecycleVpnService() {
 
             var attempts = 0
             var success = false
-            while (attempts < 25) {
+            while (attempts < 25 && !stopping && !stopRequested && currentCoroutineContext().isActive) {
                 if (ru.toinet.android.vpn.utility.VpnSystem.sendfd(fd.fd) != -1) {
                     success = true
                     break
                 }
                 attempts++
-                try {
-                    Thread.sleep(200)
-                } catch (e: Exception) {}
+                delay(200)
+            }
+            if (stopping || stopRequested || !currentCoroutineContext().isActive) {
+                throw CancellationException("VPN stopped while sending fd")
             }
             if (!success) {
                 throw IllegalStateException("Failed to send fd")
@@ -610,8 +747,11 @@ class AppVpnService : LifecycleVpnService() {
         if (neededProviders.contains("easyvpn")) {
             jobs += async(Dispatchers.IO) {
                 if (ru.toinet.android.easyvpn.EasyVpnService.isRunning || ru.toinet.android.easyvpn.EasyVpnService.activeService != null) {
-                    ru.toinet.android.easyvpn.EasyVpnService.stopAndWait(this@AppVpnService)
+                    runInterruptible(Dispatchers.IO) {
+                        ru.toinet.android.easyvpn.EasyVpnService.stopAndWait(this@AppVpnService)
+                    }
                 }
+                if (stopping || stopRequested || !isActive) throw CancellationException("Cancelled starting EasyVPN")
                 val server = ru.toinet.android.easyvpn.EasyVpnServer(this@AppVpnService, lifecycleScope).apply {
                     onServerChanged = {
                         if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
@@ -620,7 +760,8 @@ class AppVpnService : LifecycleVpnService() {
                     }
                 }
                 easyVpnServer = server
-                if (!server.start()) {
+                if (!runInterruptible(Dispatchers.IO) { server.start() }) {
+                    if (stopping || stopRequested || !isActive) throw CancellationException("Cancelled starting EasyVPN")
                     throw IllegalStateException("EasyVPN failed to start")
                 }
                 val easyPort = if (ru.toinet.android.util.Prefs.easyVpnProxyPort in 1..65535) {
@@ -629,7 +770,7 @@ class AppVpnService : LifecycleVpnService() {
                     1790
                 }
                 val startMs = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startMs < 15_000L && !stopping && isActive) {
+                while (System.currentTimeMillis() - startMs < 15_000L && !stopping && !stopRequested && isActive) {
                     if (ru.toinet.android.easyvpn.EasyVpnServer.isRunning &&
                         server.isServerRunning &&
                         isTcpPortOpen("127.0.0.1", easyPort)
@@ -641,7 +782,7 @@ class AppVpnService : LifecycleVpnService() {
                     }
                     delay(150)
                 }
-                if (stopping || !isActive) throw CancellationException("Cancelled waiting for EasyVPN")
+                if (stopping || stopRequested || !isActive) throw CancellationException("Cancelled waiting for EasyVPN")
                 throw IllegalStateException("EasyVPN port $easyPort not ready within 15s")
             }
         }
@@ -649,11 +790,15 @@ class AppVpnService : LifecycleVpnService() {
         if (neededProviders.contains("operaproxy") && ArchHelper.isOperaSupported) {
             jobs += async(Dispatchers.IO) {
                 if (ru.toinet.android.operaproxy.OperaProxyService.isRunning || ru.toinet.android.operaproxy.OperaProxyService.activeService != null) {
-                    ru.toinet.android.operaproxy.OperaProxyService.stopAndWait(this@AppVpnService)
+                    runInterruptible(Dispatchers.IO) {
+                        ru.toinet.android.operaproxy.OperaProxyService.stopAndWait(this@AppVpnService)
+                    }
                 }
+                if (stopping || stopRequested || !isActive) throw CancellationException("Cancelled starting OperaProxy")
                 val server = ru.toinet.android.operaproxy.OperaProxyServer(this@AppVpnService, lifecycleScope)
                 operaProxyServer = server
-                if (!server.start()) {
+                if (!runInterruptible(Dispatchers.IO) { server.start() }) {
+                    if (stopping || stopRequested || !isActive) throw CancellationException("Cancelled starting OperaProxy")
                     throw IllegalStateException("OperaProxy failed to start")
                 }
                 val operaPort = ru.toinet.android.util.Prefs.operaProxyBindAddress
@@ -662,7 +807,7 @@ class AppVpnService : LifecycleVpnService() {
                     ?.toIntOrNull()
                     ?: 1785
                 val startMs = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startMs < 15_000L && !stopping && isActive) {
+                while (System.currentTimeMillis() - startMs < 15_000L && !stopping && !stopRequested && isActive) {
                     if (ru.toinet.android.operaproxy.OperaProxyServer.isRunning &&
                         server.isServerRunning &&
                         isTcpPortOpen("127.0.0.1", operaPort)
@@ -674,7 +819,7 @@ class AppVpnService : LifecycleVpnService() {
                     }
                     delay(150)
                 }
-                if (stopping || !isActive) throw CancellationException("Cancelled waiting for OperaProxy")
+                if (stopping || stopRequested || !isActive) throw CancellationException("Cancelled waiting for OperaProxy")
                 throw IllegalStateException("OperaProxy port $operaPort not ready within 15s")
             }
         }
@@ -682,20 +827,25 @@ class AppVpnService : LifecycleVpnService() {
         if (neededProviders.contains("svpn") || neededProviders.contains("ssh")) {
             jobs += async(Dispatchers.IO) {
                 if (ru.toinet.android.svpn.SvpnService.isRunning || ru.toinet.android.svpn.SvpnService.activeService != null) {
-                    ru.toinet.android.svpn.SvpnService.stopAndWait(this@AppVpnService)
+                    runInterruptible(Dispatchers.IO) {
+                        ru.toinet.android.svpn.SvpnService.stopAndWait(this@AppVpnService)
+                    }
                 }
+                if (stopping || stopRequested || !isActive) throw CancellationException("Cancelled starting SVPN")
                 val server = ru.toinet.android.svpn.SvpnServer(this@AppVpnService, lifecycleScope)
                 svpnServer = server
                 server.onConnectionStateChanged = { connected, error ->
-                    if (!connected && status == ServiceStatus.Connected && !stopping) {
+                    if (!connected && status == ServiceStatus.Connected && !stopping && !stopRequested) {
                         Log.e(TAG, "SVPN failed or disconnected: $error")
                         updateStatus(ServiceStatus.Failed)
-                        lifecycleScope.launch(Dispatchers.Main) {
-                            stop()
-                        }
+                        requestStop()
                     }
                 }
-                if (!server.startAndWait(12_000L)) {
+                if (!server.startAndWaitSuspend(12_000L)) {
+                    if (stopping || stopRequested || !isActive) {
+                        server.stop()
+                        throw CancellationException("Cancelled waiting for SVPN")
+                    }
                     val err = server.lastErrorMessage ?: "SSH connection failed"
                     throw IllegalStateException("SVPN: $err")
                 }
@@ -705,6 +855,7 @@ class AppVpnService : LifecycleVpnService() {
                     1770
                 }
                 if (!waitForPortSuspend("127.0.0.1", svpnPort, 3000L)) {
+                    if (stopping || stopRequested || !isActive) throw CancellationException("Cancelled waiting for SVPN port")
                     throw IllegalStateException("SVPN port $svpnPort not ready")
                 }
             }
@@ -900,12 +1051,10 @@ class AppVpnService : LifecycleVpnService() {
                     val server = ru.toinet.android.svpn.SvpnServer(this, lifecycleScope)
                     svpnServer = server
                     server.onConnectionStateChanged = { connected, error ->
-                        if (!connected && status == ServiceStatus.Connected && !stopping) {
+                        if (!connected && status == ServiceStatus.Connected && !stopping && !stopRequested) {
                             Log.e(TAG, "SVPN failed or disconnected: $error")
                             updateStatus(ServiceStatus.Failed)
-                            lifecycleScope.launch(Dispatchers.Main) {
-                                stop()
-                            }
+                            requestStop()
                         }
                     }
                     server.start()
@@ -944,9 +1093,9 @@ class AppVpnService : LifecycleVpnService() {
 
             kotlinx.coroutines.delay(4000L)
 
-            while (coroutineContext.isActive && status == ServiceStatus.Connected && !stopping) {
+            while (coroutineContext.isActive && status == ServiceStatus.Connected && !stopping && !stopRequested) {
                 kotlinx.coroutines.delay(3000L)
-                if (status != ServiceStatus.Connected || stopping) break
+                if (status != ServiceStatus.Connected || stopping || stopRequested) break
 
                 val tunAlive = ru.toinet.android.vpn.utility.VpnUtility.isPidAlive(tunPidFile)
                 val pdnsdAlive = ru.toinet.android.vpn.utility.VpnUtility.isPidAlive(pdnsdPidFile)
@@ -966,6 +1115,7 @@ class AppVpnService : LifecycleVpnService() {
                 }
 
                 if (!tunAlive || !pdnsdAlive) {
+                    if (stopping || stopRequested || !coroutineContext.isActive) break
                     Log.w(TAG, "Watchdog: VPN process died unexpectedly! tun2socks=$tunAlive, pdnsd=$pdnsdAlive")
                     ru.toinet.android.util.NotificationLogger.log(
                         this@AppVpnService,
@@ -974,7 +1124,7 @@ class AppVpnService : LifecycleVpnService() {
                     )
                     try {
                         mutex.withLock {
-                            if (status == ServiceStatus.Connected && !stopping) {
+                            if (status == ServiceStatus.Connected && !stopping && !stopRequested) {
                                 withContext(Dispatchers.IO) {
                                     stopTun2Socks()
                                     startTun2Socks()
@@ -984,9 +1134,7 @@ class AppVpnService : LifecycleVpnService() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Watchdog auto-restart failed", e)
                         updateStatus(ServiceStatus.Failed)
-                        lifecycleScope.launch(Dispatchers.Main) {
-                            stop()
-                        }
+                        requestStop()
                     }
                     break
                 }
@@ -1277,6 +1425,7 @@ class AppVpnService : LifecycleVpnService() {
      */
     fun ensureProviderStarted(provider: String, forceRestart: Boolean = false) {
         lifecycleScope.launch(Dispatchers.IO) {
+            if (stopping || stopRequested || status != ServiceStatus.Connected) return@launch
             try {
                 when (provider) {
                     "easyvpn" -> {
@@ -1286,6 +1435,7 @@ class AppVpnService : LifecycleVpnService() {
                             if (ru.toinet.android.easyvpn.EasyVpnService.isRunning || ru.toinet.android.easyvpn.EasyVpnService.activeService != null) {
                                 ru.toinet.android.easyvpn.EasyVpnService.stopAndWait(this@AppVpnService)
                             }
+                            if (stopping || stopRequested || status != ServiceStatus.Connected) return@launch
                             easyVpnServer = ru.toinet.android.easyvpn.EasyVpnServer(this@AppVpnService, lifecycleScope).apply {
                                 onServerChanged = {
                                     if (ru.toinet.android.util.Prefs.shouldServiceShowNotification("vpn")) {
@@ -1305,6 +1455,7 @@ class AppVpnService : LifecycleVpnService() {
                             if (ru.toinet.android.operaproxy.OperaProxyService.isRunning || ru.toinet.android.operaproxy.OperaProxyService.activeService != null) {
                                 ru.toinet.android.operaproxy.OperaProxyService.stopAndWait(this@AppVpnService)
                             }
+                            if (stopping || stopRequested || status != ServiceStatus.Connected) return@launch
                             operaProxyServer = ru.toinet.android.operaproxy.OperaProxyServer(this@AppVpnService, lifecycleScope)
                             operaProxyServer?.start()
                             Log.i(TAG, "ensureProviderStarted: started in-process OperaProxyServer (forceRestart=$forceRestart)")
@@ -1317,13 +1468,14 @@ class AppVpnService : LifecycleVpnService() {
                             if (ru.toinet.android.svpn.SvpnService.isRunning || ru.toinet.android.svpn.SvpnService.activeService != null) {
                                 ru.toinet.android.svpn.SvpnService.stopAndWait(this@AppVpnService)
                             }
+                            if (stopping || stopRequested || status != ServiceStatus.Connected) return@launch
                             val server = ru.toinet.android.svpn.SvpnServer(this@AppVpnService, lifecycleScope)
                             svpnServer = server
                             server.onConnectionStateChanged = { connected, error ->
-                                if (!connected && status == ServiceStatus.Connected && !stopping) {
+                                if (!connected && status == ServiceStatus.Connected && !stopping && !stopRequested) {
                                     Log.e(TAG, "SVPN failed or disconnected (ensureProviderStarted): $error")
                                     updateStatus(ServiceStatus.Failed)
-                                    lifecycleScope.launch(Dispatchers.Main) { stop() }
+                                    requestStop()
                                 }
                             }
                             server.start()

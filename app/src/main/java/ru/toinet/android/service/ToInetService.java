@@ -45,6 +45,8 @@ public class ToInetService extends Service {
     public static int mPortSOCKS = -1, mPortHTTP = -1, mPortDns = -1, mPortTrans = -1;
     public static File appBinHome, appCacheHome;
     protected final ExecutorService mExecutor = Executors.newCachedThreadPool();
+    private final ExecutorService mCommandExecutor = Executors.newSingleThreadExecutor();
+    private final Object mTorLifecycleLock = new Object();
     ToInetRawEventListener mToInetRawEventListener;
     Handler mHandler = new Handler(android.os.Looper.getMainLooper());
     ActionBroadcastReceiver mActionBroadcastReceiver;
@@ -240,9 +242,8 @@ public class ToInetService extends Service {
 
             mNotifyBuilder.addAction(R.drawable.ic_refresh_white_24dp, getString(R.string.menu_new_identity), pendingIntentNewNym);
 
-            var stopIntent = new Intent(this, ToInetService.class);
-            stopIntent.setAction(ACTION_STOP);
-            var pendingIntentStop = getServiceIntent(stopIntent);
+            var pendingIntentStop = ru.toinet.android.vpn.utility.NotificationUtilsKt
+                    .createNotificationStopAllPendingIntent(this);
             mNotifyBuilder.addAction(0, getString(R.string.disable), pendingIntentStop);
         } // Tor connection is off
         else if (mCurrentStatus.equals(STATUS_OFF)) {
@@ -298,7 +299,7 @@ public class ToInetService extends Service {
                 Log.d(TAG, "Skipping foreground for action: " + action + " while Tor is OFF");
             }
 
-            mExecutor.execute(new IncomingIntentRouter(intent));
+            mCommandExecutor.execute(new IncomingIntentRouter(intent));
 
         } catch (RuntimeException re) {
             //catch this to avoid malicious launches as document Cure53 Audit: ORB-01-009 WP1/2: ToInet DoS via exported activity (High)
@@ -313,6 +314,7 @@ public class ToInetService extends Service {
         mTorExplicitlyStarted = false;
         mCurrentStatus = STATUS_OFF;
         Prefs.setTorRuntimeStatus(STATUS_OFF);
+        mCommandExecutor.shutdownNow();
         if (mIsForeground) {
             stopTorForegroundSafely();
         }
@@ -324,19 +326,21 @@ public class ToInetService extends Service {
         if (mHandler != null) {
             mHandler.removeCallbacks(autoReconnectRunnable);
         }
-        try {
-            Prefs.getTransport().stop();
-        } catch (Exception ignored) {}
-        if (shouldUnbindTorService && torServiceConnection != null) {
+        synchronized (mTorLifecycleLock) {
             try {
-                unbindService(torServiceConnection);
+                Prefs.getTransport().stop();
             } catch (Exception ignored) {}
-            shouldUnbindTorService = false;
-            torServiceConnection = null;
+            if (shouldUnbindTorService && torServiceConnection != null) {
+                try {
+                    unbindService(torServiceConnection);
+                } catch (Exception ignored) {}
+                shouldUnbindTorService = false;
+                torServiceConnection = null;
+            }
+            try {
+                stopService(new Intent(this, TorService.class));
+            } catch (Exception ignored) {}
         }
-        try {
-            stopService(new Intent(this, TorService.class));
-        } catch (Exception ignored) {}
         super.onDestroy();
     }
 
@@ -344,10 +348,12 @@ public class ToInetService extends Service {
         Log.d(TAG, "stopTorAsync");
         mTorExplicitlyStarted = false;
         if (showNotification) sendCallbackLogMessage(getString(R.string.status_shutting_down));
-        mCurrentStatus = STATUS_OFF;
-        Prefs.setTorRuntimeStatus(STATUS_OFF);
-        Prefs.getTransport().stop();
-        stopTor();
+        synchronized (mTorLifecycleLock) {
+            mCurrentStatus = STATUS_OFF;
+            Prefs.setTorRuntimeStatus(STATUS_OFF);
+            Prefs.getTransport().stop();
+            stopTor();
+        }
 
         //stop the foreground priority and remove/detach the persistent notification
         stopTorForegroundSafely();
@@ -372,33 +378,34 @@ public class ToInetService extends Service {
     }
 
     private void stopTor() {
-
-        if (conn != null) {
-            try {
-                //make sure Tor shuts down now - don't wait for service cleanup
-                conn.shutdownTor(TorControlCommands.SIGNAL_SHUTDOWN);
-            } catch (Exception e) {
-                Log.d(TAG, "error shutting down Tor from the control port");
+        synchronized (mTorLifecycleLock) {
+            if (conn != null) {
+                try {
+                    //make sure Tor shuts down now - don't wait for service cleanup
+                    conn.shutdownTor(TorControlCommands.SIGNAL_SHUTDOWN);
+                } catch (Exception e) {
+                    Log.d(TAG, "error shutting down Tor from the control port");
+                }
             }
-        }
 
-        if (shouldUnbindTorService) {
-            try {
-                Log.d(TAG, "unbinding tor service");
-                unbindService(torServiceConnection);
-            } catch (Exception e) {
-                Log.w(TAG, "Error unbinding tor service", e);
-            } finally {
-                shouldUnbindTorService = false;
-                torServiceConnection = null;
-                conn = null;
+            if (shouldUnbindTorService) {
+                try {
+                    Log.d(TAG, "unbinding tor service");
+                    unbindService(torServiceConnection);
+                } catch (Exception e) {
+                    Log.w(TAG, "Error unbinding tor service", e);
+                } finally {
+                    shouldUnbindTorService = false;
+                    torServiceConnection = null;
+                    conn = null;
+                }
+            } else {
+                sendLocalStatusOffBroadcast();
             }
-        } else {
-            sendLocalStatusOffBroadcast();
+            try {
+                stopService(new Intent(this, TorService.class));
+            } catch (Exception ignored) {}
         }
-        try {
-            stopService(new Intent(this, TorService.class));
-        } catch (Exception ignored) {}
     }
 
     private void requestTorRereadConfig() {
@@ -521,6 +528,10 @@ public class ToInetService extends Service {
 
     // The entire process for starting tor and related services is run from this method.
     private void startTor() {
+        if (!mTorExplicitlyStarted) {
+            Log.d(TAG, "Ignoring cancelled startTor request");
+            return;
+        }
         if (torServiceConnection != null && conn != null) {
             Log.d(TAG, "already started, ignoring start request");
             if (mNotifyBuilder != null) mNotifyBuilder.setProgress(0, 0, false);
@@ -542,8 +553,14 @@ public class ToInetService extends Service {
     }
 
 
-    private synchronized void startTorService() throws Exception {
-        Prefs.setTorRuntimeStatus(STATUS_STARTING);
+    private void startTorService() throws Exception {
+        synchronized (mTorLifecycleLock) {
+            if (!mTorExplicitlyStarted) {
+                Log.d(TAG, "Tor start aborted before upstream setup");
+                return;
+            }
+            Prefs.setTorRuntimeStatus(STATUS_STARTING);
+        }
         if (Prefs.getProxyEnabled()) {
             String upstream = Prefs.getTorUpstreamProvider();
             if (upstream == null || upstream.isEmpty() || "none".equals(upstream)) {
@@ -558,6 +575,10 @@ public class ToInetService extends Service {
                 ru.toinet.android.util.UpstreamProxyCoordinator.INSTANCE.ensureUpstreamStarted(this, upstream);
             }
         }
+        if (!mTorExplicitlyStarted) {
+            Log.d(TAG, "Tor start aborted after upstream setup");
+            return;
+        }
 
         DiskUtils.flushTextToFile(TorService.getDefaultsTorrc(this), """
                 DNSPort 0
@@ -570,118 +591,141 @@ public class ToInetService extends Service {
 
         sendCallbackLogMessage(getString(R.string.status_starting_up));
 
-        if (torServiceConnection != null) {
-            try {
-                if (shouldUnbindTorService) {
-                    unbindService(torServiceConnection);
-                }
-            } catch (Exception ignored) {}
-            shouldUnbindTorService = false;
-            torServiceConnection = null;
-            conn = null;
-        }
+        synchronized (mTorLifecycleLock) {
+            if (!mTorExplicitlyStarted) {
+                Log.d(TAG, "Tor start aborted before bindService");
+                return;
+            }
+            if (torServiceConnection != null) {
+                try {
+                    if (shouldUnbindTorService) {
+                        unbindService(torServiceConnection);
+                    }
+                } catch (Exception ignored) {}
+                shouldUnbindTorService = false;
+                torServiceConnection = null;
+                conn = null;
+            }
 
-        torServiceConnection = new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                mExecutor.execute(() -> {
-                    try {
-                        TorService torService = ((TorService.LocalBinder) iBinder).getService();
-
-                        int retries = 0;
-                        while ((conn = torService.getTorControlConnection()) == null && retries < 60) {
-                            try {
-                                Thread.sleep(500);
-                                retries++;
-                            } catch (InterruptedException e) {
-                                Log.e(TAG, e.toString());
-                                break;
-                            }
-                        }
-
+            final ServiceConnection bindingConn = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                    final ServiceConnection self = this;
+                    mExecutor.execute(() -> {
                         try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException e) {
-                            Log.e(TAG, e.toString());
-                        }
-
-                        mToInetRawEventListener = new ToInetRawEventListener(ToInetService.this);
-
-                        if (conn == null) {
-                            Log.e(TAG, "Timed out waiting for Tor control connection");
-                            logNotice("Ошибка: таймаут подключения к Tor");
-                            mHandler.post(() -> stopTorOnError("Таймаут подключения к Tor"));
-                            return;
-                        }
-                        try {
-                            initControlConnection();
-                            if (conn == null)
+                            if (!mTorExplicitlyStarted) {
+                                Log.d(TAG, "TorService connected after stop requested; shutting down");
+                                stopTor();
                                 return;
+                            }
+                            TorService torService = ((TorService.LocalBinder) iBinder).getService();
 
-                            conn.addRawEventListener(mToInetRawEventListener);
-                            logNotice(getString(R.string.status_connected_control_port));
+                            int retries = 0;
+                            while (mTorExplicitlyStarted && (conn = torService.getTorControlConnection()) == null && retries < 60) {
+                                try {
+                                    Thread.sleep(500);
+                                    retries++;
+                                } catch (InterruptedException e) {
+                                    Log.e(TAG, e.toString());
+                                    break;
+                                }
+                            }
 
-                            var events = new ArrayList<>(Arrays.asList(TorControlCommands.EVENT_OR_CONN_STATUS, TorControlCommands.EVENT_CIRCUIT_STATUS, TorControlCommands.EVENT_NOTICE_MSG, TorControlCommands.EVENT_WARN_MSG, TorControlCommands.EVENT_ERR_MSG, TorControlCommands.EVENT_BANDWIDTH_USED, TorControlCommands.EVENT_NEW_DESC, TorControlCommands.EVENT_ADDRMAP));
-                            if (Prefs.useDebugLogging())
-                                events.addAll(Arrays.asList(TorControlCommands.EVENT_DEBUG_MSG, TorControlCommands.EVENT_INFO_MSG, TorControlCommands.EVENT_STREAM_STATUS));
-                            conn.setEvents(events);
-                        } catch (IOException e) {
-                            Log.e(TAG, "initControlConnection error", e);
+                            if (mTorExplicitlyStarted) {
+                                try {
+                                    Thread.sleep(500);
+                                } catch (InterruptedException e) {
+                                    Log.e(TAG, e.toString());
+                                }
+                            }
+
+                            synchronized (mTorLifecycleLock) {
+                                if (!mTorExplicitlyStarted || torServiceConnection != self) {
+                                    Log.d(TAG, "Tor control initialization aborted due to stop/rebind");
+                                    stopTor();
+                                    return;
+                                }
+                            }
+
+                            mToInetRawEventListener = new ToInetRawEventListener(ToInetService.this);
+
+                            if (conn == null) {
+                                Log.e(TAG, "Timed out waiting for Tor control connection");
+                                logNotice("Ошибка: таймаут подключения к Tor");
+                                mHandler.post(() -> stopTorOnError("Таймаут подключения к Tor"));
+                                return;
+                            }
+                            try {
+                                initControlConnection();
+                                if (conn == null)
+                                    return;
+
+                                conn.addRawEventListener(mToInetRawEventListener);
+                                logNotice(getString(R.string.status_connected_control_port));
+
+                                var events = new ArrayList<>(Arrays.asList(TorControlCommands.EVENT_OR_CONN_STATUS, TorControlCommands.EVENT_CIRCUIT_STATUS, TorControlCommands.EVENT_NOTICE_MSG, TorControlCommands.EVENT_WARN_MSG, TorControlCommands.EVENT_ERR_MSG, TorControlCommands.EVENT_BANDWIDTH_USED, TorControlCommands.EVENT_NEW_DESC, TorControlCommands.EVENT_ADDRMAP));
+                                if (Prefs.useDebugLogging())
+                                    events.addAll(Arrays.asList(TorControlCommands.EVENT_DEBUG_MSG, TorControlCommands.EVENT_INFO_MSG, TorControlCommands.EVENT_STREAM_STATUS));
+                                conn.setEvents(events);
+                            } catch (IOException e) {
+                                Log.e(TAG, "initControlConnection error", e);
+                            }
+                        } catch (Throwable t) {
+                            Log.e(TAG, "Error in onServiceConnected background handler", t);
                         }
-                    } catch (Throwable t) {
-                        Log.e(TAG, "Error in onServiceConnected background handler", t);
-                    }
-                });
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName componentName) {
-                Log.d(TAG, "TorService: onServiceDisconnected");
-                if (shouldUnbindTorService && torServiceConnection != null) {
-                    try {
-                        unbindService(torServiceConnection);
-                    } catch (Exception e) {
-                        Log.w(TAG, "Error unbinding on onServiceDisconnected", e);
-                    }
+                    });
                 }
-                conn = null;
-                torServiceConnection = null;
-                shouldUnbindTorService = false;
-                mCurrentStatus = STATUS_OFF;
-                Prefs.setTorRuntimeStatus(STATUS_OFF);
-                sendLocalStatusOffBroadcast();
-                scheduleAutoReconnectIfEnabled();
-            }
 
-            @Override
-            public void onBindingDied(ComponentName componentName) {
-                Log.w(TAG, "TorService: onBindingDied");
-                if (shouldUnbindTorService && torServiceConnection != null) {
-                    try {
-                        unbindService(torServiceConnection);
-                    } catch (Exception e) {
-                        Log.w(TAG, "Error unbinding on onBindingDied", e);
+                @Override
+                public void onServiceDisconnected(ComponentName componentName) {
+                    Log.d(TAG, "TorService: onServiceDisconnected");
+                    if (shouldUnbindTorService && torServiceConnection != null) {
+                        try {
+                            unbindService(torServiceConnection);
+                        } catch (Exception e) {
+                            Log.w(TAG, "Error unbinding on onServiceDisconnected", e);
+                        }
                     }
+                    conn = null;
+                    torServiceConnection = null;
+                    shouldUnbindTorService = false;
+                    mCurrentStatus = STATUS_OFF;
+                    Prefs.setTorRuntimeStatus(STATUS_OFF);
+                    sendLocalStatusOffBroadcast();
+                    scheduleAutoReconnectIfEnabled();
                 }
-                conn = null;
-                torServiceConnection = null;
-                shouldUnbindTorService = false;
-                mCurrentStatus = STATUS_OFF;
-                Prefs.setTorRuntimeStatus(STATUS_OFF);
-                sendLocalStatusOffBroadcast();
-                scheduleAutoReconnectIfEnabled();
-            }
-        };
 
-        var serviceIntent = new Intent(this, TorService.class);
-        Log.d(TAG, "starting & binding tor service");
-        try {
-            startService(serviceIntent);
-        } catch (Exception e) {
-            Log.w(TAG, "Failed startService for TorService", e);
+                @Override
+                public void onBindingDied(ComponentName componentName) {
+                    Log.w(TAG, "TorService: onBindingDied");
+                    if (shouldUnbindTorService && torServiceConnection != null) {
+                        try {
+                            unbindService(torServiceConnection);
+                        } catch (Exception e) {
+                            Log.w(TAG, "Error unbinding on onBindingDied", e);
+                        }
+                    }
+                    conn = null;
+                    torServiceConnection = null;
+                    shouldUnbindTorService = false;
+                    mCurrentStatus = STATUS_OFF;
+                    Prefs.setTorRuntimeStatus(STATUS_OFF);
+                    sendLocalStatusOffBroadcast();
+                    scheduleAutoReconnectIfEnabled();
+                }
+            };
+            torServiceConnection = bindingConn;
+
+            var serviceIntent = new Intent(this, TorService.class);
+            Log.d(TAG, "starting & binding tor service");
+            try {
+                startService(serviceIntent);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed startService for TorService", e);
+            }
+            int bindFlags = Context.BIND_AUTO_CREATE | Context.BIND_IMPORTANT;
+            shouldUnbindTorService = bindService(serviceIntent, bindFlags, mExecutor, bindingConn);
         }
-        int bindFlags = Context.BIND_AUTO_CREATE | Context.BIND_IMPORTANT;
-        shouldUnbindTorService = bindService(serviceIntent, bindFlags, mExecutor, torServiceConnection);
     }
 
     private void sendLocalStatusOffBroadcast() {
@@ -897,13 +941,21 @@ public class ToInetService extends Service {
             boolean fgRequested = mIntent.getBooleanExtra("is_foreground", false);
             switch (action) {
                 case ACTION_START -> {
-                    mTorExplicitlyStarted = true;
+                    if (!mTorExplicitlyStarted) {
+                        Log.d(TAG, "Ignoring cancelled ACTION_START in IncomingIntentRouter");
+                        return;
+                    }
                     mReconnectAttempts = 0;
                     try {
                         var transport = Prefs.getTransport();
                         transport.start(ToInetService.this);
                     } catch (Exception e) {
                         Log.e(TAG, "Failed starting transport", e);
+                    }
+                    if (!mTorExplicitlyStarted) {
+                        Log.d(TAG, "ACTION_START aborted after transport start");
+                        try { Prefs.getTransport().stop(); } catch (Exception ignored) {}
+                        return;
                     }
                     startTor();
                     replyWithStatus(mIntent);
@@ -918,13 +970,16 @@ public class ToInetService extends Service {
                     mPortHTTP = -1;
                     mPortTrans = -1;
                     Prefs.setTorSocksPortResolved(-1);
-                    if (isTorDesired()) {
-                        mTorExplicitlyStarted = true;
+                    if (mTorExplicitlyStarted && isTorDesired()) {
                         try {
                             var transport = Prefs.getTransport();
                             transport.start(ToInetService.this);
                         } catch (Exception e) {
                             Log.e(TAG, "Failed starting transport on restart", e);
+                        }
+                        if (!mTorExplicitlyStarted) {
+                            try { Prefs.getTransport().stop(); } catch (Exception ignored) {}
+                            return;
                         }
                         startTor();
                         replyWithStatus(mIntent);

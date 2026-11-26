@@ -256,6 +256,9 @@ class ProxifierRulesBottomSheet : ToInetBottomSheetDialogFragment() {
     override fun onResume() {
         super.onResume()
         context?.let { updateCurrentNetworkBanner(NetworkUtils.isWifiConnected(it)) }
+        isUpdatingVpnSwitch = true
+        swVpnEnabledView?.isChecked = Prefs.isGlobalVpnEnabled
+        isUpdatingVpnSwitch = false
     }
 
     override fun onStop() {

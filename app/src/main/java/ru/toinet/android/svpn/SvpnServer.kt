@@ -4,6 +4,9 @@ import android.content.Context
 import android.net.VpnService
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import ru.toinet.android.util.NotificationLogger
 import ru.toinet.android.util.Prefs
 
@@ -148,6 +151,36 @@ class SvpnServer(
         val success = !isStopped && isServerRunning && tunnel?.isProxyListening == true
         if (!success && internalError == null) {
             internalError = "SVPN: таймаут подключения к SSH серверу"
+        }
+        return success
+    }
+
+    /**
+     * Starts the SVPN SSH tunnel and suspends cleanly until connected, cancelled, or timed out.
+     */
+    suspend fun startAndWaitSuspend(timeoutMs: Long = 12000L): Boolean {
+        if (!start() || internalError != null) {
+            return false
+        }
+        val start = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < timeoutMs && currentCoroutineContext().isActive) {
+            if (isStopped) return false
+            if (isServerRunning && tunnel?.isProxyListening == true) {
+                return true
+            }
+            if (internalError != null || tunnel?.lastError != null) {
+                return false
+            }
+            delay(100)
+        }
+        val cancelled = !currentCoroutineContext().isActive
+        val success = !cancelled && !isStopped && isServerRunning && tunnel?.isProxyListening == true
+        if (!success) {
+            if (cancelled || isStopped) {
+                stop()
+            } else if (internalError == null) {
+                internalError = "SVPN: таймаут подключения к SSH серверу"
+            }
         }
         return success
     }

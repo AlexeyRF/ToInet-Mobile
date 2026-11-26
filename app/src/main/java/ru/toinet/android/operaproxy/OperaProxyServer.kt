@@ -159,9 +159,13 @@ class OperaProxyServer(
             val waitStart = System.currentTimeMillis()
             var bound = false
             var processAlive = true
+            var interrupted = false
             while (System.currentTimeMillis() - waitStart < 2500L) {
                 processAlive = proc.isAlive
-                if (!processAlive || isStopped) break
+                if (!processAlive || isStopped || Thread.currentThread().isInterrupted) {
+                    interrupted = Thread.currentThread().isInterrupted
+                    break
+                }
                 try {
                     java.net.Socket().use { s ->
                         s.connect(java.net.InetSocketAddress("127.0.0.1", port), 100)
@@ -169,13 +173,20 @@ class OperaProxyServer(
                     }
                 } catch (_: Exception) {}
                 if (bound) break
-                try { Thread.sleep(50) } catch (_: InterruptedException) { break }
+                try { Thread.sleep(50) } catch (_: InterruptedException) {
+                    interrupted = true
+                    break
+                }
             }
 
-            if (!processAlive || isStopped) {
-                isServerRunning = false
-                isRunning = false
-                NotificationLogger.log(context, "operaproxy", "Opera Proxy завершился при запуске")
+            if (!processAlive || isStopped || interrupted) {
+                if (interrupted && !isStopped) {
+                    stop()
+                } else {
+                    isServerRunning = false
+                    isRunning = false
+                    NotificationLogger.log(context, "operaproxy", "Opera Proxy завершился при запуске")
+                }
                 false
             } else {
                 if (!bound) {

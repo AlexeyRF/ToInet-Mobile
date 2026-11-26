@@ -28,6 +28,8 @@ import ru.toinet.android.service.ToInetConstants
 import ru.toinet.android.service.ToInetService
 import ru.toinet.android.service.circumvention.Transport
 import ru.toinet.android.util.Prefs
+import ru.toinet.android.util.isAnyStandaloneServiceRunning
+import ru.toinet.android.vpn.services.AppVpnService
 import org.torproject.jni.TorService
 
 private const val DEFAULT_THROTTLE_INTERVAL = 4000L
@@ -60,6 +62,7 @@ class ConnectFragment : Fragment(),
                         is ConnectUiState.NoInternet -> doLayoutNoInternet()
                         is ConnectUiState.Off -> doLayoutOff()
                         is ConnectUiState.Starting -> {
+                            lastState = TorService.ACTION_START
                             doLayoutStarting(requireContext())
                             if (state.bootstrapPercent != null) {
                                 binding.progressBar.isIndeterminate = false
@@ -92,8 +95,22 @@ class ConnectFragment : Fragment(),
         }
 
         binding.btnConnectCard.setOnClickListener {
-            val isChecked = lastState == TorService.ACTION_START
-            if (!isChecked) {
+            val state = viewModel.uiState.value
+            val vpnService = AppVpnService.activeService
+            val isVpnActiveOrStarting = Prefs.isGlobalVpnEnabled && (
+                AppVpnService.isStartRequested ||
+                    ((AppVpnService.isConnected || vpnService != null) && vpnService?.isStopInProgress() != true)
+                )
+            val isStandaloneActive = !Prefs.isGlobalVpnEnabled &&
+                requireContext().isAnyStandaloneServiceRunning()
+            val shouldStop = state is ConnectUiState.On ||
+                state is ConnectUiState.Starting ||
+                state is ConnectUiState.Stopping ||
+                isVpnActiveOrStarting ||
+                isStandaloneActive ||
+                lastState == TorService.ACTION_START
+
+            if (!shouldStop) {
                 if (Prefs.outboundProxy.second != null) {
                     Toast.makeText(
                         activity,
@@ -209,7 +226,7 @@ class ConnectFragment : Fragment(),
 
     @Synchronized
     fun setState(newState: String) {
-        if (lastState != newState) {
+        if (newState == TorService.ACTION_STOP || lastState != newState) {
             requireContext().sendIntentToService(newState)
             lastState = newState
         }

@@ -83,6 +83,14 @@
         </receiver>
 
         <receiver
+            android:name=".receivers.NotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="ru.toinet.android.action.NOTIFICATION_STOP_ALL" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".receivers.OnBootReceiver"
             android:directBootAware="false"
             android:enabled="true"

@@ -117,7 +117,16 @@ fun Context.sendIntentToService(intent: Intent, isForeground: Boolean = true): B
         prepared.putExtra("is_foreground", true)
     }
     val actionName = prepared.action ?: prepared.component?.className ?: "unknown"
-    return try {
+    val isAppVpnTarget = prepared.component?.className == AppVpnService::class.java.name
+    if (isAppVpnTarget && actionName == STOP_ACTION && AppVpnService.requestGlobalStop()) {
+        return true
+    }
+    val appVpnStartSeq = if (isAppVpnTarget && actionName == START_ACTION) {
+        AppVpnService.prepareStartIntent(prepared)
+    } else {
+        0L
+    }
+    val dispatched = try {
         if (isForeground) {
             ContextCompat.startForegroundService(this, prepared)
         } else {
@@ -143,6 +152,12 @@ fun Context.sendIntentToService(intent: Intent, isForeground: Boolean = true): B
         } else {
             val isStop = actionName == STOP_ACTION || actionName == TorService.ACTION_STOP
             if (isStop) {
+                if (isAppVpnTarget) {
+                    if (!AppVpnService.requestGlobalStop() && isServiceRunningInPackage(AppVpnService::class.java)) {
+                        stopServiceCompat(prepared)
+                    }
+                    return true
+                }
                 stopServiceCompat(prepared)
                 return true
             }
@@ -152,6 +167,10 @@ fun Context.sendIntentToService(intent: Intent, isForeground: Boolean = true): B
         }
         false
     }
+    if (!dispatched && appVpnStartSeq != 0L) {
+        AppVpnService.clearPendingStartIfMatches(appVpnStartSeq)
+    }
+    return dispatched
 }
 
 private fun isAppInForegroundLifecycle(): Boolean {
@@ -290,7 +309,9 @@ fun Context.sendIntentToService(action: String) {
 
     // 2. AppVpnService
     if (isStop) {
-        if (AppVpnService.activeService != null || AppVpnService.currentStatus != ServiceStatus.Disconnected) {
+        val handledInProcess = AppVpnService.requestGlobalStop()
+        val vpnServiceAlive = isServiceRunningInPackage(AppVpnService::class.java)
+        if (!handledInProcess && vpnServiceAlive) {
             sendIntentToService(
                 Intent(this, AppVpnService::class.java).apply {
                     this.action = STOP_ACTION
@@ -298,6 +319,9 @@ fun Context.sendIntentToService(action: String) {
                 },
                 isForeground = false
             )
+        }
+        if (isGlobalVpnEnabled && !handledInProcess && !vpnServiceAlive && !isAnyStandaloneServiceRunning()) {
+            broadcastLocalStatus(TorService.STATUS_OFF)
         }
     } else if (isPing && isGlobalVpnEnabled) {
         if (AppVpnService.activeService != null) {
@@ -440,7 +464,11 @@ fun Context.sendIntentToService(action: String) {
                 broadcastLocalStatus(TorService.STATUS_STARTING)
             }
         } else if (isStop) {
-            if (!isTorActive && !isAnyStandaloneServiceRunning()) {
+            if ((!isTorActive || !torServiceRunning) &&
+                !isAnyStandaloneServiceRunning() &&
+                AppVpnService.activeService == null &&
+                !AppVpnService.isStartRequested
+            ) {
                 broadcastLocalStatus(TorService.STATUS_OFF)
             }
         } else if (isPing) {
@@ -610,14 +638,18 @@ fun Context.syncStandaloneComponent(provider: String, enabled: Boolean, configCh
  * once AppVpnService has already connected and emitted STATUS_ON.
  */
 fun Context.startRemainingNonVpnProviders() {
-    if (!Prefs.isGlobalVpnEnabled) return
+    fun shouldAbort(): Boolean =
+        !Prefs.isGlobalVpnEnabled || AppVpnService.activeService?.isStopInProgress() == true
+
+    if (shouldAbort()) return
     val neededVpnProviders = try {
         ProxifierRulesManager.getAllNeededVpnProviders()
     } catch (_: Throwable) {
         emptySet()
     }
 
-    if (Prefs.isProviderNeededStandalone("byedpi") &&
+    if (!shouldAbort() &&
+        Prefs.isProviderNeededStandalone("byedpi") &&
         !neededVpnProviders.contains("byedpi") &&
         ByeDpiProxyService.status == ServiceStatus.Disconnected
     ) {
@@ -630,7 +662,8 @@ fun Context.startRemainingNonVpnProviders() {
         )
     }
 
-    if (Prefs.isProviderNeededStandalone("tor") &&
+    if (!shouldAbort() &&
+        Prefs.isProviderNeededStandalone("tor") &&
         !neededVpnProviders.contains("tor") &&
         (!isServiceRunningInPackage(ToInetService::class.java) || Prefs.torRuntimeStatus == TorService.STATUS_OFF)
     ) {
@@ -643,7 +676,8 @@ fun Context.startRemainingNonVpnProviders() {
         )
     }
 
-    if (Prefs.isProviderNeededStandalone("tgws") &&
+    if (!shouldAbort() &&
+        Prefs.isProviderNeededStandalone("tgws") &&
         !neededVpnProviders.contains("tgws") &&
         !TgwsService.isRunning
     ) {
@@ -666,7 +700,8 @@ fun Context.startRemainingNonVpnProviders() {
         )
     }
 
-    if (ArchHelper.isOperaSupported &&
+    if (!shouldAbort() &&
+        ArchHelper.isOperaSupported &&
         Prefs.isProviderNeededStandalone("operaproxy") &&
         !neededVpnProviders.contains("operaproxy") &&
         !OperaProxyService.isRunning
@@ -674,14 +709,16 @@ fun Context.startRemainingNonVpnProviders() {
         OperaProxyService.start(this)
     }
 
-    if (Prefs.isProviderNeededStandalone("easyvpn") &&
+    if (!shouldAbort() &&
+        Prefs.isProviderNeededStandalone("easyvpn") &&
         !neededVpnProviders.contains("easyvpn") &&
         !EasyVpnService.isRunning
     ) {
         EasyVpnService.start(this)
     }
 
-    if (Prefs.isProviderNeededStandalone("svpn") &&
+    if (!shouldAbort() &&
+        Prefs.isProviderNeededStandalone("svpn") &&
         !neededVpnProviders.contains("svpn") &&
         !neededVpnProviders.contains("ssh") &&
         !SvpnService.isRunning
@@ -755,10 +792,9 @@ private fun Context.applyVpnEnabledState(enabled: Boolean) {
             broadcastLocalStatus(TorService.STATUS_OFF)
         }
     } else {
-        val vpnWasRunning = AppVpnService.isConnected ||
-            AppVpnService.activeService != null ||
-            AppVpnService.currentStatus != ServiceStatus.Disconnected
-        if (vpnWasRunning) {
+        val handledInProcess = AppVpnService.requestGlobalStop()
+        val vpnServiceAlive = isServiceRunningInPackage(AppVpnService::class.java)
+        if (!handledInProcess && vpnServiceAlive) {
             // AppVpnService.stopTun2Socks() will preserve/revive enabled standalone services
             sendIntentToService(
                 Intent(this, AppVpnService::class.java).apply {
@@ -767,7 +803,7 @@ private fun Context.applyVpnEnabledState(enabled: Boolean) {
                 },
                 isForeground = false
             )
-        } else {
+        } else if (!handledInProcess && !vpnServiceAlive) {
             // Ensure notification priority and UI status reflect current standalone services cleanly
             if (isAnyStandaloneServiceRunning()) {
                 refreshStandalonePrimaryNotifications()

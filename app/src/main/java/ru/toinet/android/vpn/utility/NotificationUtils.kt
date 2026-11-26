@@ -346,12 +346,24 @@ fun stopSharedForeground(service: Service, serviceKey: String, wasForeground: Bo
     }
 }
 
+fun createNotificationStopAllPendingIntent(context: Context): PendingIntent {
+    val intent = Intent(context, ru.toinet.android.receivers.NotificationActionReceiver::class.java).apply {
+        action = ru.toinet.android.receivers.NotificationActionReceiver.ACTION_STOP_ALL
+    }
+    return PendingIntent.getBroadcast(
+        context,
+        0,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+}
+
 fun createConnectionNotification(
     context: Context,
     channelId: String,
     @Suppress("UNUSED_PARAMETER") @StringRes title: Int,
     @Suppress("UNUSED_PARAMETER") @StringRes content: Int,
-    service: Class<*>,
+    @Suppress("UNUSED_PARAMETER") service: Class<*>,
     serviceKey: String = "byedpi",
 ): Notification {
     ensureSharedNotificationChannels(context)
@@ -370,7 +382,7 @@ fun createConnectionNotification(
                 context,
                 0,
                 Intent(context, ToInetActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         )
         .setContentTitle("ToInet")
@@ -380,12 +392,7 @@ fun createConnectionNotification(
     builder.addAction(
         0,
         context.getString(R.string.disable),
-        PendingIntent.getService(
-            context,
-            0,
-            Intent(context, service).setAction(STOP_ACTION),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
+        createNotificationStopAllPendingIntent(context),
     )
 
     return builder.build()
@@ -396,7 +403,7 @@ fun createConnectionNotificationString(
     channelId: String,
     @Suppress("UNUSED_PARAMETER") title: String,
     @Suppress("UNUSED_PARAMETER") content: String? = null,
-    service: Class<*>,
+    @Suppress("UNUSED_PARAMETER") service: Class<*>,
     switchServerIntent: PendingIntent? = null,
     switchTorIntent: PendingIntent? = null,
     serviceKey: String = "vpn",
@@ -417,7 +424,7 @@ fun createConnectionNotificationString(
                 context,
                 0,
                 Intent(context, ToInetActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         )
         .setContentTitle("ToInet")
@@ -443,12 +450,7 @@ fun createConnectionNotificationString(
     builder.addAction(
         0,
         context.getString(R.string.disable),
-        PendingIntent.getService(
-            context,
-            0,
-            Intent(context, service).setAction(STOP_ACTION),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
+        createNotificationStopAllPendingIntent(context),
     )
 
     return builder.build()
