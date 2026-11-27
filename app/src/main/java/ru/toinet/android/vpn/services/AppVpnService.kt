@@ -1422,6 +1422,26 @@ class AppVpnService : LifecycleVpnService() {
             Log.w(TAG, "Failed to disallow self: ${applicationContext.packageName}", e)
         }
 
+        // Always disallow locked packages (including *alexeyrf* and *toinet*) regardless of appRoutingEnabled
+        // to prevent proxy/VPN loops.
+        try {
+            val packages = packageManager.getInstalledPackages(0)
+            for (pkg in packages) {
+                val pkgName = pkg.packageName
+                if (pkgName != applicationContext.packageName &&
+                    ru.toinet.android.util.Prefs.isLockedVpnPackage(pkgName)
+                ) {
+                    try {
+                        builder.addDisallowedApplication(pkgName)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to disallow locked app: $pkgName", e)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to enumerate packages for loop protection", e)
+        }
+
         return builder
     }
 

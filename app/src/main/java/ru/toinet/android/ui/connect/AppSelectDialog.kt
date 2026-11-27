@@ -130,6 +130,10 @@ class AppSelectDialog() : BottomSheetDialogFragment() {
             val apps = mutableListOf<AppItem>()
 
             for (appInfo in packages) {
+                if (ru.toinet.android.util.Prefs.isLockedVpnPackage(appInfo.packageName)) {
+                    selectedPackages.remove(appInfo.packageName)
+                    continue
+                }
                 val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
                 val isUpdatedSystem = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
                 val isUserApp = !isSystem || isUpdatedSystem

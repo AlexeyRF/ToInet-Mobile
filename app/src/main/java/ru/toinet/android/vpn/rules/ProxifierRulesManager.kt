@@ -216,6 +216,7 @@ object ProxifierRulesManager {
     }
 
     fun findRuleForPackage(packageName: String): ProxifierRule? {
+        if (Prefs.isLockedVpnPackage(packageName)) return null
         val rules = getOrLoadCache().rules
         // Priority order: first matching enabled rule in the list wins
         for (rule in rules) {
@@ -308,6 +309,7 @@ object ProxifierRulesManager {
 */
 
     fun findActionForPackage(packageName: String): String {
+        if (Prefs.isLockedVpnPackage(packageName)) return ProxifierRule.ACTION_DIRECT
         return findRuleForPackage(packageName)?.action ?: Prefs.appRoutingDefaultAction
     }
 

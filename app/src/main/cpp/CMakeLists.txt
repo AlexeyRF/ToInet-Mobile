@@ -50,3 +50,14 @@ target_compile_options(gatik PRIVATE -std=c++17 -O3 -Wall -Wextra -Wno-unused-pa
 target_compile_definitions(gatik PRIVATE ANDROID_APP __ANDROID__)
 target_link_libraries(gatik PRIVATE log)
 
+# 6. Custom minimal C++ SSH-2.0 port-forwarding client (libsvpn.so)
+add_library(svpn SHARED
+    svpn/ssh_crypto.cpp
+    svpn/ssh_tunnel.cpp
+    svpn/svpn_jni.cpp
+)
+target_include_directories(svpn PRIVATE svpn .)
+target_compile_options(svpn PRIVATE -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter)
+target_compile_definitions(svpn PRIVATE ANDROID_APP __ANDROID__)
+target_link_libraries(svpn PRIVATE log)
+

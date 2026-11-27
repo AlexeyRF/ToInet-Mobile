@@ -9,7 +9,7 @@ plugins {
 
 kotlin { jvmToolchain(21) }
 
-val ToInetBaseVersionCode = 12
+val ToInetBaseVersionCode = 13
 
 // Provider for git version, configuration-cache safe
 val gitVersionProvider = providers.exec {
@@ -38,7 +38,7 @@ configure<ApplicationExtension> {
     defaultConfig {
         applicationId = namespace
         versionCode = ToInetBaseVersionCode
-        versionName = "PMR"
+        versionName = "DVA"
         minSdk = 29
         targetSdk = 36
         multiDexEnabled = true
@@ -231,7 +231,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.work.kotlin)
     implementation(libs.iptproxy)
-    implementation(libs.jsch)
 
     // Tor
     implementation(files("../libs/geoip.jar"))

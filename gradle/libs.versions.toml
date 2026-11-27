@@ -23,7 +23,6 @@ serialization = "1.10.0"
 androidx-biometric = "1.1.0"
 androidx-lifecycle = "2.10.0"
 iptproxy = "5.1.1"
-jsch = "0.2.18"
 
 [libraries]
 android-material = { group = "com.google.android.material", name = "material", version.ref = "android-material" }
@@ -51,7 +50,6 @@ androidx-biometric = { group = "androidx.biometric", name = "biometric", version
 androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-common = { group = "androidx.lifecycle", name = "lifecycle-common", version.ref = "androidx-lifecycle" }
 iptproxy = { group = "com.netzarchitekten", name = "IPtProxy", version.ref = "iptproxy" }
-jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

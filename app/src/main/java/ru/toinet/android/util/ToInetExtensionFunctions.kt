@@ -529,6 +529,17 @@ fun Context.syncStandaloneComponent(provider: String, enabled: Boolean, configCh
         return
     }
 
+    // Do not start standalone foreground services when the user hasn't started a session yet
+    // (e.g. toggling a component in settings before pressing the main Start button).
+    val sessionActive = if (Prefs.isGlobalVpnEnabled) {
+        vpnActive
+    } else {
+        Prefs.isVpnOrProxySessionActive || isAnyStandaloneServiceRunning()
+    }
+    if (enabled && !sessionActive) {
+        return
+    }
+
     val stillNeededByActiveVpn = vpnActive && (neededVpnProviders.contains(normalized) ||
         (normalized == "svpn" && neededVpnProviders.contains("ssh")))
 

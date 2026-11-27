@@ -2,16 +2,10 @@ package ru.toinet.android.svpn
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.InetAddresses
 import android.net.VpnService
 import android.util.Log
-import com.jcraft.jsch.*
-import java.io.InputStream
-import java.io.OutputStream
 import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.Socket
-import java.nio.charset.StandardCharsets
-import java.util.Properties
 
 class SshTunnel(
     private val host: String,
@@ -27,6 +21,23 @@ class SshTunnel(
     companion object {
         private const val TAG = "SvpnSshTunnel"
 
+        init {
+            System.loadLibrary("svpn")
+        }
+
+        @JvmStatic
+        private external fun nativeTestConnection(
+            host: String,
+            resolvedHint: String?,
+            port: Int,
+            user: String,
+            password: String?,
+            privateKey: String?,
+            passphrase: String?,
+            timeoutMs: Int,
+            vpnService: VpnService?
+        ): String?
+
         fun testConnection(
             host: String,
             port: Int,
@@ -37,70 +48,53 @@ class SshTunnel(
             timeoutMs: Int = 10000,
             vpnService: VpnService? = null
         ): Pair<Boolean, String> {
-            var session: Session? = null
-            return try {
-                val jsch = JSch()
-                if (!privateKey.isNullOrBlank()) {
-                    val keyBytes = privateKey.trim().toByteArray(StandardCharsets.UTF_8)
-                    val passBytes = if (!passphrase.isNullOrEmpty()) passphrase.toByteArray(StandardCharsets.UTF_8) else null
-                    jsch.addIdentity("test_identity", keyBytes, null, passBytes)
-                }
-
-                session = jsch.getSession(user, host, port)
-                if (!password.isNullOrEmpty()) {
-                    session.setPassword(password)
-                }
-                session.userInfo = SshUserInfo(password, passphrase)
-
-                val config = Properties().apply {
-                    put("StrictHostKeyChecking", "no")
-                    put("PreferredAuthentications", "publickey,keyboard-interactive,password")
-                }
-                session.setConfig(config)
-                session.timeout = timeoutMs
-
-                session.setSocketFactory(object : SocketFactory {
-                    override fun createSocket(targetHost: String, targetPort: Int): Socket {
-                        val socket = Socket()
-                        vpnService?.protect(socket)
-                        socket.tcpNoDelay = true
-                        socket.keepAlive = true
-
-                        val resolved = resolveHostSafely(vpnService, targetHost)
-                        socket.connect(InetSocketAddress(resolved, targetPort), timeoutMs)
-                        return socket
-                    }
-                    override fun getInputStream(socket: Socket): InputStream = socket.getInputStream()
-                    override fun getOutputStream(socket: Socket): OutputStream = socket.getOutputStream()
-                })
-
-                session.connect(timeoutMs)
+            val cleanHost = host.trim()
+            val resolvedHint = resolveHostHintIfDomain(vpnService, cleanHost)
+            val err = nativeTestConnection(
+                host = cleanHost,
+                resolvedHint = resolvedHint,
+                port = port,
+                user = user,
+                password = password,
+                privateKey = privateKey?.trim(),
+                passphrase = passphrase,
+                timeoutMs = timeoutMs,
+                vpnService = vpnService
+            )
+            return if (err == null) {
                 Pair(true, "Успешно: подключение установлено")
-            } catch (e: Exception) {
-                Log.w(TAG, "Test connection failed", e)
-                val msg = e.localizedMessage ?: e.message ?: e.toString()
-                Pair(false, "Ошибка: $msg")
-            } finally {
-                try {
-                    session?.disconnect()
-                } catch (_: Exception) {}
+            } else {
+                Log.w(TAG, "Test connection failed: $err")
+                Pair(false, "Ошибка: $err")
             }
         }
 
-        private fun resolveHostSafely(vpnService: VpnService?, targetHost: String): InetAddress {
+        private fun resolveHostHintIfDomain(vpnService: VpnService?, rawHost: String): String? {
+            val clean = if (rawHost.startsWith("[") && rawHost.endsWith("]") && rawHost.length > 2) {
+                rawHost.substring(1, rawHost.length - 1)
+            } else {
+                rawHost
+            }
+            if (clean.isEmpty() || InetAddresses.isNumericAddress(clean)) {
+                return null
+            }
             if (vpnService != null) {
                 try {
                     val cm = vpnService.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
                     val activeNet = cm?.activeNetwork
                     if (activeNet != null) {
-                        val addrs = activeNet.getAllByName(targetHost)
-                        if (addrs.isNotEmpty()) return addrs[0]
+                        val addrs = activeNet.getAllByName(clean)
+                        if (addrs.isNotEmpty()) return addrs[0].hostAddress
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed resolving $targetHost via activeNetwork: ${e.message}")
+                    Log.w(TAG, "Failed resolving $clean via activeNetwork: ${e.message}")
                 }
             }
-            return InetAddress.getByName(targetHost)
+            return try {
+                InetAddress.getByName(clean).hostAddress
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
@@ -110,165 +104,139 @@ class SshTunnel(
         fun onError(message: String, t: Throwable?)
     }
 
-    private var session: Session? = null
-    private var proxyServer: SocksProxyServer? = null
+    private var nativeHandle: Long = 0L
+    @Volatile
+    private var vpnServiceRef: VpnService? = null
+    @Volatile
+    private var listenerRef: TunnelListener? = null
     @Volatile
     private var isRunning = false
-    private var workerThread: Thread? = null
 
     @Volatile
     var lastError: String? = null
         private set
 
     val isProxyListening: Boolean
-        get() = proxyServer?.isListening == true
+        get() = synchronized(this) {
+            nativeHandle != 0L && nativeIsProxyListening(nativeHandle)
+        }
+
+    private external fun nativeCreate(): Long
+    private external fun nativeDestroy(handle: Long)
+    private external fun nativeStart(
+        handle: Long,
+        host: String,
+        resolvedHint: String?,
+        port: Int,
+        user: String,
+        password: String?,
+        privateKey: String?,
+        passphrase: String?,
+        bindHost: String,
+        localPort: Int,
+        timeoutMs: Int,
+        callbackObj: Any
+    ): Boolean
+    private external fun nativeStop(handle: Long)
+    private external fun nativeIsConnected(handle: Long): Boolean
+    private external fun nativeIsProxyListening(handle: Long): Boolean
+    private external fun nativeLastError(handle: Long): String?
 
     @Synchronized
     fun start(vpnService: VpnService?, listener: TunnelListener?) {
         if (isRunning) return
         isRunning = true
         lastError = null
+        vpnServiceRef = vpnService
+        listenerRef = listener
 
-        workerThread = Thread({
-            try {
-                val jsch = JSch()
+        if (nativeHandle == 0L) {
+            nativeHandle = nativeCreate()
+        }
 
-                // Load private key identity if provided
-                if (!privateKey.isNullOrBlank()) {
-                    val prvKeyBytes = privateKey.trim().toByteArray(StandardCharsets.UTF_8)
-                    val passBytes = if (!passphrase.isNullOrEmpty()) passphrase.toByteArray(StandardCharsets.UTF_8) else null
-                    jsch.addIdentity("custom_identity", prvKeyBytes, null, passBytes)
-                }
+        val cleanHost = host.trim()
+        val resolvedHint = resolveHostHintIfDomain(vpnService, cleanHost)
+        Log.d(TAG, "Starting native C++ SSH direct-tcpip tunnel for $user@$cleanHost:$port -> $bindHost:$localPort")
 
-                Log.d(TAG, "Creating SSH session for $user@$host:$port")
-                val sess = jsch.getSession(user, host, port)
+        val started = nativeStart(
+            handle = nativeHandle,
+            host = cleanHost,
+            resolvedHint = resolvedHint,
+            port = port,
+            user = user,
+            password = password,
+            privateKey = privateKey?.trim(),
+            passphrase = passphrase,
+            bindHost = bindHost,
+            localPort = localPort,
+            timeoutMs = connectTimeoutMs,
+            callbackObj = this
+        )
 
-                if (!password.isNullOrEmpty()) {
-                    sess.setPassword(password)
-                }
-
-                sess.userInfo = SshUserInfo(password, passphrase)
-
-                val config = Properties().apply {
-                    put("StrictHostKeyChecking", "no")
-                    put("PreferredAuthentications", "publickey,keyboard-interactive,password")
-                }
-                sess.setConfig(config)
-                sess.timeout = 0
-
-                // Protect socket from VPN looping if running under VpnService
-                sess.setSocketFactory(object : SocketFactory {
-                    override fun createSocket(targetHost: String, targetPort: Int): Socket {
-                        val socket = Socket()
-                        if (vpnService != null) {
-                            val protectedOk = vpnService.protect(socket)
-                            Log.d(TAG, "VPN protect socket result: $protectedOk")
-                        }
-                        socket.tcpNoDelay = true
-                        socket.keepAlive = true
-
-                        val resolved = resolveHostSafely(vpnService, targetHost)
-                        socket.connect(InetSocketAddress(resolved, targetPort), connectTimeoutMs)
-                        return socket
-                    }
-
-                    override fun getInputStream(socket: Socket): InputStream = socket.getInputStream()
-                    override fun getOutputStream(socket: Socket): OutputStream = socket.getOutputStream()
-                })
-
-                Log.d(TAG, "Connecting to SSH server...")
-                sess.connect(connectTimeoutMs)
-
-                if (!isRunning) {
-                    try { sess.disconnect() } catch (_: Exception) {}
-                    return@Thread
-                }
-
-                Log.d(TAG, "Starting local SOCKS5 proxy on $bindHost:$localPort")
-                val proxy = SocksProxyServer(sess, bindHost, localPort)
-                proxy.start()
-
-                synchronized(this@SshTunnel) {
-                    session = sess
-                    proxyServer = proxy
-                }
-
-                Log.i(TAG, "SSH Tunnel connected and SOCKS proxy active on $bindHost:$localPort")
-                listener?.onConnected()
-
-                // Keep-alive loop while running (send explicit keepalive every 25 seconds)
-                var lastKeepAlive = System.currentTimeMillis()
-                while (isRunning && sess.isConnected) {
-                    try {
-                        Thread.sleep(1000)
-                        val now = System.currentTimeMillis()
-                        if (now - lastKeepAlive >= 25000) {
-                            lastKeepAlive = now
-                            sess.sendKeepAliveMsg()
-                        }
-                    } catch (_: InterruptedException) {
-                        break
-                    } catch (_: Exception) {}
-                }
-
-                if (isRunning) {
-                    Log.w(TAG, "SSH session disconnected unexpectedly")
-                    stop()
-                    listener?.onDisconnected()
-                }
-            } catch (e: Throwable) {
-                val msg = e.localizedMessage ?: e.message ?: e.toString()
-                Log.e(TAG, "SSH Tunnel error: $msg", e)
-                lastError = msg
-                stop()
-                listener?.onError(msg, e)
-            }
-        }, "SvpnTunnelThread")
-
-        workerThread?.start()
+        if (!started) {
+            isRunning = false
+            val msg = nativeLastError(nativeHandle) ?: "Failed to start native SSH tunnel"
+            lastError = msg
+            listener?.onError(msg, null)
+        }
     }
 
     @Synchronized
     fun stop() {
         isRunning = false
-        proxyServer?.stop()
-        proxyServer = null
-
-        try {
-            session?.disconnect()
-        } catch (_: Exception) {}
-        session = null
-
-        workerThread?.interrupt()
-        workerThread = null
+        listenerRef = null
+        if (nativeHandle != 0L) {
+            nativeStop(nativeHandle)
+            nativeDestroy(nativeHandle)
+            nativeHandle = 0L
+        }
+        vpnServiceRef = null
     }
 
     @Synchronized
     fun isConnected(): Boolean {
-        return isRunning && session != null && session!!.isConnected
+        return isRunning && nativeHandle != 0L && nativeIsConnected(nativeHandle)
     }
 
-    private class SshUserInfo(
-        private val password: String?,
-        private val passphrase: String?
-    ) : UserInfo, UIKeyboardInteractive {
-        override fun getPassphrase(): String = passphrase ?: ""
-        override fun getPassword(): String = password ?: ""
-        override fun promptPassword(message: String?): Boolean = true
-        override fun promptPassphrase(message: String?): Boolean = true
-        override fun promptYesNo(message: String?): Boolean = true
-        override fun showMessage(message: String?) {
-            Log.d(TAG, "UserInfo message: $message")
+    @Suppress("unused")
+    private fun onNativeProtectSocket(fd: Int): Boolean {
+        val vpn = vpnServiceRef ?: return true
+        return try {
+            val parcelFd = android.os.ParcelFileDescriptor.adoptFd(fd)
+            try {
+                vpn.protect(parcelFd.fd)
+            } finally {
+                // Detach so closing ParcelFileDescriptor does NOT close the C++ socket fd
+                parcelFd.detachFd()
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed protecting socket fd=$fd: ${e.message}")
+            false
         }
-        override fun promptKeyboardInteractive(
-            destination: String?,
-            name: String?,
-            instruction: String?,
-            prompt: Array<out String>?,
-            echo: BooleanArray?
-        ): Array<String> {
-            if (prompt.isNullOrEmpty()) return emptyArray()
-            return Array(prompt.size) { password ?: "" }
+    }
+
+    @Suppress("unused")
+    private fun onNativeConnected() {
+        Log.i(TAG, "Native SSH direct-tcpip tunnel connected on $bindHost:$localPort")
+        listenerRef?.onConnected()
+    }
+
+    @Suppress("unused")
+    private fun onNativeDisconnected() {
+        if (isRunning) {
+            isRunning = false
+            Log.w(TAG, "Native SSH session disconnected unexpectedly")
+            listenerRef?.onDisconnected()
+        }
+    }
+
+    @Suppress("unused")
+    private fun onNativeError(message: String) {
+        lastError = message
+        if (isRunning) {
+            isRunning = false
+            Log.e(TAG, "Native SSH tunnel error: $message")
+            listenerRef?.onError(message, null)
         }
     }
 }

@@ -301,12 +301,13 @@ public class ToInetService extends Service {
             }
             boolean fgRequested = intent.getBooleanExtra("is_foreground", false);
             boolean isActuallyRunning = !mCurrentStatus.equals(STATUS_OFF);
+            boolean isStopOrQuery = ACTION_STOP.equals(action) || ACTION_STATUS.equals(action) || CMD_ACTIVE.equals(action);
 
-            if (isStartOrRestart || isActuallyRunning || fgRequested) {
+            if ((isStartOrRestart && mTorExplicitlyStarted) || (isActuallyRunning && !isStopOrQuery)) {
                 showToolbarNotification(getString(R.string.open_toinet_to_connect_to_tor), NOTIFY_ID, R.drawable.ic_stat_tor);
             } else {
-                // Do not show notification or start foreground for pings or other actions when Tor is OFF
-                Log.d(TAG, "Skipping foreground for action: " + action + " while Tor is OFF");
+                // Do not show notification or start foreground when Tor is OFF or stopping
+                Log.d(TAG, "Skipping foreground for action: " + action + " (fgRequested=" + fgRequested + ", status=" + mCurrentStatus + ")");
             }
 
             mCommandExecutor.execute(new IncomingIntentRouter(intent));
